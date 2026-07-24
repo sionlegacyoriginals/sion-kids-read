@@ -1,6 +1,6 @@
-# [Project name]
+# StoryBloom
 
-_Replace the heading above with the project's name, and this line with one sentence describing what this app does for users._
+AI-powered children's story generator that lets parents create personalized, wholesome bedtime stories for their kids in seconds.
 
 ## Run & Operate
 
@@ -22,15 +22,27 @@ _Replace the heading above with the project's name, and this line with one sente
 
 ## Where things live
 
-_Populate as you build — short repo map plus pointers to the source-of-truth file for DB schema, API contracts, theme files, etc._
+- `artifacts/story-app/` — React + Vite frontend (Fraunces serif + Nunito UI, warm cream/gold palette)
+- `artifacts/api-server/src/routes/stories/` — Story CRUD + AI generation routes
+- `lib/db/src/schema/stories.ts` — Stories table schema
+- `lib/api-spec/openapi.yaml` — API contract (source of truth)
+- `lib/integrations-openai-ai-server/` — OpenAI SDK wrapper
 
 ## Architecture decisions
 
-_Populate as you build — non-obvious choices a reader couldn't infer from the code (3-5 bullets)._
+- Story generation uses `gpt-5.6-luna` (cost-efficient for creative text, non-streaming; full story returned in one shot)
+- Story title is extracted from the LLM's first line (`TITLE: ...`) to avoid a second API call
+- PDF export is client-side via `window.print()` with print-specific CSS — no external library needed
+- AI integration uses Replit-managed OpenAI proxy (no user API key required)
+- Stats endpoint uses raw SQL aggregations (`count(*)::int`) via Drizzle's `sql` helper
 
 ## Product
 
-_Describe the high-level user-facing capabilities of this app once they exist._
+- **Story creation form** — Child name, age, gender, milestones/details, theme (8 values), custom plot prompt
+- **AI story generation** — Personalized 4–6 paragraph bedtime story reinforcing chosen theme/value
+- **Story library** — Browse, search and filter all saved stories
+- **Story viewer** — Beautiful serif reading view with Regenerate, Edit, and Download PDF actions
+- **Dashboard** — Recent stories sidebar + stats (total count, stories by theme)
 
 ## User preferences
 

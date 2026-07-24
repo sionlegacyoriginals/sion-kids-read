@@ -3,13 +3,15 @@ info:
   # Do not change the title, if the title changes, the import paths will be broken
   title: Api
   version: 0.1.0
-  description: API specification
+  description: StoryBloom API – AI children's story generation and management
 servers:
   - url: /api
     description: Base API path
 tags:
   - name: health
     description: Health operations
+  - name: stories
+    description: Story operations
 paths:
   /healthz:
     get:
@@ -24,6 +26,174 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/HealthStatus"
+
+  /stories:
+    get:
+      operationId: listStories
+      tags: [stories]
+      summary: List all saved stories
+      responses:
+        "200":
+          description: List of stories
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Story"
+
+    post:
+      operationId: createStory
+      tags: [stories]
+      summary: Create and generate a new story
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/StoryInput"
+      responses:
+        "201":
+          description: Story created and generated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Story"
+        "400":
+          description: Invalid input
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /stories/stats:
+    get:
+      operationId: getStoryStats
+      tags: [stories]
+      summary: Get story statistics (total count, by theme)
+      responses:
+        "200":
+          description: Story statistics
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/StoryStats"
+
+  /stories/recent:
+    get:
+      operationId: getRecentStories
+      tags: [stories]
+      summary: Get the 5 most recently created stories
+      responses:
+        "200":
+          description: Recent stories
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Story"
+
+  /stories/{id}:
+    get:
+      operationId: getStory
+      tags: [stories]
+      summary: Get a single story by ID
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Story found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Story"
+        "404":
+          description: Story not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+    patch:
+      operationId: updateStory
+      tags: [stories]
+      summary: Edit/update a story's content or metadata
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/StoryUpdate"
+      responses:
+        "200":
+          description: Story updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Story"
+        "404":
+          description: Story not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+    delete:
+      operationId: deleteStory
+      tags: [stories]
+      summary: Delete a story
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "204":
+          description: Story deleted
+        "404":
+          description: Story not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /stories/{id}/regenerate:
+    post:
+      operationId: regenerateStory
+      tags: [stories]
+      summary: Regenerate a story with the same parameters
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Story regenerated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Story"
+        "404":
+          description: Story not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
 components:
   schemas:
     HealthStatus:
@@ -34,3 +204,120 @@ components:
       required:
         - status
 
+    ErrorResponse:
+      type: object
+      required: [error]
+      properties:
+        error:
+          type: string
+
+    Story:
+      type: object
+      required:
+        - id
+        - childName
+        - childAge
+        - childGender
+        - theme
+        - content
+        - title
+        - createdAt
+        - updatedAt
+      properties:
+        id:
+          type: integer
+        childName:
+          type: string
+        childAge:
+          type: integer
+        childGender:
+          type: string
+        milestones:
+          type: ["string", "null"]
+        theme:
+          type: string
+        customPrompt:
+          type: ["string", "null"]
+        title:
+          type: string
+        content:
+          type: string
+        createdAt:
+          type: string
+        updatedAt:
+          type: string
+
+    StoryInput:
+      type: object
+      required:
+        - childName
+        - childAge
+        - childGender
+        - theme
+      properties:
+        childName:
+          type: string
+          minLength: 1
+        childAge:
+          type: integer
+          minimum: 1
+          maximum: 12
+        childGender:
+          type: string
+          enum: [boy, girl, neutral]
+        milestones:
+          type: string
+          description: Details like favorite toys, pets, recent trips
+        theme:
+          type: string
+          enum: [Courage, Kindness, "Overcoming Fear", Faith, Friendship, Honesty, Perseverance, Gratitude]
+        customPrompt:
+          type: string
+          description: Custom topic or plot prompt
+
+    StoryUpdate:
+      type: object
+      properties:
+        title:
+          type: string
+        content:
+          type: string
+        childName:
+          type: string
+        childAge:
+          type: integer
+        childGender:
+          type: string
+        milestones:
+          type: string
+        theme:
+          type: string
+        customPrompt:
+          type: string
+
+    StoryStats:
+      type: object
+      required:
+        - totalStories
+        - byTheme
+        - mostRecentChildName
+      properties:
+        totalStories:
+          type: integer
+        byTheme:
+          type: array
+          items:
+            $ref: "#/components/schemas/ThemeCount"
+        mostRecentChildName:
+          type: ["string", "null"]
+
+    ThemeCount:
+      type: object
+      required:
+        - theme
+        - count
+      properties:
+        theme:
+          type: string
+        count:
+          type: integer
