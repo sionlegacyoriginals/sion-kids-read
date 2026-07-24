@@ -23,7 +23,7 @@ const THEMES = [
 const storySchema = z.object({
   childName: z.string().min(1, "Child's name is required"),
   childAge: z.coerce.number().min(1, "Must be at least 1").max(12, "Must be 12 or younger"),
-  childGender: z.enum(['boy', 'girl', 'neutral']),
+  childGender: z.enum(['boy', 'girl']),
   theme: z.enum(THEMES),
   milestones: z.string().optional(),
   customPrompt: z.string().optional(),
@@ -42,7 +42,7 @@ export default function Home() {
     defaultValues: {
       childName: "",
       childAge: 5,
-      childGender: "neutral",
+      childGender: "boy",
       theme: "Courage",
       milestones: "",
       customPrompt: "",
@@ -116,7 +116,6 @@ export default function Home() {
                 >
                   <option value="boy">Boy</option>
                   <option value="girl">Girl</option>
-                  <option value="neutral">Neutral</option>
                 </select>
               </div>
 
