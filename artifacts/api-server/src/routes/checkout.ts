@@ -222,7 +222,7 @@ router.post("/checkout/print", requireAuth, async (req: any, res) => {
     const session = await stripe.checkout.sessions.create({
       customer: customerId,
       payment_method_types: ["card"],
-      line_items: [{ price: priceRow.rows[0].price_id as string, quantity: 1 }],
+      line_items: [{ price: printPrice.id, quantity: 1 }],
       mode: "payment",
       success_url: `${baseUrl()}${basePath()}/checkout/success?session_id={CHECKOUT_SESSION_ID}`,
       cancel_url: `${baseUrl()}${basePath()}/stories/${storyId}`,
