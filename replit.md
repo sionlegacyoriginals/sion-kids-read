@@ -1,4 +1,4 @@
-# StoryBloom
+# Sion Legacy Originals
 
 AI-powered children's story generator that lets parents create personalized, wholesome bedtime stories for their kids in seconds.
 
