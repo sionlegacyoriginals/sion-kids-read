@@ -1,7 +1,7 @@
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { useLocation, Link } from "wouter";
 import { 
   useCreateStory, 
@@ -12,8 +12,9 @@ import {
 } from "@workspace/api-client-react";
 import { useQueryClient } from "@tanstack/react-query";
 import { MagicLoader } from "@/components/magic-loader";
-import { BookOpen, ArrowRight, Sparkles, Feather, BookMarked } from "lucide-react";
+import { BookOpen, ArrowRight, Sparkles, Feather, BookMarked, ImagePlus, X } from "lucide-react";
 import { format } from "date-fns";
+import { useUpload } from "@workspace/object-storage-web";
 
 const THEMES = [
   'Courage', 'Kindness', 'Overcoming Fear', 
@@ -32,15 +33,74 @@ const storySchema = z.object({
 
 type StoryFormValues = z.infer<typeof storySchema>;
 
+interface UploadedImage {
+  objectPath: string;
+  previewUrl: string;
+}
+
+const MAX_IMAGES = 5;
+
 export default function Home() {
   const [, setLocation] = useLocation();
   const queryClient = useQueryClient();
   const createStory = useCreateStory();
   const { data: recentStories, isLoading: loadingRecent } = useGetRecentStories();
 
+  // Bible verse state
   const [includeBibleVerse, setIncludeBibleVerse] = useState(false);
   const [bibleVerseMode, setBibleVerseMode] = useState<"auto" | "custom">("auto");
   const [customVerse, setCustomVerse] = useState("");
+
+  // Image upload state
+  const [uploadedImages, setUploadedImages] = useState<(UploadedImage | null)[]>(
+    Array(MAX_IMAGES).fill(null)
+  );
+  const [uploadingSlot, setUploadingSlot] = useState<number | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const activeSlotRef = useRef<number>(0);
+
+  const { uploadFile } = useUpload({
+    onError: () => setUploadingSlot(null),
+  });
+
+  const handleSlotClick = (idx: number) => {
+    if (uploadingSlot !== null) return;
+    activeSlotRef.current = idx;
+    fileInputRef.current?.click();
+  };
+
+  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    // Reset input so the same file can be re-selected
+    e.target.value = "";
+
+    const idx = activeSlotRef.current;
+    setUploadingSlot(idx);
+
+    const previewUrl = URL.createObjectURL(file);
+    const result = await uploadFile(file);
+    setUploadingSlot(null);
+
+    if (result) {
+      setUploadedImages(prev => {
+        const next = [...prev];
+        next[idx] = { objectPath: result.objectPath, previewUrl };
+        return next;
+      });
+    }
+  };
+
+  const removeImage = (idx: number) => {
+    setUploadedImages(prev => {
+      const next = [...prev];
+      if (next[idx]?.previewUrl) URL.revokeObjectURL(next[idx]!.previewUrl);
+      next[idx] = null;
+      return next;
+    });
+  };
+
+  const filledImages = uploadedImages.filter(Boolean) as UploadedImage[];
 
   const { register, handleSubmit, formState: { errors } } = useForm<StoryFormValues>({
     resolver: zodResolver(storySchema),
@@ -61,6 +121,10 @@ export default function Home() {
         ? "auto"
         : customVerse.trim() || undefined;
 
+    const referenceImagePaths = filledImages.length > 0
+      ? JSON.stringify(filledImages.map(i => i.objectPath))
+      : undefined;
+
     createStory.mutate({
       data: {
         childName: data.childName,
@@ -70,6 +134,7 @@ export default function Home() {
         milestones: data.milestones,
         customPrompt: data.customPrompt,
         bibleVerse,
+        referenceImagePaths,
       }
     }, {
       onSuccess: (story) => {
@@ -82,7 +147,15 @@ export default function Home() {
   };
 
   if (createStory.isPending) {
-    return <MagicLoader message="Writing a magical tale..." />;
+    return (
+      <MagicLoader
+        message={
+          filledImages.length > 0
+            ? "Writing your tale & painting the pictures…"
+            : "Writing a magical tale…"
+        }
+      />
+    );
   }
 
   return (
@@ -168,6 +241,83 @@ export default function Home() {
               />
             </div>
 
+            {/* Reference Photos */}
+            <div className="space-y-3">
+              <div>
+                <label className="text-sm font-bold text-foreground flex items-center gap-2">
+                  <ImagePlus className="w-4 h-4" />
+                  Reference Photos
+                  <span className="text-xs font-normal text-muted-foreground">(Optional — up to 5)</span>
+                </label>
+                <p className="text-xs text-muted-foreground mt-1">
+                  Upload photos of your child and AI will paint a personalised cover image and illustrations for the book.
+                </p>
+              </div>
+
+              {/* Hidden file input */}
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept="image/*"
+                className="hidden"
+                onChange={handleFileChange}
+              />
+
+              <div className="grid grid-cols-5 gap-2">
+                {Array.from({ length: MAX_IMAGES }).map((_, idx) => {
+                  const img = uploadedImages[idx];
+                  const isUploading = uploadingSlot === idx;
+
+                  return (
+                    <div key={idx} className="relative aspect-square">
+                      {img ? (
+                        <div className="w-full h-full rounded-xl overflow-hidden border-2 border-primary/30 group">
+                          <img
+                            src={img.previewUrl}
+                            alt={`Reference ${idx + 1}`}
+                            className="w-full h-full object-cover"
+                          />
+                          <button
+                            type="button"
+                            onClick={() => removeImage(idx)}
+                            className="absolute top-1 right-1 w-5 h-5 bg-foreground/80 text-background rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
+                          >
+                            <X className="w-3 h-3" />
+                          </button>
+                        </div>
+                      ) : (
+                        <button
+                          type="button"
+                          onClick={() => handleSlotClick(idx)}
+                          disabled={uploadingSlot !== null}
+                          className={`w-full h-full rounded-xl border-2 border-dashed flex flex-col items-center justify-center transition-colors gap-1 ${
+                            isUploading
+                              ? "border-primary/50 bg-primary/5"
+                              : "border-border hover:border-primary/40 hover:bg-primary/5"
+                          }`}
+                        >
+                          {isUploading ? (
+                            <div className="w-5 h-5 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+                          ) : (
+                            <>
+                              <ImagePlus className="w-5 h-5 text-muted-foreground/50" />
+                              <span className="text-[10px] text-muted-foreground/50 font-medium">Add</span>
+                            </>
+                          )}
+                        </button>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+
+              {filledImages.length > 0 && (
+                <p className="text-xs text-primary font-medium">
+                  ✨ {filledImages.length} photo{filledImages.length > 1 ? "s" : ""} uploaded — AI will illustrate the book
+                </p>
+              )}
+            </div>
+
             {/* Bible Verse Section */}
             <div className="space-y-3">
               <button
@@ -232,7 +382,8 @@ export default function Home() {
 
             <button 
               type="submit"
-              className="w-full py-4 px-6 bg-primary text-primary-foreground rounded-xl font-bold text-lg hover:bg-primary/90 transition-all flex items-center justify-center gap-2 group shadow-sm hover:shadow active:scale-[0.99]"
+              disabled={uploadingSlot !== null}
+              className="w-full py-4 px-6 bg-primary text-primary-foreground rounded-xl font-bold text-lg hover:bg-primary/90 transition-all flex items-center justify-center gap-2 group shadow-sm hover:shadow active:scale-[0.99] disabled:opacity-60 disabled:cursor-not-allowed"
             >
               <Feather className="w-5 h-5 group-hover:-rotate-12 transition-transform" />
               Generate Story

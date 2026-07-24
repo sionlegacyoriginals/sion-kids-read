@@ -18,6 +18,21 @@ export interface Story {
   customPrompt?: string | null;
   /** @nullable */
   bibleVerse?: string | null;
+  /**
+     * JSON array of uploaded reference image object paths
+     * @nullable
+     */
+  referenceImagePaths?: string | null;
+  /**
+     * AI-generated cover image URL
+     * @nullable
+     */
+  coverImageUrl?: string | null;
+  /**
+     * JSON array of AI-generated in-story illustration URLs
+     * @nullable
+     */
+  illustrationUrls?: string | null;
   title: string;
   content: string;
   createdAt: string;

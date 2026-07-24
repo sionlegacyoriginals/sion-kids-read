@@ -15,3 +15,6 @@ export * from './storyInputTheme';
 export * from './storyStats';
 export * from './storyUpdate';
 export * from './themeCount';
+export * from './uploadUrlRequest';
+export * from './uploadUrlResponse';
+export * from './uploadUrlResponseMetadata';

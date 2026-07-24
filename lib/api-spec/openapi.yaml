@@ -12,6 +12,8 @@ tags:
     description: Health operations
   - name: stories
     description: Story operations
+  - name: Storage
+    description: Object storage upload and serving endpoints.
 paths:
   /healthz:
     get:
@@ -194,8 +196,67 @@ paths:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
 
+  /storage/uploads/request-url:
+    post:
+      tags: [Storage]
+      operationId: requestUploadUrl
+      summary: Request a presigned URL for file upload
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UploadUrlRequest'
+      responses:
+        '200':
+          description: Presigned upload URL generated.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UploadUrlResponse'
+        '400':
+          description: Missing or invalid required fields.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Failed to generate upload URL.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
 components:
   schemas:
+    UploadUrlRequest:
+      type: object
+      required: [name, size, contentType]
+      properties:
+        name:
+          type: string
+        size:
+          type: integer
+        contentType:
+          type: string
+
+    UploadUrlResponse:
+      type: object
+      required: [uploadURL, objectPath]
+      properties:
+        uploadURL:
+          type: string
+        objectPath:
+          type: string
+        metadata:
+          type: object
+          properties:
+            name:
+              type: string
+            size:
+              type: integer
+            contentType:
+              type: string
     HealthStatus:
       type: object
       properties:
@@ -240,6 +301,15 @@ components:
           type: ["string", "null"]
         bibleVerse:
           type: ["string", "null"]
+        referenceImagePaths:
+          type: ["string", "null"]
+          description: JSON array of uploaded reference image object paths
+        coverImageUrl:
+          type: ["string", "null"]
+          description: AI-generated cover image URL
+        illustrationUrls:
+          type: ["string", "null"]
+          description: JSON array of AI-generated in-story illustration URLs
         title:
           type: string
         content:
@@ -266,7 +336,7 @@ components:
           maximum: 12
         childGender:
           type: string
-          enum: [boy, girl, neutral]
+          enum: [boy, girl]
         milestones:
           type: string
           description: Details like favorite toys, pets, recent trips
@@ -279,6 +349,9 @@ components:
         bibleVerse:
           type: string
           description: '"auto" to let AI choose a fitting verse, or a specific verse reference/text'
+        referenceImagePaths:
+          type: string
+          description: JSON array of uploaded reference image object paths
 
     StoryUpdate:
       type: object

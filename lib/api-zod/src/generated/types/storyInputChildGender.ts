@@ -12,5 +12,4 @@ export type StoryInputChildGender = typeof StoryInputChildGender[keyof typeof St
 export const StoryInputChildGender = {
   boy: 'boy',
   girl: 'girl',
-  neutral: 'neutral',
 } as const;

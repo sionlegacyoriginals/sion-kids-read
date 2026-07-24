@@ -11,6 +11,9 @@ export const storiesTable = pgTable("stories", {
   theme: text("theme").notNull(),
   customPrompt: text("custom_prompt"),
   bibleVerse: text("bible_verse"),
+  referenceImagePaths: text("reference_image_paths"), // JSON array of object paths
+  coverImageUrl: text("cover_image_url"),
+  illustrationUrls: text("illustration_urls"), // JSON array of generated image URLs
   title: text("title").notNull(),
   content: text("content").notNull(),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),

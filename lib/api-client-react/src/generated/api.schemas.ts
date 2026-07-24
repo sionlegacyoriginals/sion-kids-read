@@ -5,6 +5,24 @@
  * StoryBloom API – AI children's story generation and management
  * OpenAPI spec version: 0.1.0
  */
+export interface UploadUrlRequest {
+  name: string;
+  size: number;
+  contentType: string;
+}
+
+export type UploadUrlResponseMetadata = {
+  name?: string;
+  size?: number;
+  contentType?: string;
+};
+
+export interface UploadUrlResponse {
+  uploadURL: string;
+  objectPath: string;
+  metadata?: UploadUrlResponseMetadata;
+}
+
 export interface HealthStatus {
   status: string;
 }
@@ -25,6 +43,21 @@ export interface Story {
   customPrompt?: string | null;
   /** @nullable */
   bibleVerse?: string | null;
+  /**
+     * JSON array of uploaded reference image object paths
+     * @nullable
+     */
+  referenceImagePaths?: string | null;
+  /**
+     * AI-generated cover image URL
+     * @nullable
+     */
+  coverImageUrl?: string | null;
+  /**
+     * JSON array of AI-generated in-story illustration URLs
+     * @nullable
+     */
+  illustrationUrls?: string | null;
   title: string;
   content: string;
   createdAt: string;
@@ -37,7 +70,6 @@ export type StoryInputChildGender = typeof StoryInputChildGender[keyof typeof St
 export const StoryInputChildGender = {
   boy: 'boy',
   girl: 'girl',
-  neutral: 'neutral',
 } as const;
 
 export type StoryInputTheme = typeof StoryInputTheme[keyof typeof StoryInputTheme];
@@ -70,6 +102,8 @@ export interface StoryInput {
   customPrompt?: string;
   /** "auto" to let AI choose a fitting verse, or a specific verse reference/text */
   bibleVerse?: string;
+  /** JSON array of uploaded reference image object paths */
+  referenceImagePaths?: string;
 }
 
 export interface StoryUpdate {

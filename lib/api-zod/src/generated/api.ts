@@ -29,6 +29,9 @@ export const ListStoriesResponseItem = zod.object({
   "theme": zod.string(),
   "customPrompt": zod.string().nullish(),
   "bibleVerse": zod.string().nullish(),
+  "referenceImagePaths": zod.string().nullish().describe('JSON array of uploaded reference image object paths'),
+  "coverImageUrl": zod.string().nullish().describe('AI-generated cover image URL'),
+  "illustrationUrls": zod.string().nullish().describe('JSON array of AI-generated in-story illustration URLs'),
   "title": zod.string(),
   "content": zod.string(),
   "createdAt": zod.string(),
@@ -48,11 +51,12 @@ export const createStoryBodyChildAgeMax = 12;
 export const CreateStoryBody = zod.object({
   "childName": zod.string().min(1),
   "childAge": zod.number().min(1).max(createStoryBodyChildAgeMax),
-  "childGender": zod.enum(['boy', 'girl', 'neutral']),
+  "childGender": zod.enum(['boy', 'girl']),
   "milestones": zod.string().optional().describe('Details like favorite toys, pets, recent trips'),
   "theme": zod.enum(['Courage', 'Kindness', 'Overcoming Fear', 'Faith', 'Friendship', 'Honesty', 'Perseverance', 'Gratitude']),
   "customPrompt": zod.string().optional().describe('Custom topic or plot prompt'),
-  "bibleVerse": zod.string().optional().describe('\"auto\" to let AI choose a fitting verse, or a specific verse reference\/text')
+  "bibleVerse": zod.string().optional().describe('\"auto\" to let AI choose a fitting verse, or a specific verse reference\/text'),
+  "referenceImagePaths": zod.string().optional().describe('JSON array of uploaded reference image object paths')
 })
 
 export const CreateStoryResponse = zod.object({
@@ -64,6 +68,9 @@ export const CreateStoryResponse = zod.object({
   "theme": zod.string(),
   "customPrompt": zod.string().nullish(),
   "bibleVerse": zod.string().nullish(),
+  "referenceImagePaths": zod.string().nullish().describe('JSON array of uploaded reference image object paths'),
+  "coverImageUrl": zod.string().nullish().describe('AI-generated cover image URL'),
+  "illustrationUrls": zod.string().nullish().describe('JSON array of AI-generated in-story illustration URLs'),
   "title": zod.string(),
   "content": zod.string(),
   "createdAt": zod.string(),
@@ -96,6 +103,9 @@ export const GetRecentStoriesResponseItem = zod.object({
   "theme": zod.string(),
   "customPrompt": zod.string().nullish(),
   "bibleVerse": zod.string().nullish(),
+  "referenceImagePaths": zod.string().nullish().describe('JSON array of uploaded reference image object paths'),
+  "coverImageUrl": zod.string().nullish().describe('AI-generated cover image URL'),
+  "illustrationUrls": zod.string().nullish().describe('JSON array of AI-generated in-story illustration URLs'),
   "title": zod.string(),
   "content": zod.string(),
   "createdAt": zod.string(),
@@ -120,6 +130,9 @@ export const GetStoryResponse = zod.object({
   "theme": zod.string(),
   "customPrompt": zod.string().nullish(),
   "bibleVerse": zod.string().nullish(),
+  "referenceImagePaths": zod.string().nullish().describe('JSON array of uploaded reference image object paths'),
+  "coverImageUrl": zod.string().nullish().describe('AI-generated cover image URL'),
+  "illustrationUrls": zod.string().nullish().describe('JSON array of AI-generated in-story illustration URLs'),
   "title": zod.string(),
   "content": zod.string(),
   "createdAt": zod.string(),
@@ -155,6 +168,9 @@ export const UpdateStoryResponse = zod.object({
   "theme": zod.string(),
   "customPrompt": zod.string().nullish(),
   "bibleVerse": zod.string().nullish(),
+  "referenceImagePaths": zod.string().nullish().describe('JSON array of uploaded reference image object paths'),
+  "coverImageUrl": zod.string().nullish().describe('AI-generated cover image URL'),
+  "illustrationUrls": zod.string().nullish().describe('JSON array of AI-generated in-story illustration URLs'),
   "title": zod.string(),
   "content": zod.string(),
   "createdAt": zod.string(),
@@ -188,10 +204,33 @@ export const RegenerateStoryResponse = zod.object({
   "theme": zod.string(),
   "customPrompt": zod.string().nullish(),
   "bibleVerse": zod.string().nullish(),
+  "referenceImagePaths": zod.string().nullish().describe('JSON array of uploaded reference image object paths'),
+  "coverImageUrl": zod.string().nullish().describe('AI-generated cover image URL'),
+  "illustrationUrls": zod.string().nullish().describe('JSON array of AI-generated in-story illustration URLs'),
   "title": zod.string(),
   "content": zod.string(),
   "createdAt": zod.string(),
   "updatedAt": zod.string()
+})
+
+
+/**
+ * @summary Request a presigned URL for file upload
+ */
+export const RequestUploadUrlBody = zod.object({
+  "name": zod.string(),
+  "size": zod.number(),
+  "contentType": zod.string()
+})
+
+export const RequestUploadUrlResponse = zod.object({
+  "uploadURL": zod.string(),
+  "objectPath": zod.string(),
+  "metadata": zod.object({
+  "name": zod.string().optional(),
+  "size": zod.number().optional(),
+  "contentType": zod.string().optional()
+}).optional()
 })
 
 

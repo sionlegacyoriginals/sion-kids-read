@@ -24,4 +24,6 @@ export interface StoryInput {
   customPrompt?: string;
   /** "auto" to let AI choose a fitting verse, or a specific verse reference/text */
   bibleVerse?: string;
+  /** JSON array of uploaded reference image object paths */
+  referenceImagePaths?: string;
 }

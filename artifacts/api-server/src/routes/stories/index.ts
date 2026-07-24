@@ -17,6 +17,7 @@ import {
   CreateStoryResponse,
 } from "@workspace/api-zod";
 import { openai } from "@workspace/integrations-openai-ai-server";
+import { ObjectStorageService } from "../../lib/objectStorage";
 
 const router: IRouter = Router();
 
@@ -83,6 +84,136 @@ First, output ONLY a creative story title on the very first line starting with "
 Then output the full story starting on the next line. Do not include any other preamble.`;
 }
 
+// ─── Image generation ────────────────────────────────────────────────────────
+
+async function generateStoryImages(params: {
+  childName: string;
+  childAge: number;
+  childGender: string;
+  theme: string;
+  storyTitle: string;
+  storyContent: string;
+  referenceImagePaths: string[];
+}): Promise<{ coverImagePath: string; illustrationPaths: string[] }> {
+  const objectStorage = new ObjectStorageService();
+
+  // Step 1 – download reference photos and convert to base64 data URIs
+  const base64Images = (
+    await Promise.all(
+      params.referenceImagePaths.slice(0, 5).map(async (objectPath) => {
+        try {
+          const file = await objectStorage.getObjectEntityFile(objectPath);
+          const response = await objectStorage.downloadObject(file);
+          const buffer = Buffer.from(await response.arrayBuffer());
+          const contentType =
+            response.headers.get("content-type") || "image/jpeg";
+          return `data:${contentType};base64,${buffer.toString("base64")}`;
+        } catch {
+          return null;
+        }
+      }),
+    )
+  ).filter((x): x is string => x !== null);
+
+  // Step 2 – ask GPT-4o to describe the child's appearance from the photos
+  const childBase = `a ${params.childAge}-year-old ${params.childGender === "boy" ? "boy" : "girl"}`;
+  let childDescription = childBase;
+
+  if (base64Images.length > 0) {
+    try {
+      const visionResponse = await openai.chat.completions.create({
+        model: "gpt-4o",
+        max_completion_tokens: 200,
+        messages: [
+          {
+            role: "user",
+            content: [
+              ...base64Images.map((url) => ({
+                type: "image_url" as const,
+                image_url: { url, detail: "low" as const },
+              })),
+              {
+                type: "text" as const,
+                text: "Describe this child's physical appearance for a storybook illustration: hair color, hair style, eye color, and skin tone. Two concise sentences, appearance only.",
+              },
+            ],
+          },
+        ],
+      });
+      const desc = visionResponse.choices[0]?.message?.content;
+      if (desc) childDescription = `${childBase} — ${desc}`;
+    } catch {
+      // Vision unavailable; fall back to generic description
+    }
+  }
+
+  // Step 3 – build DALL-E 3 prompts
+  const paragraphs = params.storyContent.split("\n").filter(Boolean);
+  const scene1 = (paragraphs[1] ?? paragraphs[0] ?? "").slice(0, 250);
+  const scene2 = (paragraphs[3] ?? paragraphs[2] ?? paragraphs[0] ?? "").slice(
+    0,
+    250,
+  );
+
+  const bookStyle =
+    "warm watercolor children's book illustration, soft pastel palette, gentle line art, cozy and whimsical, suitable for a bedtime story, no text";
+
+  const coverPrompt = `${bookStyle}. Full storybook cover art for "${params.storyTitle}". The main character is ${childDescription}, shown in a magical scene that embodies the theme of ${params.theme}. Inviting, heartwarming, beautiful composition.`;
+  const illus1Prompt = `${bookStyle}. Interior story illustration: ${childDescription} in this scene — ${scene1}`;
+  const illus2Prompt = `${bookStyle}. Interior story illustration: ${childDescription} in this scene — ${scene2}`;
+
+  // Step 4 – generate all three images in parallel
+  const [coverResult, illus1Result, illus2Result] = await Promise.all([
+    openai.images.generate({
+      model: "dall-e-3",
+      prompt: coverPrompt,
+      size: "1024x1792",
+      quality: "standard",
+      response_format: "b64_json",
+    }),
+    openai.images.generate({
+      model: "dall-e-3",
+      prompt: illus1Prompt,
+      size: "1024x1024",
+      quality: "standard",
+      response_format: "b64_json",
+    }),
+    openai.images.generate({
+      model: "dall-e-3",
+      prompt: illus2Prompt,
+      size: "1024x1024",
+      quality: "standard",
+      response_format: "b64_json",
+    }),
+  ]);
+
+  // Step 5 – upload generated images to object storage, return object paths
+  async function storeImage(b64: string | null | undefined): Promise<string> {
+    if (!b64) throw new Error("Empty image data");
+    const presignedUrl = await objectStorage.getObjectEntityUploadURL();
+    const objectPath = objectStorage.normalizeObjectEntityPath(presignedUrl);
+    const buffer = Buffer.from(b64, "base64");
+    const resp = await fetch(presignedUrl, {
+      method: "PUT",
+      // @ts-ignore – node-fetch / native fetch both accept Buffer
+      body: buffer,
+      headers: { "Content-Type": "image/png" },
+    });
+    if (!resp.ok) throw new Error(`Upload failed: ${resp.status}`);
+    return objectPath;
+  }
+
+  const [coverImagePath, illus1Path, illus2Path] = await Promise.all([
+    storeImage(coverResult.data[0]?.b64_json),
+    storeImage(illus1Result.data[0]?.b64_json),
+    storeImage(illus2Result.data[0]?.b64_json),
+  ]);
+
+  return { coverImagePath, illustrationPaths: [illus1Path, illus2Path] };
+}
+
+// ─── Story text generation ───────────────────────────────────────────────────
+
 async function generateStory(params: {
   childName: string;
   childAge: number;
@@ -129,7 +260,7 @@ router.post("/stories", async (req, res): Promise<void> => {
     return;
   }
 
-  const { childName, childAge, childGender, milestones, theme, customPrompt, bibleVerse } =
+  const { childName, childAge, childGender, milestones, theme, customPrompt, bibleVerse, referenceImagePaths } =
     parsed.data;
 
   const { title, content } = await generateStory({
@@ -142,6 +273,31 @@ router.post("/stories", async (req, res): Promise<void> => {
     bibleVerse,
   });
 
+  // Generate cover + illustrations when reference photos were provided
+  let coverImageUrl: string | null = null;
+  let illustrationUrls: string | null = null;
+
+  if (referenceImagePaths) {
+    try {
+      const paths = JSON.parse(referenceImagePaths) as string[];
+      if (paths.length > 0) {
+        const { coverImagePath, illustrationPaths } = await generateStoryImages({
+          childName,
+          childAge,
+          childGender,
+          theme,
+          storyTitle: title,
+          storyContent: content,
+          referenceImagePaths: paths,
+        });
+        coverImageUrl = coverImagePath;
+        illustrationUrls = JSON.stringify(illustrationPaths);
+      }
+    } catch (err) {
+      req.log.error({ err }, "Image generation failed — story saved without illustrations");
+    }
+  }
+
   const [story] = await db
     .insert(storiesTable)
     .values({
@@ -152,6 +308,9 @@ router.post("/stories", async (req, res): Promise<void> => {
       theme,
       customPrompt: customPrompt ?? null,
       bibleVerse: bibleVerse ?? null,
+      referenceImagePaths: referenceImagePaths ?? null,
+      coverImageUrl,
+      illustrationUrls,
       title,
       content,
     })
@@ -308,9 +467,34 @@ router.post("/stories/:id/regenerate", async (req, res): Promise<void> => {
     bibleVerse: existing.bibleVerse,
   });
 
+  // Re-generate images if this story had reference photos
+  let coverImageUrl = existing.coverImageUrl;
+  let illustrationUrls = existing.illustrationUrls;
+
+  if (existing.referenceImagePaths) {
+    try {
+      const paths = JSON.parse(existing.referenceImagePaths) as string[];
+      if (paths.length > 0) {
+        const result = await generateStoryImages({
+          childName: existing.childName,
+          childAge: existing.childAge,
+          childGender: existing.childGender,
+          theme: existing.theme,
+          storyTitle: title,
+          storyContent: content,
+          referenceImagePaths: paths,
+        });
+        coverImageUrl = result.coverImagePath;
+        illustrationUrls = JSON.stringify(result.illustrationPaths);
+      }
+    } catch (err) {
+      req.log.error({ err }, "Image regeneration failed — keeping existing images");
+    }
+  }
+
   const [story] = await db
     .update(storiesTable)
-    .set({ title, content })
+    .set({ title, content, coverImageUrl, illustrationUrls })
     .where(eq(storiesTable.id, params.data.id))
     .returning();
 
