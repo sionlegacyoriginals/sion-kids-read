@@ -3,6 +3,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { useState, useRef } from "react";
 import { useLocation, Link } from "wouter";
+import { useUser } from "@clerk/react";
 import { 
   useCreateStory, 
   useGetRecentStories, 
@@ -10,9 +11,9 @@ import {
   getListStoriesQueryKey, 
   getGetStoryStatsQueryKey 
 } from "@workspace/api-client-react";
-import { useQueryClient } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { MagicLoader } from "@/components/magic-loader";
-import { BookOpen, ArrowRight, Sparkles, Feather, BookMarked, ImagePlus, X } from "lucide-react";
+import { BookOpen, ArrowRight, Sparkles, Feather, BookMarked, ImagePlus, X, Loader2, BookHeart, Star, Printer } from "lucide-react";
 import { format } from "date-fns";
 import { useUpload } from "@workspace/object-storage-web";
 
@@ -43,8 +44,46 @@ const MAX_IMAGES = 5;
 export default function Home() {
   const [, setLocation] = useLocation();
   const queryClient = useQueryClient();
+  const { user } = useUser();
   const createStory = useCreateStory();
   const { data: recentStories, isLoading: loadingRecent } = useGetRecentStories();
+
+  // Fetch access status up front so the gate is instant on Generate click
+  const { data: me } = useQuery({
+    queryKey: ["users-me"],
+    queryFn: async () => {
+      const r = await fetch("/api/users/me", { credentials: "include" });
+      if (!r.ok) throw new Error("Failed to fetch user");
+      return r.json();
+    },
+  });
+
+  const hasAccess = me?.hasSubscription || me?.hasAccessCode || (me?.storyCredits ?? 0) > 0;
+
+  // Paywall modal state
+  const [showPaywall, setShowPaywall] = useState(false);
+  const [paywallLoading, setPaywallLoading] = useState<"story" | "subscription" | null>(null);
+  const [paywallError, setPaywallError] = useState<string | null>(null);
+
+  const handlePaywallCheckout = async (type: "story" | "subscription") => {
+    setPaywallLoading(type);
+    setPaywallError(null);
+    try {
+      const endpoint = type === "story" ? "/api/checkout/story" : "/api/checkout/subscription";
+      const resp = await fetch(endpoint, {
+        method: "POST",
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email: user?.primaryEmailAddress?.emailAddress }),
+      });
+      const data = await resp.json();
+      if (!resp.ok) throw new Error(data.error ?? "Checkout failed");
+      window.location.href = data.url;
+    } catch (err: any) {
+      setPaywallError(err.message);
+      setPaywallLoading(null);
+    }
+  };
 
   // Bible verse state
   const [includeBibleVerse, setIncludeBibleVerse] = useState(false);
@@ -117,6 +156,12 @@ export default function Home() {
   });
 
   const onSubmit = (data: StoryFormValues) => {
+    // Gate: show paywall modal if user has no access
+    if (!hasAccess) {
+      setShowPaywall(true);
+      return;
+    }
+
     const bibleVerse = !includeBibleVerse
       ? undefined
       : bibleVerseMode === "auto"
@@ -412,6 +457,70 @@ export default function Home() {
           </form>
         </div>
       </div>
+
+      {/* Paywall modal */}
+      {showPaywall && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
+          <div className="bg-card rounded-3xl shadow-2xl w-full max-w-md p-8 animate-in fade-in zoom-in-95 duration-200">
+            <h2 className="text-2xl font-serif font-bold text-foreground text-center mb-1">
+              Unlock this story
+            </h2>
+            <p className="text-sm text-muted-foreground text-center mb-6">
+              Choose how you'd like to continue.
+            </p>
+
+            {paywallError && (
+              <p className="text-red-600 text-sm text-center mb-4 bg-red-50 border border-red-200 rounded-xl py-2 px-3">
+                {paywallError}
+              </p>
+            )}
+
+            <div className="space-y-3">
+              {/* $1 single story */}
+              <button
+                onClick={() => handlePaywallCheckout("story")}
+                disabled={paywallLoading !== null}
+                className="w-full flex items-center gap-4 p-4 rounded-2xl border border-border hover:border-primary/40 hover:bg-primary/5 transition-all text-left disabled:opacity-60"
+              >
+                <span className="w-11 h-11 rounded-xl bg-primary/10 flex items-center justify-center shrink-0">
+                  <BookHeart className="w-5 h-5 text-primary" />
+                </span>
+                <div className="flex-1 min-w-0">
+                  <div className="font-bold text-foreground">One story — $1</div>
+                  <div className="text-xs text-muted-foreground">Pay once, generate this story</div>
+                </div>
+                {paywallLoading === "story" && <Loader2 className="w-4 h-4 animate-spin text-primary shrink-0" />}
+              </button>
+
+              {/* $3.33/month */}
+              <button
+                onClick={() => handlePaywallCheckout("subscription")}
+                disabled={paywallLoading !== null}
+                className="w-full flex items-center gap-4 p-4 rounded-2xl border-2 border-primary bg-primary/5 hover:bg-primary/10 transition-all text-left disabled:opacity-60"
+              >
+                <span className="w-11 h-11 rounded-xl bg-primary/20 flex items-center justify-center shrink-0">
+                  <Sparkles className="w-5 h-5 text-primary" />
+                </span>
+                <div className="flex-1 min-w-0">
+                  <div className="font-bold text-foreground flex items-center gap-2">
+                    Membership — $3.33/mo
+                    <span className="text-[10px] bg-primary text-white px-1.5 py-0.5 rounded-full font-bold">Best value</span>
+                  </div>
+                  <div className="text-xs text-muted-foreground">Unlimited stories, cancel anytime</div>
+                </div>
+                {paywallLoading === "subscription" && <Loader2 className="w-4 h-4 animate-spin text-primary shrink-0" />}
+              </button>
+            </div>
+
+            <button
+              onClick={() => setShowPaywall(false)}
+              className="w-full mt-4 py-2 text-sm text-muted-foreground hover:text-foreground transition-colors"
+            >
+              Cancel
+            </button>
+          </div>
+        </div>
+      )}
 
       <div className="space-y-6">
         <div className="flex items-center justify-between">
