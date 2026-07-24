@@ -1,12 +1,112 @@
+import { useEffect, useRef, useState } from "react";
 import { Link, useLocation } from "wouter";
 import { Show, useUser, useClerk } from "@clerk/react";
-import { Sparkles, BookHeart, User, LogOut, CreditCard } from "lucide-react";
+import { Sparkles, BookHeart, LogOut, Settings, ChevronDown } from "lucide-react";
+
+function UserMenu() {
+  const { user } = useUser();
+  const { signOut, openUserProfile } = useClerk();
+  const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+  const basePath = import.meta.env.BASE_URL.replace(/\/$/, "");
+
+  // Close on outside click
+  useEffect(() => {
+    function handler(e: MouseEvent) {
+      if (ref.current && !ref.current.contains(e.target as Node)) {
+        setOpen(false);
+      }
+    }
+    if (open) document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, [open]);
+
+  const displayName =
+    user?.fullName ||
+    user?.firstName ||
+    user?.primaryEmailAddress?.emailAddress?.split("@")[0] ||
+    "Account";
+
+  const email = user?.primaryEmailAddress?.emailAddress ?? "";
+
+  // Avatar: initials or profile image
+  const initials = (user?.firstName?.[0] ?? "") + (user?.lastName?.[0] ?? "");
+  const avatarUrl = user?.imageUrl;
+
+  return (
+    <div ref={ref} className="relative ml-2">
+      <button
+        onClick={() => setOpen((v) => !v)}
+        className="flex items-center gap-2 px-2 py-1.5 rounded-full text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-colors"
+        aria-haspopup="true"
+        aria-expanded={open}
+      >
+        {/* Avatar */}
+        <span className="w-7 h-7 rounded-full overflow-hidden bg-primary/20 flex items-center justify-center shrink-0">
+          {avatarUrl ? (
+            <img src={avatarUrl} alt={displayName} className="w-full h-full object-cover" />
+          ) : (
+            <span className="text-xs font-bold text-primary uppercase">
+              {initials || "?"}
+            </span>
+          )}
+        </span>
+        <span className="hidden sm:block max-w-[120px] truncate">{displayName}</span>
+        <ChevronDown className={`w-3.5 h-3.5 hidden sm:block transition-transform ${open ? "rotate-180" : ""}`} />
+      </button>
+
+      {open && (
+        <div className="absolute right-0 top-full mt-2 w-64 bg-card border border-border rounded-2xl shadow-xl overflow-hidden z-50">
+          {/* User info header */}
+          <div className="px-4 py-3 border-b border-border bg-muted/30">
+            <div className="flex items-center gap-3">
+              <span className="w-10 h-10 rounded-full overflow-hidden bg-primary/20 flex items-center justify-center shrink-0">
+                {avatarUrl ? (
+                  <img src={avatarUrl} alt={displayName} className="w-full h-full object-cover" />
+                ) : (
+                  <span className="text-sm font-bold text-primary uppercase">
+                    {initials || "?"}
+                  </span>
+                )}
+              </span>
+              <div className="min-w-0">
+                <p className="font-semibold text-foreground text-sm truncate">{displayName}</p>
+                <p className="text-xs text-muted-foreground truncate">{email}</p>
+              </div>
+            </div>
+          </div>
+
+          {/* Actions */}
+          <div className="py-1">
+            <button
+              onClick={() => { setOpen(false); openUserProfile(); }}
+              className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-foreground hover:bg-muted/50 transition-colors text-left"
+            >
+              <Settings className="w-4 h-4 text-muted-foreground shrink-0" />
+              <div>
+                <div className="font-medium">Manage account</div>
+                <div className="text-xs text-muted-foreground">Name, email, password</div>
+              </div>
+            </button>
+
+            <hr className="border-border mx-4 my-1" />
+
+            <button
+              onClick={() => { setOpen(false); signOut({ redirectUrl: basePath || "/" }); }}
+              className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-colors"
+            >
+              <LogOut className="w-4 h-4 shrink-0" />
+              Sign out
+            </button>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
 
 export function Layout({ children }: { children: React.ReactNode }) {
   const [location] = useLocation();
-  const { user } = useUser();
-  const { signOut } = useClerk();
-  const basePath = import.meta.env.BASE_URL.replace(/\/$/, "");
 
   return (
     <div className="min-h-[100dvh] flex flex-col font-sans selection:bg-primary/20 selection:text-primary">
@@ -31,6 +131,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
               >
                 <BookHeart className="w-3.5 h-3.5" /> Library
               </Link>
+              <UserMenu />
             </Show>
 
             <Show when="signed-out">
@@ -44,33 +145,6 @@ export function Layout({ children }: { children: React.ReactNode }) {
                   Get started
                 </button>
               </Link>
-            </Show>
-
-            <Show when="signed-in">
-              {/* User menu */}
-              <div className="relative group ml-2">
-                <button className="flex items-center gap-2 px-3 py-1.5 rounded-full text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-colors">
-                  <User className="w-4 h-4" />
-                  <span className="hidden sm:block max-w-[120px] truncate">
-                    {user?.primaryEmailAddress?.emailAddress?.split("@")[0]}
-                  </span>
-                </button>
-                {/* Dropdown */}
-                <div className="absolute right-0 top-full mt-1 w-48 bg-card border border-border rounded-xl shadow-lg py-1 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all">
-                  <Link href="/account">
-                    <button className="w-full flex items-center gap-2 px-4 py-2 text-sm text-foreground hover:bg-muted/50 transition-colors">
-                      <CreditCard className="w-4 h-4" /> Account &amp; billing
-                    </button>
-                  </Link>
-                  <hr className="border-border my-1" />
-                  <button
-                    onClick={() => signOut({ redirectUrl: basePath || "/" })}
-                    className="w-full flex items-center gap-2 px-4 py-2 text-sm text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-colors"
-                  >
-                    <LogOut className="w-4 h-4" /> Sign out
-                  </button>
-                </div>
-              </div>
             </Show>
           </nav>
         </div>
