@@ -114,7 +114,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
         <div className="container mx-auto px-4 h-16 flex items-center justify-between">
           <Link href="/" className="flex items-center gap-2 text-primary hover:opacity-80 transition-opacity">
             <Sparkles className="w-6 h-6" />
-            <span className="font-serif text-2xl font-bold tracking-tight">StoryBloom</span>
+            <span className="font-serif text-2xl font-bold tracking-tight">Sion Legacy Originals</span>
           </Link>
 
           <nav className="flex items-center gap-1">
