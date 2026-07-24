@@ -76,6 +76,34 @@ export default function Home() {
   const [showPaywall, setShowPaywall] = useState(() => new URLSearchParams(window.location.search).get("paywall") === "1");
   const [paywallLoading, setPaywallLoading] = useState<"story" | "subscription" | null>(null);
   const [paywallError, setPaywallError] = useState<string | null>(null);
+  const [accessCodeInput, setAccessCodeInput] = useState("");
+  const [accessCodeLoading, setAccessCodeLoading] = useState(false);
+  const [accessCodeError, setAccessCodeError] = useState<string | null>(null);
+
+  const handleRedeemCode = async () => {
+    const code = accessCodeInput.trim();
+    if (!code) return;
+    setAccessCodeLoading(true);
+    setAccessCodeError(null);
+    try {
+      const resp = await fetch("/api/access-code/redeem", {
+        method: "POST",
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ code }),
+      });
+      const data = await resp.json();
+      if (!resp.ok) throw new Error(data.error ?? "Invalid code");
+      // Refresh access status and close modal
+      await queryClient.invalidateQueries({ queryKey: ["users-me"] });
+      setShowPaywall(false);
+      setAccessCodeInput("");
+    } catch (err: any) {
+      setAccessCodeError(err.message);
+    } finally {
+      setAccessCodeLoading(false);
+    }
+  };
 
   const handlePaywallCheckout = async (type: "story" | "subscription") => {
     setPaywallLoading(type);
@@ -522,6 +550,32 @@ export default function Home() {
                 </div>
                 {paywallLoading === "subscription" && <Loader2 className="w-4 h-4 animate-spin text-primary shrink-0" />}
               </button>
+            </div>
+
+            {/* Access code */}
+            <div className="mt-5 pt-5 border-t border-border">
+              <p className="text-xs text-muted-foreground text-center mb-3">Have an access code?</p>
+              <div className="flex gap-2">
+                <input
+                  type="text"
+                  value={accessCodeInput}
+                  onChange={e => { setAccessCodeInput(e.target.value); setAccessCodeError(null); }}
+                  onKeyDown={e => e.key === "Enter" && handleRedeemCode()}
+                  placeholder="Enter code"
+                  className="flex-1 px-3 py-2 rounded-xl border border-border bg-background text-sm focus:outline-none focus:ring-2 focus:ring-primary/30"
+                />
+                <button
+                  onClick={handleRedeemCode}
+                  disabled={accessCodeLoading || !accessCodeInput.trim()}
+                  className="px-4 py-2 rounded-xl bg-primary text-primary-foreground text-sm font-semibold hover:bg-primary/90 transition-all disabled:opacity-50 flex items-center gap-1.5"
+                >
+                  {accessCodeLoading ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : null}
+                  Apply
+                </button>
+              </div>
+              {accessCodeError && (
+                <p className="text-red-500 text-xs mt-2 text-center">{accessCodeError}</p>
+              )}
             </div>
 
             <button
