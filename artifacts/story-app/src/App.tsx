@@ -173,6 +173,8 @@ function ClerkProviderWithRoutes() {
       appearance={clerkAppearance}
       signInUrl={`${basePath}/sign-in`}
       signUpUrl={`${basePath}/sign-up`}
+      afterSignInUrl={`${basePath}/create`}
+      afterSignUpUrl={`${basePath}/create`}
       localization={{
         signIn: { start: { title: "Welcome back to StoryBloom", subtitle: "Sign in to your account" } },
         signUp: { start: { title: "Start your StoryBloom journey", subtitle: "Create your free account" } },

@@ -56,8 +56,10 @@ export default function Home() {
     Array(MAX_IMAGES).fill(null)
   );
   const [uploadingSlot, setUploadingSlot] = useState<number | null>(null);
+  const [fileInputKey, setFileInputKey] = useState(0);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const activeSlotRef = useRef<number>(0);
+  const [generationError, setGenerationError] = useState<string | null>(null);
 
   const { uploadFile } = useUpload({
     onError: () => setUploadingSlot(null),
@@ -72,8 +74,8 @@ export default function Home() {
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
-    // Reset input so the same file can be re-selected
-    e.target.value = "";
+    // Remount the input element so the next slot click always opens a fresh dialog
+    setFileInputKey(k => k + 1);
 
     const idx = activeSlotRef.current;
     setUploadingSlot(idx);
@@ -125,6 +127,7 @@ export default function Home() {
       ? JSON.stringify(filledImages.map(i => i.objectPath))
       : undefined;
 
+    setGenerationError(null);
     createStory.mutate({
       data: {
         childName: data.childName,
@@ -144,10 +147,14 @@ export default function Home() {
         setLocation(`/stories/${story.id}`);
       },
       onError: (err: any) => {
-        // 402 means the free story has been used — send to subscription page
+        const status = err?.status ?? 0;
         const msg = String(err?.message ?? err ?? "");
-        if (msg.includes("402") || msg.includes("SUBSCRIPTION_REQUIRED") || msg.includes("Subscribe")) {
+        if (status === 402 || msg.includes("402") || msg.includes("SUBSCRIPTION_REQUIRED")) {
           setLocation("/subscribe");
+        } else if (status === 401 || msg.includes("401") || msg.includes("Unauthorized")) {
+          setLocation("/sign-in");
+        } else {
+          setGenerationError("Something went wrong generating your story. Please try again.");
         }
       },
     });
@@ -261,8 +268,9 @@ export default function Home() {
                 </p>
               </div>
 
-              {/* Hidden file input */}
+              {/* Hidden file input — key forces remount so every slot click gets a fresh element */}
               <input
+                key={fileInputKey}
                 ref={fileInputRef}
                 type="file"
                 accept="image/*"
@@ -386,6 +394,12 @@ export default function Home() {
                 </div>
               )}
             </div>
+
+            {generationError && (
+              <div className="text-red-600 text-sm text-center py-2 px-4 bg-red-50 border border-red-200 rounded-xl">
+                {generationError}
+              </div>
+            )}
 
             <button 
               type="submit"
