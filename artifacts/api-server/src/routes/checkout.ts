@@ -33,6 +33,8 @@ router.get("/users/me", requireAuth, async (req: any, res) => {
       email: user?.email ?? null,
       storyCount,
       hasSubscription: subscribed,
+      hasAccessCode: user?.has_access_code ?? false,
+      storyCredits: parseInt((user?.story_credits as string) ?? "0", 10),
       stripeCustomerId: user?.stripe_customer_id ?? null,
     });
   } catch (err: any) {

@@ -51,6 +51,26 @@ async function seed() {
     console.log(`✓ Created Printed Storybook: ${book.id}  price: ${price.id}  ($25.00)`);
   }
 
+  // ── 3. Single Story ($1.00 one-time) ───────────────────────────────────────
+  const existingSingle = await stripe.products.search({
+    query: "name:'Single Story' AND active:'true'",
+  });
+
+  if (existingSingle.data.length > 0) {
+    console.log("✓ Single Story already exists:", existingSingle.data[0].id);
+  } else {
+    const single = await stripe.products.create({
+      name: "Single Story",
+      description: "One personalised AI children's story with optional illustrations.",
+    });
+    const price = await stripe.prices.create({
+      product: single.id,
+      unit_amount: 100, // $1.00
+      currency: "usd",
+    });
+    console.log(`✓ Created Single Story: ${single.id}  price: ${price.id}  ($1.00)`);
+  }
+
   console.log("\nDone. Webhooks will sync these products to the local database automatically.");
 }
 

@@ -22,9 +22,12 @@ async function runAppMigrations() {
       updated_at        TIMESTAMPTZ NOT NULL DEFAULT NOW()
     )
   `);
-  // Idempotent: add column to existing tables that were created before this field
+  // Idempotent: add columns to existing tables that were created before these fields
   await db.execute(sql`
     ALTER TABLE users ADD COLUMN IF NOT EXISTS has_access_code BOOLEAN NOT NULL DEFAULT FALSE
+  `);
+  await db.execute(sql`
+    ALTER TABLE users ADD COLUMN IF NOT EXISTS story_credits INTEGER NOT NULL DEFAULT 0
   `);
 
   await db.execute(sql`

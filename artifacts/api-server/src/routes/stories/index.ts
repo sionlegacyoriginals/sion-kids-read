@@ -209,36 +209,29 @@ async function generateStory(params: {
 
 // ─── Subscription gate helper ─────────────────────────────────────────────────
 
-async function checkStoryAccess(userId: string): Promise<{ allowed: boolean; reason?: string }> {
-  const countRow = await db.execute(
-    sql`SELECT COUNT(*) AS count FROM stories WHERE user_id = ${userId}`,
-  );
-  const count = parseInt((countRow.rows[0]?.count as string) ?? "0", 10);
-
-  // First story is always free
-  if (count < 1) return { allowed: true };
-
-  // Check user record for access code or active subscription
+async function checkStoryAccess(userId: string): Promise<{ allowed: boolean; reason?: string; usedCredit?: boolean }> {
+  // Check user record
   const userRow = await db.execute(
-    sql`SELECT stripe_customer_id, has_access_code FROM users WHERE id = ${userId}`,
+    sql`SELECT stripe_customer_id, has_access_code, story_credits FROM users WHERE id = ${userId}`,
   );
   const row = userRow.rows[0];
 
-  // Access code holders get unlimited stories for free
+  // Access code holders get unlimited stories
   if (row?.has_access_code) return { allowed: true };
 
-  // Otherwise check for paid subscription
+  // Active subscription = unlimited stories
   const customerId = (row?.stripe_customer_id as string) ?? null;
   const subscribed = await hasActiveSubscription(customerId);
+  if (subscribed) return { allowed: true };
 
-  if (!subscribed) {
-    return {
-      allowed: false,
-      reason: "Subscribe to StoryBloom to generate more stories",
-    };
-  }
+  // Story credits (pay-per-story)
+  const credits = parseInt((row?.story_credits as string) ?? "0", 10);
+  if (credits > 0) return { allowed: true, usedCredit: true };
 
-  return { allowed: true };
+  return {
+    allowed: false,
+    reason: "Purchase a story or subscribe to generate stories",
+  };
 }
 
 // ── GET /stories ──────────────────────────────────────────────────────────────
@@ -256,11 +249,18 @@ router.get("/stories", requireAuth, async (req: any, res): Promise<void> => {
 router.post("/stories", requireAuth, async (req: any, res): Promise<void> => {
   await ensureUser(req.userId);
 
-  // Subscription gate
+  // Subscription / credit gate
   const access = await checkStoryAccess(req.userId);
   if (!access.allowed) {
     res.status(402).json({ error: access.reason, code: "SUBSCRIPTION_REQUIRED" });
     return;
+  }
+
+  // Consume one story credit if that's what unlocked access
+  if (access.usedCredit) {
+    await db.execute(
+      sql`UPDATE users SET story_credits = story_credits - 1, updated_at = NOW() WHERE id = ${req.userId}`,
+    );
   }
 
   const parsed = CreateStoryBody.safeParse(req.body);
