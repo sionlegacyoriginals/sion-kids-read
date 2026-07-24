@@ -35,6 +35,20 @@ export class WebhookHandlers {
 
   private static async handleCheckoutCompleted(session: any): Promise<void> {
     try {
+      // $1 story credit purchase
+      if (session.mode === "payment" && session.metadata?.type === "story_credit") {
+        const clerkUserId = session.metadata?.clerkUserId;
+        if (clerkUserId) {
+          await db.execute(sql`
+            UPDATE users
+            SET story_credits = story_credits + 1, updated_at = NOW()
+            WHERE id = ${clerkUserId}
+          `);
+          console.log(`Story credit added for user ${clerkUserId}`);
+        }
+        return;
+      }
+
       if (session.mode === "payment" && session.metadata?.orderId) {
         const orderId = parseInt(session.metadata.orderId, 10);
 

@@ -100,6 +100,63 @@ router.post("/checkout/subscription", requireAuth, async (req: any, res) => {
   }
 });
 
+// ── POST /api/checkout/story ─────────────────────────────────────────────────
+// Purchases one story credit for $1.00
+router.post("/checkout/story", requireAuth, async (req: any, res) => {
+  try {
+    const { email } = req.body;
+    await ensureUser(req.userId, email);
+
+    const stripe = await getUncachableStripeClient();
+
+    // Get/create Stripe customer
+    const userRow = await db.execute(
+      sql`SELECT stripe_customer_id, email FROM users WHERE id = ${req.userId}`,
+    );
+    let customerId = userRow.rows[0]?.stripe_customer_id as string | null;
+
+    if (!customerId) {
+      const customer = await stripe.customers.create({
+        email: email ?? (userRow.rows[0]?.email as string | undefined),
+        metadata: { clerkUserId: req.userId },
+      });
+      customerId = customer.id;
+      await db.execute(
+        sql`UPDATE users SET stripe_customer_id = ${customerId}, updated_at = NOW() WHERE id = ${req.userId}`,
+      );
+    }
+
+    // Look up single-story price
+    const priceRow = await db.execute(sql`
+      SELECT pr.id AS price_id
+      FROM stripe.products p
+      JOIN stripe.prices pr ON pr.product = p.id
+      WHERE p.name  = 'Single Story'
+        AND p.active  = true
+        AND pr.active = true
+      LIMIT 1
+    `);
+
+    if (!priceRow.rows[0]) {
+      return res.status(500).json({ error: "Single Story product not found. Run the seed script." });
+    }
+
+    const session = await stripe.checkout.sessions.create({
+      customer: customerId,
+      payment_method_types: ["card"],
+      line_items: [{ price: priceRow.rows[0].price_id as string, quantity: 1 }],
+      mode: "payment",
+      success_url: `${baseUrl()}${basePath()}/checkout/success?session_id={CHECKOUT_SESSION_ID}`,
+      cancel_url: `${baseUrl()}${basePath()}/subscribe`,
+      metadata: { clerkUserId: req.userId, type: "story_credit" },
+    });
+
+    res.json({ url: session.url });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // ── POST /api/checkout/print ─────────────────────────────────────────────────
 router.post("/checkout/print", requireAuth, async (req: any, res) => {
   try {

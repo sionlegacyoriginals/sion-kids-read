@@ -18,7 +18,7 @@ export default function Subscribe() {
   const [, setLocation] = useLocation();
   const queryClient = useQueryClient();
 
-  const [checkoutLoading, setCheckoutLoading] = useState(false);
+  const [checkoutLoading, setCheckoutLoading] = useState<"subscription" | "story" | null>(null);
   const [checkoutError, setCheckoutError] = useState<string | null>(null);
 
   const [codeOpen, setCodeOpen] = useState(false);
@@ -29,11 +29,12 @@ export default function Subscribe() {
 
   const { data: me } = useQuery({ queryKey: ["users-me"], queryFn: fetchUserMe });
 
-  const handleSubscribe = async () => {
-    setCheckoutLoading(true);
+  const handleCheckout = async (type: "subscription" | "story") => {
+    setCheckoutLoading(type);
     setCheckoutError(null);
     try {
-      const resp = await fetch("/api/checkout/subscription", {
+      const endpoint = type === "subscription" ? "/api/checkout/subscription" : "/api/checkout/story";
+      const resp = await fetch(endpoint, {
         method: "POST",
         credentials: "include",
         headers: { "Content-Type": "application/json" },
@@ -44,7 +45,7 @@ export default function Subscribe() {
       window.location.href = data.url;
     } catch (err: any) {
       setCheckoutError(err.message);
-      setCheckoutLoading(false);
+      setCheckoutLoading(null);
     }
   };
 
@@ -102,54 +103,92 @@ export default function Subscribe() {
           <Sparkles className="w-4 h-4" /> Unlock StoryBloom
         </span>
         <h1 className="text-4xl font-serif font-bold text-foreground mb-3">
-          Subscribe to keep creating
+          Choose your plan
         </h1>
         <p className="text-muted-foreground">
-          You've used your free story. Subscribe for unlimited personalised stories.
+          Pay per story, or subscribe for unlimited access.
         </p>
       </div>
 
-      {/* Subscription card */}
-      <div className="bg-card border border-border/60 rounded-3xl p-10 shadow-md mb-4">
-        <div className="flex items-baseline justify-center gap-1 mb-1">
-          <span className="text-5xl font-serif font-bold text-foreground">$3.33</span>
-          <span className="text-muted-foreground">/month</span>
+      {checkoutError && (
+        <p className="text-red-600 text-sm text-center mb-4 bg-red-50 border border-red-200 rounded-xl py-2 px-4">{checkoutError}</p>
+      )}
+
+      {/* Pricing cards */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
+
+        {/* Pay per story */}
+        <div className="bg-card border border-border/60 rounded-3xl p-8 shadow-sm flex flex-col">
+          <div className="flex items-baseline justify-center gap-1 mb-1">
+            <span className="text-5xl font-serif font-bold text-foreground">$1</span>
+            <span className="text-muted-foreground">/story</span>
+          </div>
+          <p className="text-center text-muted-foreground text-sm mb-6">Pay only when you create</p>
+
+          <ul className="space-y-2.5 mb-8 flex-1">
+            {[
+              { icon: BookHeart, text: "One personalised story" },
+              { icon: Sparkles, text: "AI illustrations from your photos" },
+              { icon: Star, text: "Bible verse weaving" },
+              { icon: Printer, text: "Print & ship for $25/book" },
+            ].map(({ icon: Icon, text }) => (
+              <li key={text} className="flex items-center gap-3 text-foreground text-sm">
+                <Icon className="w-4 h-4 text-primary flex-shrink-0" />
+                {text}
+              </li>
+            ))}
+          </ul>
+
+          <button
+            onClick={() => handleCheckout("story")}
+            disabled={checkoutLoading !== null}
+            className="w-full py-3 bg-muted text-foreground font-bold rounded-full hover:bg-muted/70 border border-border transition-all disabled:opacity-60 flex items-center justify-center gap-2"
+          >
+            {checkoutLoading === "story" ? (
+              <><Loader2 className="w-4 h-4 animate-spin" /> Redirecting…</>
+            ) : (
+              "Buy one story — $1"
+            )}
+          </button>
         </div>
-        <p className="text-center text-muted-foreground text-sm mb-8">Cancel anytime</p>
 
-        <ul className="space-y-3 mb-10">
-          {[
-            { icon: BookHeart, text: "Unlimited personalised stories" },
-            { icon: Sparkles, text: "AI illustrations from your photos" },
-            { icon: Star, text: "Bible verse weaving" },
-            { icon: Printer, text: "Print & ship for $25/book" },
-          ].map(({ icon: Icon, text }) => (
-            <li key={text} className="flex items-center gap-3 text-foreground">
-              <Icon className="w-4 h-4 text-primary flex-shrink-0" />
-              {text}
-            </li>
-          ))}
-        </ul>
+        {/* Monthly subscription */}
+        <div className="bg-card border-2 border-primary rounded-3xl p-8 shadow-md flex flex-col relative">
+          <span className="absolute -top-3 left-1/2 -translate-x-1/2 px-3 py-0.5 bg-primary text-white text-xs font-bold rounded-full">
+            Best value
+          </span>
+          <div className="flex items-baseline justify-center gap-1 mb-1">
+            <span className="text-5xl font-serif font-bold text-foreground">$3.33</span>
+            <span className="text-muted-foreground">/month</span>
+          </div>
+          <p className="text-center text-muted-foreground text-sm mb-6">Cancel anytime</p>
 
-        {checkoutError && (
-          <p className="text-red-600 text-sm text-center mb-4">{checkoutError}</p>
-        )}
+          <ul className="space-y-2.5 mb-8 flex-1">
+            {[
+              { icon: BookHeart, text: "Unlimited personalised stories" },
+              { icon: Sparkles, text: "AI illustrations from your photos" },
+              { icon: Star, text: "Bible verse weaving" },
+              { icon: Printer, text: "Print & ship for $25/book" },
+            ].map(({ icon: Icon, text }) => (
+              <li key={text} className="flex items-center gap-3 text-foreground text-sm">
+                <Icon className="w-4 h-4 text-primary flex-shrink-0" />
+                {text}
+              </li>
+            ))}
+          </ul>
 
-        <button
-          onClick={handleSubscribe}
-          disabled={checkoutLoading}
-          className="w-full py-4 bg-primary text-white font-bold text-lg rounded-full hover:bg-primary/90 transition-all disabled:opacity-60 flex items-center justify-center gap-2"
-        >
-          {checkoutLoading ? (
-            <><Loader2 className="w-5 h-5 animate-spin" /> Redirecting to checkout…</>
-          ) : (
-            "Subscribe now — $3.33/mo"
-          )}
-        </button>
-
-        <p className="text-xs text-center text-muted-foreground mt-4">
-          Secure checkout powered by Stripe · Cancel anytime from your account
-        </p>
+          <button
+            onClick={() => handleCheckout("subscription")}
+            disabled={checkoutLoading !== null}
+            className="w-full py-3 bg-primary text-white font-bold rounded-full hover:bg-primary/90 transition-all disabled:opacity-60 flex items-center justify-center gap-2"
+          >
+            {checkoutLoading === "subscription" ? (
+              <><Loader2 className="w-4 h-4 animate-spin" /> Redirecting…</>
+            ) : (
+              "Subscribe — $3.33/mo"
+            )}
+          </button>
+        </div>
       </div>
 
       {/* Access code collapsible */}
