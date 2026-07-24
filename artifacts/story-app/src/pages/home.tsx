@@ -72,8 +72,8 @@ export default function Home() {
 
   const hasAccess = me?.hasSubscription || me?.hasAccessCode || (me?.storyCredits ?? 0) > 0;
 
-  // Paywall modal state
-  const [showPaywall, setShowPaywall] = useState(false);
+  // Paywall modal state — auto-open if ?paywall=1 is in the URL (returning from cancelled Stripe checkout)
+  const [showPaywall, setShowPaywall] = useState(() => new URLSearchParams(window.location.search).get("paywall") === "1");
   const [paywallLoading, setPaywallLoading] = useState<"story" | "subscription" | null>(null);
   const [paywallError, setPaywallError] = useState<string | null>(null);
 

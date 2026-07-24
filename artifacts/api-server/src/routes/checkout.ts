@@ -87,7 +87,7 @@ router.post("/checkout/subscription", requireAuth, async (req: any, res) => {
       line_items: [{ price: membershipPrice.id, quantity: 1 }],
       mode: "subscription",
       success_url: `${baseUrl()}${basePath()}/checkout/success?session_id={CHECKOUT_SESSION_ID}`,
-      cancel_url: `${baseUrl()}${basePath()}/subscribe`,
+      cancel_url: `${baseUrl()}${basePath()}/create?paywall=1`,
       metadata: { clerkUserId: req.userId },
     });
 
@@ -143,7 +143,7 @@ router.post("/checkout/story", requireAuth, async (req: any, res) => {
       line_items: [{ price: singlePrice.id, quantity: 1 }],
       mode: "payment",
       success_url: `${baseUrl()}${basePath()}/checkout/success?session_id={CHECKOUT_SESSION_ID}`,
-      cancel_url: `${baseUrl()}${basePath()}/subscribe`,
+      cancel_url: `${baseUrl()}${basePath()}/create?paywall=1`,
       metadata: { clerkUserId: req.userId, type: "story_credit" },
     });
 
