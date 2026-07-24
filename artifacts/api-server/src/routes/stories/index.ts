@@ -20,6 +20,20 @@ import { openai } from "@workspace/integrations-openai-ai-server";
 
 const router: IRouter = Router();
 
+function serializeStory(story: Record<string, unknown>) {
+  return {
+    ...story,
+    createdAt:
+      story.createdAt instanceof Date
+        ? story.createdAt.toISOString()
+        : story.createdAt,
+    updatedAt:
+      story.updatedAt instanceof Date
+        ? story.updatedAt.toISOString()
+        : story.updatedAt,
+  };
+}
+
 function buildStoryPrompt(params: {
   childName: string;
   childAge: number;
@@ -96,7 +110,7 @@ router.get("/stories", async (_req, res): Promise<void> => {
     .select()
     .from(storiesTable)
     .orderBy(desc(storiesTable.createdAt));
-  res.json(ListStoriesResponse.parse(stories));
+  res.json(ListStoriesResponse.parse(stories.map(serializeStory)));
 });
 
 // POST /stories
@@ -133,7 +147,7 @@ router.post("/stories", async (req, res): Promise<void> => {
     })
     .returning();
 
-  res.status(201).json(CreateStoryResponse.parse(story));
+  res.status(201).json(CreateStoryResponse.parse(serializeStory(story)));
 });
 
 // GET /stories/stats
@@ -173,7 +187,7 @@ router.get("/stories/recent", async (_req, res): Promise<void> => {
     .from(storiesTable)
     .orderBy(desc(storiesTable.createdAt))
     .limit(5);
-  res.json(GetRecentStoriesResponse.parse(stories));
+  res.json(GetRecentStoriesResponse.parse(stories.map(serializeStory)));
 });
 
 // GET /stories/:id
@@ -194,7 +208,7 @@ router.get("/stories/:id", async (req, res): Promise<void> => {
     return;
   }
 
-  res.json(GetStoryResponse.parse(story));
+  res.json(GetStoryResponse.parse(serializeStory(story)));
 });
 
 // PATCH /stories/:id
@@ -232,7 +246,7 @@ router.patch("/stories/:id", async (req, res): Promise<void> => {
     return;
   }
 
-  res.json(UpdateStoryResponse.parse(story));
+  res.json(UpdateStoryResponse.parse(serializeStory(story)));
 });
 
 // DELETE /stories/:id
@@ -289,7 +303,7 @@ router.post("/stories/:id/regenerate", async (req, res): Promise<void> => {
     .where(eq(storiesTable.id, params.data.id))
     .returning();
 
-  res.json(RegenerateStoryResponse.parse(story));
+  res.json(RegenerateStoryResponse.parse(serializeStory(story)));
 });
 
 export default router;
