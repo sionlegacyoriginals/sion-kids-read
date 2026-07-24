@@ -18,9 +18,21 @@ import { format } from "date-fns";
 import { useUpload } from "@workspace/object-storage-web";
 
 const THEMES = [
-  'Courage', 'Kindness', 'Overcoming Fear', 
-  'Faith', 'Friendship', 'Honesty', 
-  'Perseverance', 'Gratitude'
+  // Original
+  'Courage', 'Kindness', 'Overcoming Fear',
+  'Faith', 'Friendship', 'Honesty',
+  'Perseverance', 'Gratitude',
+  // New additions
+  'Forgiveness', 'Compassion', 'Patience',
+  'Generosity', 'Humility', 'Loyalty',
+  'Joy', 'Hope', 'Love',
+  'Self-Control', 'Trustworthiness', 'Responsibility',
+  'Creativity', 'Curiosity', 'Adventure',
+  'Teamwork', 'Respect', 'Empathy',
+  'Sharing', 'Diligence', 'Contentment',
+  'Bravery', 'Wisdom', 'Acceptance',
+  'Thankfulness', 'Service', 'Peacemaking',
+  'Integrity', 'Helpfulness', 'Wonder',
 ] as const;
 
 const storySchema = z.object({
