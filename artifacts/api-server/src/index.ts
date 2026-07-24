@@ -1,25 +1,88 @@
+import { runMigrations } from "stripe-replit-sync";
+import { getStripeSync } from "./lib/stripeClient";
+import { db } from "@workspace/db";
+import { sql } from "drizzle-orm";
 import app from "./app";
 import { logger } from "./lib/logger";
 
+// ── DB migrations ────────────────────────────────────────────────────────────
+async function runAppMigrations() {
+  // Stripe schema
+  const databaseUrl = process.env.DATABASE_URL!;
+  await runMigrations({ databaseUrl, schema: "stripe" });
+
+  // Application tables
+  await db.execute(sql`
+    CREATE TABLE IF NOT EXISTS users (
+      id                TEXT        PRIMARY KEY,
+      email             TEXT,
+      stripe_customer_id TEXT,
+      has_access_code   BOOLEAN     NOT NULL DEFAULT FALSE,
+      created_at        TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+      updated_at        TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    )
+  `);
+  // Idempotent: add column to existing tables that were created before this field
+  await db.execute(sql`
+    ALTER TABLE users ADD COLUMN IF NOT EXISTS has_access_code BOOLEAN NOT NULL DEFAULT FALSE
+  `);
+
+  await db.execute(sql`
+    CREATE TABLE IF NOT EXISTS print_orders (
+      id                        SERIAL      PRIMARY KEY,
+      user_id                   TEXT        NOT NULL,
+      story_id                  INTEGER,
+      stripe_session_id         TEXT,
+      stripe_payment_intent_id  TEXT,
+      customer_email            TEXT,
+      customer_name             TEXT,
+      shipping_address          JSONB       NOT NULL,
+      lulu_job_id               TEXT,
+      quantity                  INTEGER     NOT NULL DEFAULT 1,
+      amount_cents              INTEGER,
+      currency                  TEXT        DEFAULT 'usd',
+      status                    TEXT        NOT NULL DEFAULT 'pending_payment',
+      created_at                TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+      updated_at                TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    )
+  `);
+
+  // Add user_id column to stories if it doesn't exist yet
+  await db.execute(sql`
+    ALTER TABLE stories ADD COLUMN IF NOT EXISTS user_id TEXT
+  `);
+}
+
+// ── Stripe init ──────────────────────────────────────────────────────────────
+async function initStripe() {
+  try {
+    const stripeSync = await getStripeSync();
+
+    const webhookBaseUrl = `https://${process.env.REPLIT_DOMAINS?.split(",")[0]}`;
+    await stripeSync.findOrCreateManagedWebhook(`${webhookBaseUrl}/api/stripe/webhook`);
+    logger.info("Stripe webhook configured");
+
+    stripeSync.syncBackfill().catch((err) => {
+      logger.error({ err }, "Stripe backfill error");
+    });
+  } catch (err) {
+    logger.error({ err }, "Stripe init failed — continuing without Stripe");
+  }
+}
+
+// ── Start ────────────────────────────────────────────────────────────────────
 const rawPort = process.env["PORT"];
-
-if (!rawPort) {
-  throw new Error(
-    "PORT environment variable is required but was not provided.",
-  );
-}
-
+if (!rawPort) throw new Error("PORT environment variable is required");
 const port = Number(rawPort);
+if (Number.isNaN(port) || port <= 0) throw new Error(`Invalid PORT: "${rawPort}"`);
 
-if (Number.isNaN(port) || port <= 0) {
-  throw new Error(`Invalid PORT value: "${rawPort}"`);
-}
+await runAppMigrations();
+await initStripe();
 
 app.listen(port, (err) => {
   if (err) {
     logger.error({ err }, "Error listening on port");
     process.exit(1);
   }
-
   logger.info({ port }, "Server listening");
 });

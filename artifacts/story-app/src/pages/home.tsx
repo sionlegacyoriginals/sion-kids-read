@@ -142,7 +142,14 @@ export default function Home() {
         queryClient.invalidateQueries({ queryKey: getListStoriesQueryKey() });
         queryClient.invalidateQueries({ queryKey: getGetStoryStatsQueryKey() });
         setLocation(`/stories/${story.id}`);
-      }
+      },
+      onError: (err: any) => {
+        // 402 means the free story has been used — send to subscription page
+        const msg = String(err?.message ?? err ?? "");
+        if (msg.includes("402") || msg.includes("SUBSCRIPTION_REQUIRED") || msg.includes("Subscribe")) {
+          setLocation("/subscribe");
+        }
+      },
     });
   };
 

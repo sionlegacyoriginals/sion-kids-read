@@ -1,9 +1,10 @@
-import { pgTable, text, serial, integer, timestamp } from "drizzle-orm/pg-core";
+import { pgTable, serial, integer, text, timestamp } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod/v4";
 
 export const storiesTable = pgTable("stories", {
   id: serial("id").primaryKey(),
+  userId: text("user_id"),
   childName: text("child_name").notNull(),
   childAge: integer("child_age").notNull(),
   childGender: text("child_gender").notNull(),
@@ -11,13 +12,16 @@ export const storiesTable = pgTable("stories", {
   theme: text("theme").notNull(),
   customPrompt: text("custom_prompt"),
   bibleVerse: text("bible_verse"),
-  referenceImagePaths: text("reference_image_paths"), // JSON array of object paths
+  referenceImagePaths: text("reference_image_paths"),
   coverImageUrl: text("cover_image_url"),
-  illustrationUrls: text("illustration_urls"), // JSON array of generated image URLs
+  illustrationUrls: text("illustration_urls"),
   title: text("title").notNull(),
   content: text("content").notNull(),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
-  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow().$onUpdate(() => new Date()),
+  updatedAt: timestamp("updated_at", { withTimezone: true })
+    .notNull()
+    .defaultNow()
+    .$onUpdate(() => new Date()),
 });
 
 export const insertStorySchema = createInsertSchema(storiesTable).omit({

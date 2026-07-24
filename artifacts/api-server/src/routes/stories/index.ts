@@ -19,6 +19,7 @@ import {
 import { openai } from "@workspace/integrations-openai-ai-server";
 import { generateImageBuffer } from "@workspace/integrations-openai-ai-server/image";
 import { ObjectStorageService } from "../../lib/objectStorage";
+import { requireAuth, ensureUser, hasActiveSubscription } from "../../lib/auth";
 
 const router: IRouter = Router();
 
@@ -26,13 +27,9 @@ function serializeStory(story: Record<string, unknown>) {
   return {
     ...story,
     createdAt:
-      story.createdAt instanceof Date
-        ? story.createdAt.toISOString()
-        : story.createdAt,
+      story.createdAt instanceof Date ? story.createdAt.toISOString() : story.createdAt,
     updatedAt:
-      story.updatedAt instanceof Date
-        ? story.updatedAt.toISOString()
-        : story.updatedAt,
+      story.updatedAt instanceof Date ? story.updatedAt.toISOString() : story.updatedAt,
   };
 }
 
@@ -53,16 +50,14 @@ function buildStoryPrompt(params: {
   const milestonesLine = params.milestones
     ? `Include these personal details naturally in the story: ${params.milestones}.`
     : "";
-
   const customLine = params.customPrompt
     ? `Custom plot direction: ${params.customPrompt}.`
     : "";
-
   const bibleLine =
     params.bibleVerse === "auto"
-      ? `Weave one fitting Bible verse into the story naturally — choose a verse that powerfully reinforces the theme of ${params.theme}. Quote it exactly (with book, chapter, and verse reference) at the moment in the story where it feels most meaningful, as if a wise character says it or a narrator gently reflects on it.`
+      ? `Weave one fitting Bible verse into the story naturally — choose a verse that powerfully reinforces the theme of ${params.theme}. Quote it exactly (with book, chapter, and verse reference) at the moment in the story where it feels most meaningful.`
       : params.bibleVerse
-        ? `Weave this Bible verse into the story naturally: "${params.bibleVerse}". Quote it at the moment where it feels most meaningful, as if a wise character says it or a narrator gently reflects on it.`
+        ? `Weave this Bible verse into the story naturally: "${params.bibleVerse}". Quote it at the moment where it feels most meaningful.`
         : "";
 
   return `You are a master children's story author. Write a warm, wholesome, age-appropriate children's story for a ${params.childAge}-year-old child named ${params.childName}.
@@ -76,7 +71,7 @@ ${bibleLine}
 Requirements:
 - The story should be engaging, imaginative, and age-appropriate for a ${params.childAge}-year-old.
 - Refer to ${params.childName} using ${pronouns.subject}/${pronouns.object}/${pronouns.possessive} pronouns.
-- Follow classic children's story structure: an engaging opening that introduces ${params.childName}, a gentle challenge or journey that tests the theme of ${params.theme}, and a positive resolution that reinforces the value of ${params.theme}.
+- Follow classic children's story structure: an engaging opening, a gentle challenge that tests the theme of ${params.theme}, and a positive resolution.
 - Keep it wholesome, kind, and uplifting. No scary content.
 - Length: 4–6 paragraphs (appropriate for a bedtime story).
 - Write in a warm, lyrical style with vivid imagery.
@@ -98,7 +93,6 @@ async function generateStoryImages(params: {
 }): Promise<{ coverImagePath: string; illustrationPaths: string[] }> {
   const objectStorage = new ObjectStorageService();
 
-  // Step 1 – download reference photos and convert to base64 data URIs
   const base64Images = (
     await Promise.all(
       params.referenceImagePaths.slice(0, 5).map(async (objectPath) => {
@@ -106,8 +100,7 @@ async function generateStoryImages(params: {
           const file = await objectStorage.getObjectEntityFile(objectPath);
           const response = await objectStorage.downloadObject(file);
           const buffer = Buffer.from(await response.arrayBuffer());
-          const contentType =
-            response.headers.get("content-type") || "image/jpeg";
+          const contentType = response.headers.get("content-type") || "image/jpeg";
           return `data:${contentType};base64,${buffer.toString("base64")}`;
         } catch {
           return null;
@@ -116,7 +109,6 @@ async function generateStoryImages(params: {
     )
   ).filter((x): x is string => x !== null);
 
-  // Step 2 – use gpt-5.6-luna (supports image inputs) to describe the child
   const childBase = `a ${params.childAge}-year-old ${params.childGender === "boy" ? "boy" : "girl"}`;
   let childDescription = childBase;
 
@@ -144,11 +136,10 @@ async function generateStoryImages(params: {
       const desc = visionResponse.choices[0]?.message?.content;
       if (desc) childDescription = `${childBase} — ${desc}`;
     } catch {
-      // Vision unavailable; fall back to generic description
+      // Fall back to generic description
     }
   }
 
-  // Step 3 – build prompts for gpt-image-1
   const paragraphs = params.storyContent.split("\n").filter(Boolean);
   const scene1 = (paragraphs[1] ?? paragraphs[0] ?? "").slice(0, 250);
   const scene2 = (paragraphs[3] ?? paragraphs[2] ?? paragraphs[0] ?? "").slice(0, 250);
@@ -160,20 +151,18 @@ async function generateStoryImages(params: {
   const illus1Prompt = `${bookStyle}. Interior story illustration: ${childDescription} in this scene — ${scene1}`;
   const illus2Prompt = `${bookStyle}. Interior story illustration: ${childDescription} in this scene — ${scene2}`;
 
-  // Step 4 – generate all three images in parallel using gpt-image-1
   const [coverBuffer, illus1Buffer, illus2Buffer] = await Promise.all([
     generateImageBuffer(coverPrompt, "1024x1024"),
     generateImageBuffer(illus1Prompt, "1024x1024"),
     generateImageBuffer(illus2Prompt, "1024x1024"),
   ]);
 
-  // Step 5 – upload generated images to object storage, return object paths
   async function storeBuffer(buffer: Buffer): Promise<string> {
     const presignedUrl = await objectStorage.getObjectEntityUploadURL();
     const objectPath = objectStorage.normalizeObjectEntityPath(presignedUrl);
     const resp = await fetch(presignedUrl, {
       method: "PUT",
-      // @ts-ignore – Node's Buffer is accepted by fetch as BodyInit
+      // @ts-ignore
       body: buffer,
       headers: { "Content-Type": "image/png" },
     });
@@ -190,7 +179,7 @@ async function generateStoryImages(params: {
   return { coverImagePath, illustrationPaths: [illus1Path, illus2Path] };
 }
 
-// ─── Story text generation ───────────────────────────────────────────────────
+// ─── Story text generation ────────────────────────────────────────────────────
 
 async function generateStory(params: {
   childName: string;
@@ -202,36 +191,78 @@ async function generateStory(params: {
   bibleVerse?: string | null;
 }): Promise<{ title: string; content: string }> {
   const prompt = buildStoryPrompt(params);
-
   const response = await openai.chat.completions.create({
     model: "gpt-5.6-luna",
-    max_completion_tokens: 2048,
     messages: [{ role: "user", content: prompt }],
-    stream: false,
+    max_completion_tokens: 1500,
   });
 
-  const raw = response.choices[0]?.message?.content ?? "";
-  const lines = raw.split("\n");
+  const text = response.choices[0]?.message?.content ?? "";
+  const lines = text.split("\n");
   const titleLine = lines[0] ?? "";
   const title = titleLine.startsWith("TITLE: ")
     ? titleLine.slice(7).trim()
     : `${params.childName}'s Story of ${params.theme}`;
   const content = lines.slice(1).join("\n").trim();
-
   return { title, content };
 }
 
-// GET /stories
-router.get("/stories", async (_req, res): Promise<void> => {
+// ─── Subscription gate helper ─────────────────────────────────────────────────
+
+async function checkStoryAccess(userId: string): Promise<{ allowed: boolean; reason?: string }> {
+  const countRow = await db.execute(
+    sql`SELECT COUNT(*) AS count FROM stories WHERE user_id = ${userId}`,
+  );
+  const count = parseInt((countRow.rows[0]?.count as string) ?? "0", 10);
+
+  // First story is always free
+  if (count < 1) return { allowed: true };
+
+  // Check user record for access code or active subscription
+  const userRow = await db.execute(
+    sql`SELECT stripe_customer_id, has_access_code FROM users WHERE id = ${userId}`,
+  );
+  const row = userRow.rows[0];
+
+  // Access code holders get unlimited stories for free
+  if (row?.has_access_code) return { allowed: true };
+
+  // Otherwise check for paid subscription
+  const customerId = (row?.stripe_customer_id as string) ?? null;
+  const subscribed = await hasActiveSubscription(customerId);
+
+  if (!subscribed) {
+    return {
+      allowed: false,
+      reason: "Subscribe to StoryBloom to generate more stories",
+    };
+  }
+
+  return { allowed: true };
+}
+
+// ── GET /stories ──────────────────────────────────────────────────────────────
+router.get("/stories", requireAuth, async (req: any, res): Promise<void> => {
+  await ensureUser(req.userId);
   const stories = await db
     .select()
     .from(storiesTable)
+    .where(eq(storiesTable.userId, req.userId))
     .orderBy(desc(storiesTable.createdAt));
   res.json(ListStoriesResponse.parse(stories.map(serializeStory)));
 });
 
-// POST /stories
-router.post("/stories", async (req, res): Promise<void> => {
+// ── POST /stories ─────────────────────────────────────────────────────────────
+router.post("/stories", requireAuth, async (req: any, res): Promise<void> => {
+  await ensureUser(req.userId);
+
+  // Subscription gate
+  const access = await checkStoryAccess(req.userId);
+  if (!access.allowed) {
+    res.status(402).json({ error: access.reason, code: "SUBSCRIPTION_REQUIRED" });
+    return;
+  }
+
   const parsed = CreateStoryBody.safeParse(req.body);
   if (!parsed.success) {
     res.status(400).json({ error: parsed.error.message });
@@ -242,16 +273,9 @@ router.post("/stories", async (req, res): Promise<void> => {
     parsed.data;
 
   const { title, content } = await generateStory({
-    childName,
-    childAge,
-    childGender,
-    milestones,
-    theme,
-    customPrompt,
-    bibleVerse,
+    childName, childAge, childGender, milestones, theme, customPrompt, bibleVerse,
   });
 
-  // Generate cover + illustrations when reference photos were provided
   let coverImageUrl: string | null = null;
   let illustrationUrls: string | null = null;
 
@@ -260,28 +284,22 @@ router.post("/stories", async (req, res): Promise<void> => {
       const paths = JSON.parse(referenceImagePaths) as string[];
       if (paths.length > 0) {
         const { coverImagePath, illustrationPaths } = await generateStoryImages({
-          childName,
-          childAge,
-          childGender,
-          theme,
-          storyTitle: title,
-          storyContent: content,
-          referenceImagePaths: paths,
+          childName, childAge, childGender, theme,
+          storyTitle: title, storyContent: content, referenceImagePaths: paths,
         });
         coverImageUrl = coverImagePath;
         illustrationUrls = JSON.stringify(illustrationPaths);
       }
     } catch (err) {
-      req.log.error({ err }, "Image generation failed — story saved without illustrations");
+      console.error("Image generation failed — story saved without illustrations:", err);
     }
   }
 
   const [story] = await db
     .insert(storiesTable)
     .values({
-      childName,
-      childAge,
-      childGender,
+      userId: req.userId,
+      childName, childAge, childGender,
       milestones: milestones ?? null,
       theme,
       customPrompt: customPrompt ?? null,
@@ -297,80 +315,72 @@ router.post("/stories", async (req, res): Promise<void> => {
   res.status(201).json(CreateStoryResponse.parse(serializeStory(story)));
 });
 
-// GET /stories/stats
-router.get("/stories/stats", async (_req, res): Promise<void> => {
-  const total = await db
-    .select({ count: sql<number>`count(*)::int` })
-    .from(storiesTable);
+// ── GET /stories/stats ────────────────────────────────────────────────────────
+router.get("/stories/stats", requireAuth, async (req: any, res): Promise<void> => {
+  await ensureUser(req.userId);
 
-  const byTheme = await db
-    .select({
-      theme: storiesTable.theme,
-      count: sql<number>`count(*)::int`,
-    })
-    .from(storiesTable)
-    .groupBy(storiesTable.theme)
-    .orderBy(desc(sql`count(*)`));
-
-  const recent = await db
-    .select({ childName: storiesTable.childName })
-    .from(storiesTable)
-    .orderBy(desc(storiesTable.createdAt))
-    .limit(1);
+  const [total, byTheme, recent] = await Promise.all([
+    db.select({ count: sql<number>`count(*)::int` })
+      .from(storiesTable)
+      .where(eq(storiesTable.userId, req.userId)),
+    db.select({ theme: storiesTable.theme, count: sql<number>`count(*)::int` })
+      .from(storiesTable)
+      .where(eq(storiesTable.userId, req.userId))
+      .groupBy(storiesTable.theme)
+      .orderBy(desc(sql`count(*)`)),
+    db.select({ childName: storiesTable.childName })
+      .from(storiesTable)
+      .where(eq(storiesTable.userId, req.userId))
+      .orderBy(desc(storiesTable.createdAt))
+      .limit(1),
+  ]);
 
   res.json(
     GetStoryStatsResponse.parse({
       totalStories: total[0]?.count ?? 0,
-      byTheme: byTheme,
+      byTheme,
       mostRecentChildName: recent[0]?.childName ?? null,
     }),
   );
 });
 
-// GET /stories/recent
-router.get("/stories/recent", async (_req, res): Promise<void> => {
+// ── GET /stories/recent ───────────────────────────────────────────────────────
+router.get("/stories/recent", requireAuth, async (req: any, res): Promise<void> => {
+  await ensureUser(req.userId);
   const stories = await db
     .select()
     .from(storiesTable)
+    .where(eq(storiesTable.userId, req.userId))
     .orderBy(desc(storiesTable.createdAt))
     .limit(5);
   res.json(GetRecentStoriesResponse.parse(stories.map(serializeStory)));
 });
 
-// GET /stories/:id
-router.get("/stories/:id", async (req, res): Promise<void> => {
+// ── GET /stories/:id ──────────────────────────────────────────────────────────
+router.get("/stories/:id", requireAuth, async (req: any, res): Promise<void> => {
   const params = GetStoryParams.safeParse(req.params);
-  if (!params.success) {
-    res.status(400).json({ error: params.error.message });
-    return;
-  }
+  if (!params.success) { res.status(400).json({ error: params.error.message }); return; }
 
-  const [story] = await db
-    .select()
-    .from(storiesTable)
+  const [story] = await db.select().from(storiesTable)
     .where(eq(storiesTable.id, params.data.id));
 
-  if (!story) {
-    res.status(404).json({ error: "Story not found" });
-    return;
-  }
+  if (!story) { res.status(404).json({ error: "Story not found" }); return; }
+  if (story.userId && story.userId !== req.userId) { res.status(403).json({ error: "Forbidden" }); return; }
 
   res.json(GetStoryResponse.parse(serializeStory(story)));
 });
 
-// PATCH /stories/:id
-router.patch("/stories/:id", async (req, res): Promise<void> => {
+// ── PATCH /stories/:id ────────────────────────────────────────────────────────
+router.patch("/stories/:id", requireAuth, async (req: any, res): Promise<void> => {
   const params = UpdateStoryParams.safeParse(req.params);
-  if (!params.success) {
-    res.status(400).json({ error: params.error.message });
-    return;
-  }
+  if (!params.success) { res.status(400).json({ error: params.error.message }); return; }
 
   const parsed = UpdateStoryBody.safeParse(req.body);
-  if (!parsed.success) {
-    res.status(400).json({ error: parsed.error.message });
-    return;
-  }
+  if (!parsed.success) { res.status(400).json({ error: parsed.error.message }); return; }
+
+  const [existing] = await db.select().from(storiesTable).where(eq(storiesTable.id, params.data.id));
+  if (!existing) { res.status(404).json({ error: "Story not found" }); return; }
+  if (existing.userId && existing.userId !== req.userId) { res.status(403).json({ error: "Forbidden" }); return; }
 
   const updateData: Record<string, unknown> = {};
   if (parsed.data.title != null) updateData.title = parsed.data.title;
@@ -382,58 +392,34 @@ router.patch("/stories/:id", async (req, res): Promise<void> => {
   if (parsed.data.theme != null) updateData.theme = parsed.data.theme;
   if (parsed.data.customPrompt != null) updateData.customPrompt = parsed.data.customPrompt;
 
-  const [story] = await db
-    .update(storiesTable)
-    .set(updateData)
-    .where(eq(storiesTable.id, params.data.id))
-    .returning();
-
-  if (!story) {
-    res.status(404).json({ error: "Story not found" });
-    return;
-  }
+  const [story] = await db.update(storiesTable).set(updateData)
+    .where(eq(storiesTable.id, params.data.id)).returning();
+  if (!story) { res.status(404).json({ error: "Story not found" }); return; }
 
   res.json(UpdateStoryResponse.parse(serializeStory(story)));
 });
 
-// DELETE /stories/:id
-router.delete("/stories/:id", async (req, res): Promise<void> => {
+// ── DELETE /stories/:id ───────────────────────────────────────────────────────
+router.delete("/stories/:id", requireAuth, async (req: any, res): Promise<void> => {
   const params = DeleteStoryParams.safeParse(req.params);
-  if (!params.success) {
-    res.status(400).json({ error: params.error.message });
-    return;
-  }
+  if (!params.success) { res.status(400).json({ error: params.error.message }); return; }
 
-  const [story] = await db
-    .delete(storiesTable)
-    .where(eq(storiesTable.id, params.data.id))
-    .returning();
+  const [existing] = await db.select().from(storiesTable).where(eq(storiesTable.id, params.data.id));
+  if (!existing) { res.status(404).json({ error: "Story not found" }); return; }
+  if (existing.userId && existing.userId !== req.userId) { res.status(403).json({ error: "Forbidden" }); return; }
 
-  if (!story) {
-    res.status(404).json({ error: "Story not found" });
-    return;
-  }
-
+  await db.delete(storiesTable).where(eq(storiesTable.id, params.data.id));
   res.sendStatus(204);
 });
 
-// POST /stories/:id/regenerate
-router.post("/stories/:id/regenerate", async (req, res): Promise<void> => {
+// ── POST /stories/:id/regenerate ──────────────────────────────────────────────
+router.post("/stories/:id/regenerate", requireAuth, async (req: any, res): Promise<void> => {
   const params = RegenerateStoryParams.safeParse(req.params);
-  if (!params.success) {
-    res.status(400).json({ error: params.error.message });
-    return;
-  }
+  if (!params.success) { res.status(400).json({ error: params.error.message }); return; }
 
-  const [existing] = await db
-    .select()
-    .from(storiesTable)
-    .where(eq(storiesTable.id, params.data.id));
-
-  if (!existing) {
-    res.status(404).json({ error: "Story not found" });
-    return;
-  }
+  const [existing] = await db.select().from(storiesTable).where(eq(storiesTable.id, params.data.id));
+  if (!existing) { res.status(404).json({ error: "Story not found" }); return; }
+  if (existing.userId && existing.userId !== req.userId) { res.status(403).json({ error: "Forbidden" }); return; }
 
   const { title, content } = await generateStory({
     childName: existing.childName,
@@ -445,7 +431,6 @@ router.post("/stories/:id/regenerate", async (req, res): Promise<void> => {
     bibleVerse: existing.bibleVerse,
   });
 
-  // Re-generate images if this story had reference photos
   let coverImageUrl = existing.coverImageUrl;
   let illustrationUrls = existing.illustrationUrls;
 
@@ -454,24 +439,19 @@ router.post("/stories/:id/regenerate", async (req, res): Promise<void> => {
       const paths = JSON.parse(existing.referenceImagePaths) as string[];
       if (paths.length > 0) {
         const result = await generateStoryImages({
-          childName: existing.childName,
-          childAge: existing.childAge,
-          childGender: existing.childGender,
-          theme: existing.theme,
-          storyTitle: title,
-          storyContent: content,
-          referenceImagePaths: paths,
+          childName: existing.childName, childAge: existing.childAge,
+          childGender: existing.childGender, theme: existing.theme,
+          storyTitle: title, storyContent: content, referenceImagePaths: paths,
         });
         coverImageUrl = result.coverImagePath;
         illustrationUrls = JSON.stringify(result.illustrationPaths);
       }
     } catch (err) {
-      req.log.error({ err }, "Image regeneration failed — keeping existing images");
+      console.error("Image regeneration failed — keeping existing images:", err);
     }
   }
 
-  const [story] = await db
-    .update(storiesTable)
+  const [story] = await db.update(storiesTable)
     .set({ title, content, coverImageUrl, illustrationUrls })
     .where(eq(storiesTable.id, params.data.id))
     .returning();
