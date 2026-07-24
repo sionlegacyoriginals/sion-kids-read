@@ -67,27 +67,24 @@ router.post("/checkout/subscription", requireAuth, async (req: any, res) => {
       );
     }
 
-    // Look up membership price from synced stripe schema
-    const priceRow = await db.execute(sql`
-      SELECT pr.id AS price_id
-      FROM stripe.products p
-      JOIN stripe.prices pr ON pr.product = p.id
-      WHERE p.name = 'StoryBloom Membership'
-        AND p.active  = true
-        AND pr.active = true
-      LIMIT 1
-    `);
-
-    if (!priceRow.rows[0]) {
-      return res
-        .status(500)
-        .json({ error: "Membership product not found. Run the seed script." });
+    // Look up membership price directly from Stripe API
+    const membershipProducts = await stripe.products.search({
+      query: "name:'StoryBloom Membership' AND active:'true'",
+    });
+    const membershipProduct = membershipProducts.data[0];
+    if (!membershipProduct) {
+      return res.status(500).json({ error: "Membership product not found. Run the seed script." });
+    }
+    const membershipPrices = await stripe.prices.list({ product: membershipProduct.id, active: true, limit: 1 });
+    const membershipPrice = membershipPrices.data[0];
+    if (!membershipPrice) {
+      return res.status(500).json({ error: "Membership price not found. Run the seed script." });
     }
 
     const session = await stripe.checkout.sessions.create({
       customer: customerId,
       payment_method_types: ["card"],
-      line_items: [{ price: priceRow.rows[0].price_id as string, quantity: 1 }],
+      line_items: [{ price: membershipPrice.id, quantity: 1 }],
       mode: "subscription",
       success_url: `${baseUrl()}${basePath()}/checkout/success?session_id={CHECKOUT_SESSION_ID}`,
       cancel_url: `${baseUrl()}${basePath()}/subscribe`,
@@ -126,25 +123,24 @@ router.post("/checkout/story", requireAuth, async (req: any, res) => {
       );
     }
 
-    // Look up single-story price
-    const priceRow = await db.execute(sql`
-      SELECT pr.id AS price_id
-      FROM stripe.products p
-      JOIN stripe.prices pr ON pr.product = p.id
-      WHERE p.name  = 'Single Story'
-        AND p.active  = true
-        AND pr.active = true
-      LIMIT 1
-    `);
-
-    if (!priceRow.rows[0]) {
+    // Look up single-story price directly from Stripe API
+    const singleProducts = await stripe.products.search({
+      query: "name:'Single Story' AND active:'true'",
+    });
+    const singleProduct = singleProducts.data[0];
+    if (!singleProduct) {
       return res.status(500).json({ error: "Single Story product not found. Run the seed script." });
+    }
+    const singlePrices = await stripe.prices.list({ product: singleProduct.id, active: true, limit: 1 });
+    const singlePrice = singlePrices.data[0];
+    if (!singlePrice) {
+      return res.status(500).json({ error: "Single Story price not found. Run the seed script." });
     }
 
     const session = await stripe.checkout.sessions.create({
       customer: customerId,
       payment_method_types: ["card"],
-      line_items: [{ price: priceRow.rows[0].price_id as string, quantity: 1 }],
+      line_items: [{ price: singlePrice.id, quantity: 1 }],
       mode: "payment",
       success_url: `${baseUrl()}${basePath()}/checkout/success?session_id={CHECKOUT_SESSION_ID}`,
       cancel_url: `${baseUrl()}${basePath()}/subscribe`,
@@ -196,21 +192,18 @@ router.post("/checkout/print", requireAuth, async (req: any, res) => {
       );
     }
 
-    // Look up print price
-    const priceRow = await db.execute(sql`
-      SELECT pr.id AS price_id, pr.unit_amount
-      FROM stripe.products p
-      JOIN stripe.prices pr ON pr.product = p.id
-      WHERE p.name  = 'Printed Storybook'
-        AND p.active  = true
-        AND pr.active = true
-      LIMIT 1
-    `);
-
-    if (!priceRow.rows[0]) {
-      return res
-        .status(500)
-        .json({ error: "Print product not found. Run the seed script." });
+    // Look up print price directly from Stripe API
+    const printProducts = await stripe.products.search({
+      query: "name:'Printed Storybook' AND active:'true'",
+    });
+    const printProduct = printProducts.data[0];
+    if (!printProduct) {
+      return res.status(500).json({ error: "Print product not found. Run the seed script." });
+    }
+    const printPrices = await stripe.prices.list({ product: printProduct.id, active: true, limit: 1 });
+    const printPrice = printPrices.data[0];
+    if (!printPrice) {
+      return res.status(500).json({ error: "Print price not found. Run the seed script." });
     }
 
     // Create pending order
@@ -219,7 +212,7 @@ router.post("/checkout/print", requireAuth, async (req: any, res) => {
         (user_id, story_id, customer_email, customer_name, shipping_address, amount_cents, status, created_at, updated_at)
       VALUES
         (${req.userId}, ${storyId}, ${customerEmail}, ${customerName},
-         ${JSON.stringify(shippingAddress)}, ${priceRow.rows[0].unit_amount},
+         ${JSON.stringify(shippingAddress)}, ${printPrice.unit_amount},
          'pending_payment', NOW(), NOW())
       RETURNING id
     `);
