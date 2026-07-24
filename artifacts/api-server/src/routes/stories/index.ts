@@ -17,6 +17,7 @@ import {
   CreateStoryResponse,
 } from "@workspace/api-zod";
 import { openai } from "@workspace/integrations-openai-ai-server";
+import { generateImageBuffer } from "@workspace/integrations-openai-ai-server/image";
 import { ObjectStorageService } from "../../lib/objectStorage";
 
 const router: IRouter = Router();
@@ -115,14 +116,14 @@ async function generateStoryImages(params: {
     )
   ).filter((x): x is string => x !== null);
 
-  // Step 2 – ask GPT-4o to describe the child's appearance from the photos
+  // Step 2 – use gpt-5.6-luna (supports image inputs) to describe the child
   const childBase = `a ${params.childAge}-year-old ${params.childGender === "boy" ? "boy" : "girl"}`;
   let childDescription = childBase;
 
   if (base64Images.length > 0) {
     try {
       const visionResponse = await openai.chat.completions.create({
-        model: "gpt-4o",
+        model: "gpt-5.6-luna",
         max_completion_tokens: 200,
         messages: [
           {
@@ -147,13 +148,10 @@ async function generateStoryImages(params: {
     }
   }
 
-  // Step 3 – build DALL-E 3 prompts
+  // Step 3 – build prompts for gpt-image-1
   const paragraphs = params.storyContent.split("\n").filter(Boolean);
   const scene1 = (paragraphs[1] ?? paragraphs[0] ?? "").slice(0, 250);
-  const scene2 = (paragraphs[3] ?? paragraphs[2] ?? paragraphs[0] ?? "").slice(
-    0,
-    250,
-  );
+  const scene2 = (paragraphs[3] ?? paragraphs[2] ?? paragraphs[0] ?? "").slice(0, 250);
 
   const bookStyle =
     "warm watercolor children's book illustration, soft pastel palette, gentle line art, cozy and whimsical, suitable for a bedtime story, no text";
@@ -162,40 +160,20 @@ async function generateStoryImages(params: {
   const illus1Prompt = `${bookStyle}. Interior story illustration: ${childDescription} in this scene — ${scene1}`;
   const illus2Prompt = `${bookStyle}. Interior story illustration: ${childDescription} in this scene — ${scene2}`;
 
-  // Step 4 – generate all three images in parallel
-  const [coverResult, illus1Result, illus2Result] = await Promise.all([
-    openai.images.generate({
-      model: "dall-e-3",
-      prompt: coverPrompt,
-      size: "1024x1792",
-      quality: "standard",
-      response_format: "b64_json",
-    }),
-    openai.images.generate({
-      model: "dall-e-3",
-      prompt: illus1Prompt,
-      size: "1024x1024",
-      quality: "standard",
-      response_format: "b64_json",
-    }),
-    openai.images.generate({
-      model: "dall-e-3",
-      prompt: illus2Prompt,
-      size: "1024x1024",
-      quality: "standard",
-      response_format: "b64_json",
-    }),
+  // Step 4 – generate all three images in parallel using gpt-image-1
+  const [coverBuffer, illus1Buffer, illus2Buffer] = await Promise.all([
+    generateImageBuffer(coverPrompt, "1024x1024"),
+    generateImageBuffer(illus1Prompt, "1024x1024"),
+    generateImageBuffer(illus2Prompt, "1024x1024"),
   ]);
 
   // Step 5 – upload generated images to object storage, return object paths
-  async function storeImage(b64: string | null | undefined): Promise<string> {
-    if (!b64) throw new Error("Empty image data");
+  async function storeBuffer(buffer: Buffer): Promise<string> {
     const presignedUrl = await objectStorage.getObjectEntityUploadURL();
     const objectPath = objectStorage.normalizeObjectEntityPath(presignedUrl);
-    const buffer = Buffer.from(b64, "base64");
     const resp = await fetch(presignedUrl, {
       method: "PUT",
-      // @ts-ignore – node-fetch / native fetch both accept Buffer
+      // @ts-ignore – Node's Buffer is accepted by fetch as BodyInit
       body: buffer,
       headers: { "Content-Type": "image/png" },
     });
@@ -204,9 +182,9 @@ async function generateStoryImages(params: {
   }
 
   const [coverImagePath, illus1Path, illus2Path] = await Promise.all([
-    storeImage(coverResult.data[0]?.b64_json),
-    storeImage(illus1Result.data[0]?.b64_json),
-    storeImage(illus2Result.data[0]?.b64_json),
+    storeBuffer(coverBuffer),
+    storeBuffer(illus1Buffer),
+    storeBuffer(illus2Buffer),
   ]);
 
   return { coverImagePath, illustrationPaths: [illus1Path, illus2Path] };
