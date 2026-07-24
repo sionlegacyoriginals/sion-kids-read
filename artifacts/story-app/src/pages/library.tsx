@@ -1,15 +1,17 @@
 import { useState, useMemo } from "react";
 import { Link } from "wouter";
 import { useListStories, useGetStoryStats } from "@workspace/api-client-react";
-import { BookOpen, Search, Filter, Sparkles } from "lucide-react";
+import { BookOpen, Search, Filter, Sparkles, Package } from "lucide-react";
 import { format } from "date-fns";
+import { OrderDialog } from "@/components/order-dialog";
 
 export default function Library() {
   const { data: stories, isLoading: loadingStories } = useListStories();
-  const { data: stats, isLoading: loadingStats } = useGetStoryStats();
+  const { data: stats } = useGetStoryStats();
   
   const [search, setSearch] = useState("");
   const [themeFilter, setThemeFilter] = useState<string>("all");
+  const [orderingStoryId, setOrderingStoryId] = useState<number | null>(null);
 
   const filteredStories = useMemo(() => {
     if (!stories) return [];
@@ -23,6 +25,10 @@ export default function Library() {
 
   return (
     <div className="max-w-6xl mx-auto space-y-10 animate-in fade-in duration-500">
+      {orderingStoryId !== null && (
+        <OrderDialog storyId={orderingStoryId} onClose={() => setOrderingStoryId(null)} />
+      )}
+
       <div className="flex flex-col md:flex-row md:items-end justify-between gap-4">
         <div>
           <h1 className="text-4xl md:text-5xl font-serif text-foreground">Story Library</h1>
@@ -70,28 +76,39 @@ export default function Library() {
       ) : filteredStories.length > 0 ? (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
           {filteredStories.map(story => (
-            <Link key={story.id} href={`/stories/${story.id}`}>
-              <div className="group h-full flex flex-col p-6 rounded-3xl bg-card border border-border hover:border-primary/40 hover:shadow-md transition-all cursor-pointer relative overflow-hidden">
-                <div className="absolute top-0 right-0 w-32 h-32 bg-gradient-to-bl from-accent/10 to-transparent rounded-bl-full -mr-8 -mt-8 pointer-events-none transition-transform group-hover:scale-110"></div>
-                
+            <div key={story.id} className="group h-full flex flex-col rounded-3xl bg-card border border-border hover:border-primary/40 hover:shadow-md transition-all relative overflow-hidden">
+              <div className="absolute top-0 right-0 w-32 h-32 bg-gradient-to-bl from-accent/10 to-transparent rounded-bl-full -mr-8 -mt-8 pointer-events-none transition-transform group-hover:scale-110" />
+
+              <Link href={`/stories/${story.id}`} className="flex flex-col flex-1 p-6 cursor-pointer">
                 <div className="inline-block px-3 py-1 bg-accent/15 text-accent-foreground text-xs font-bold rounded-full w-fit mb-4">
                   {story.theme}
                 </div>
-                
+
                 <h3 className="text-2xl font-serif text-foreground font-bold mb-3 group-hover:text-primary transition-colors line-clamp-2 leading-tight">
                   {story.title}
                 </h3>
-                
+
                 <p className="text-muted-foreground line-clamp-3 mb-6 flex-1 text-base leading-relaxed">
                   {story.content}
                 </p>
-                
-                <div className="pt-4 border-t border-border/60 flex items-center justify-between text-sm font-medium">
+
+                <div className="flex items-center justify-between text-sm font-medium">
                   <span className="text-foreground bg-primary/10 px-2 py-1 rounded-md">For {story.childName}</span>
                   <span className="text-muted-foreground">{format(new Date(story.createdAt), 'MMM d, yyyy')}</span>
                 </div>
+              </Link>
+
+              {/* Order button — sits outside the Link so it doesn't navigate */}
+              <div className="px-6 pb-5 pt-0">
+                <button
+                  onClick={() => setOrderingStoryId(story.id)}
+                  className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl border border-primary/30 bg-primary/5 hover:bg-primary/10 hover:border-primary/50 text-primary text-sm font-bold transition-all"
+                >
+                  <Package className="w-4 h-4" />
+                  Order printed book — $25
+                </button>
               </div>
-            </Link>
+            </div>
           ))}
         </div>
       ) : (

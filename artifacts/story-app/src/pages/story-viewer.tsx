@@ -12,10 +12,10 @@ import {
 import { useQueryClient } from "@tanstack/react-query";
 import { format } from "date-fns";
 import {
-  Printer, Edit3, Sparkles, Trash2, ArrowLeft,
-  Save, X, BookHeart, Package, Loader2
+  Printer, BookHeart, Package, ArrowLeft
 } from "lucide-react";
 import { MagicLoader } from "@/components/magic-loader";
+import { OrderDialog } from "@/components/order-dialog";
 
 /** Convert a stored objectPath (/objects/...) to a serving URL */
 function toImageUrl(objectPath: string | null | undefined): string | null {
@@ -32,171 +32,6 @@ function parseIllustrations(illustrationUrls: string | null | undefined): string
   }
 }
 
-// ── Shipping form state ───────────────────────────────────────────────────────
-interface ShippingForm {
-  customerName: string;
-  customerEmail: string;
-  street1: string;
-  street2: string;
-  city: string;
-  state_code: string;
-  postcode: string;
-  country_code: string;
-}
-
-const EMPTY_SHIPPING: ShippingForm = {
-  customerName: "", customerEmail: "",
-  street1: "", street2: "",
-  city: "", state_code: "", postcode: "", country_code: "US",
-};
-
-// ── Order dialog ──────────────────────────────────────────────────────────────
-function OrderDialog({
-  storyId,
-  onClose,
-}: {
-  storyId: number;
-  onClose: () => void;
-}) {
-  const [form, setForm] = useState<ShippingForm>(EMPTY_SHIPPING);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-
-  const set = (key: keyof ShippingForm) =>
-    (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) =>
-      setForm(prev => ({ ...prev, [key]: e.target.value }));
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setLoading(true);
-    setError(null);
-    try {
-      const resp = await fetch("/api/checkout/print", {
-        method: "POST",
-        credentials: "include",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          storyId,
-          customerName: form.customerName,
-          customerEmail: form.customerEmail,
-          shippingAddress: {
-            name: form.customerName,
-            street1: form.street1,
-            street2: form.street2 || undefined,
-            city: form.city,
-            state_code: form.state_code,
-            postcode: form.postcode,
-            country_code: form.country_code,
-          },
-        }),
-      });
-      const data = await resp.json();
-      if (!resp.ok) throw new Error(data.error ?? "Checkout failed");
-      window.location.href = data.url;
-    } catch (err: any) {
-      setError(err.message);
-      setLoading(false);
-    }
-  };
-
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm animate-in fade-in">
-      <div className="bg-card w-full max-w-md rounded-3xl shadow-2xl border border-border overflow-hidden animate-in slide-in-from-bottom-4">
-        {/* Header */}
-        <div className="p-6 border-b border-border flex items-start justify-between">
-          <div>
-            <h2 className="font-serif font-bold text-xl text-foreground">Order Printed Book</h2>
-            <p className="text-sm text-muted-foreground mt-0.5">
-              6"×9" full-colour softcover · <strong className="text-foreground">$25</strong>
-            </p>
-          </div>
-          <button onClick={onClose} className="text-muted-foreground hover:text-foreground transition-colors">
-            <X className="w-5 h-5" />
-          </button>
-        </div>
-
-        <form onSubmit={handleSubmit} className="p-6 space-y-4 overflow-y-auto max-h-[70vh]">
-          <div className="grid grid-cols-2 gap-3">
-            <div className="col-span-2 space-y-1.5">
-              <label className="text-xs font-bold text-foreground">Full name</label>
-              <input required value={form.customerName} onChange={set("customerName")}
-                placeholder="Jane Smith"
-                className="w-full px-3 py-2 text-sm rounded-xl border border-border bg-background focus:outline-none focus:ring-2 focus:ring-primary/50" />
-            </div>
-            <div className="col-span-2 space-y-1.5">
-              <label className="text-xs font-bold text-foreground">Email</label>
-              <input required type="email" value={form.customerEmail} onChange={set("customerEmail")}
-                placeholder="you@example.com"
-                className="w-full px-3 py-2 text-sm rounded-xl border border-border bg-background focus:outline-none focus:ring-2 focus:ring-primary/50" />
-            </div>
-            <div className="col-span-2 space-y-1.5">
-              <label className="text-xs font-bold text-foreground">Street address</label>
-              <input required value={form.street1} onChange={set("street1")}
-                placeholder="123 Maple Street"
-                className="w-full px-3 py-2 text-sm rounded-xl border border-border bg-background focus:outline-none focus:ring-2 focus:ring-primary/50" />
-            </div>
-            <div className="col-span-2 space-y-1.5">
-              <label className="text-xs font-bold text-foreground">Apt / Suite <span className="font-normal text-muted-foreground">(optional)</span></label>
-              <input value={form.street2} onChange={set("street2")}
-                placeholder="Apt 4B"
-                className="w-full px-3 py-2 text-sm rounded-xl border border-border bg-background focus:outline-none focus:ring-2 focus:ring-primary/50" />
-            </div>
-            <div className="space-y-1.5">
-              <label className="text-xs font-bold text-foreground">City</label>
-              <input required value={form.city} onChange={set("city")}
-                placeholder="Austin"
-                className="w-full px-3 py-2 text-sm rounded-xl border border-border bg-background focus:outline-none focus:ring-2 focus:ring-primary/50" />
-            </div>
-            <div className="space-y-1.5">
-              <label className="text-xs font-bold text-foreground">State</label>
-              <input required value={form.state_code} onChange={set("state_code")}
-                placeholder="TX"
-                className="w-full px-3 py-2 text-sm rounded-xl border border-border bg-background focus:outline-none focus:ring-2 focus:ring-primary/50" />
-            </div>
-            <div className="space-y-1.5">
-              <label className="text-xs font-bold text-foreground">ZIP / Postcode</label>
-              <input required value={form.postcode} onChange={set("postcode")}
-                placeholder="78701"
-                className="w-full px-3 py-2 text-sm rounded-xl border border-border bg-background focus:outline-none focus:ring-2 focus:ring-primary/50" />
-            </div>
-            <div className="space-y-1.5">
-              <label className="text-xs font-bold text-foreground">Country</label>
-              <select value={form.country_code} onChange={set("country_code")}
-                className="w-full px-3 py-2 text-sm rounded-xl border border-border bg-background focus:outline-none focus:ring-2 focus:ring-primary/50">
-                <option value="US">United States</option>
-                <option value="GB">United Kingdom</option>
-                <option value="CA">Canada</option>
-                <option value="AU">Australia</option>
-                <option value="NZ">New Zealand</option>
-                <option value="IE">Ireland</option>
-                <option value="ZA">South Africa</option>
-              </select>
-            </div>
-          </div>
-
-          {error && <p className="text-red-600 text-sm text-center">{error}</p>}
-
-          <button
-            type="submit"
-            disabled={loading}
-            className="w-full py-3.5 bg-primary text-white font-bold rounded-xl hover:bg-primary/90 transition-all flex items-center justify-center gap-2 disabled:opacity-60"
-          >
-            {loading ? (
-              <><Loader2 className="w-4 h-4 animate-spin" /> Redirecting to checkout…</>
-            ) : (
-              <><Package className="w-4 h-4" /> Pay $25 &amp; order →</>
-            )}
-          </button>
-          <p className="text-[11px] text-center text-muted-foreground">
-            Secure checkout via Stripe · Printed &amp; shipped by Lulu Direct · Usually ships in 3–5 business days
-          </p>
-        </form>
-      </div>
-    </div>
-  );
-}
-
-// ── Main page ─────────────────────────────────────────────────────────────────
 export default function StoryViewer() {
   const [, params] = useRoute("/stories/:id");
   const [, setLocation] = useLocation();
@@ -205,48 +40,12 @@ export default function StoryViewer() {
 
   const { data: story, isLoading } = useGetStory(id!, { query: { enabled: !!id, queryKey: getGetStoryQueryKey(id!) } });
   
-  const updateStory = useUpdateStory();
   const deleteStory = useDeleteStory();
   const regenerateStory = useRegenerateStory();
 
-  const [isEditing, setIsEditing] = useState(false);
-  const [editTitle, setEditTitle] = useState("");
-  const [editContent, setEditContent] = useState("");
   const [showOrderDialog, setShowOrderDialog] = useState(false);
 
-  const handleEditInit = useCallback(() => {
-    if (story) {
-      setEditTitle(story.title);
-      setEditContent(story.content);
-      setIsEditing(true);
-    }
-  }, [story]);
-
-  const handleSave = () => {
-    if (!id) return;
-    updateStory.mutate({
-      id,
-      data: { title: editTitle, content: editContent }
-    }, {
-      onSuccess: (data) => {
-        setIsEditing(false);
-        queryClient.setQueryData(getGetStoryQueryKey(id), data);
-        queryClient.invalidateQueries({ queryKey: getGetRecentStoriesQueryKey() });
-        queryClient.invalidateQueries({ queryKey: getListStoriesQueryKey() });
-      }
-    });
-  };
-
-  const handleRegenerate = () => {
-    if (!id) return;
-    regenerateStory.mutate({ id }, {
-      onSuccess: (data) => {
-        queryClient.setQueryData(getGetStoryQueryKey(id), data);
-      }
-    });
-  };
-
-  const handleDelete = () => {
+  const handleDelete = useCallback(() => {
     if (!id || !confirm("Are you sure you want to delete this story?")) return;
     deleteStory.mutate({ id }, {
       onSuccess: () => {
@@ -255,11 +54,16 @@ export default function StoryViewer() {
         setLocation("/stories");
       }
     });
-  };
+  }, [id, deleteStory, queryClient, setLocation]);
 
-  const handlePrint = () => {
-    window.print();
-  };
+  const handleRegenerate = useCallback(() => {
+    if (!id) return;
+    regenerateStory.mutate({ id }, {
+      onSuccess: (data) => {
+        queryClient.setQueryData(getGetStoryQueryKey(id), data);
+      }
+    });
+  }, [id, regenerateStory, queryClient]);
 
   if (isLoading || !story) {
     return <div className="py-20 flex justify-center"><div className="animate-pulse w-12 h-12 bg-primary/20 rounded-full" /></div>;
@@ -278,14 +82,32 @@ export default function StoryViewer() {
   if (illustrations[1]) ILLUS_AFTER[3] = illustrations[1];
 
   return (
-    <div className="max-w-3xl mx-auto pb-24 animate-in fade-in duration-500">
+    <div className="max-w-3xl mx-auto pb-16 animate-in fade-in duration-500">
       {showOrderDialog && id && (
         <OrderDialog storyId={id} onClose={() => setShowOrderDialog(false)} />
       )}
 
-      <Link href="/stories" className="no-print inline-flex items-center gap-2 text-muted-foreground hover:text-foreground font-bold mb-8 transition-colors">
-        <ArrowLeft className="w-5 h-5" /> Back to Library
-      </Link>
+      {/* Top nav row */}
+      <div className="no-print flex items-center justify-between mb-8">
+        <Link href="/stories" className="inline-flex items-center gap-2 text-muted-foreground hover:text-foreground font-bold transition-colors">
+          <ArrowLeft className="w-5 h-5" /> Back to Library
+        </Link>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => window.print()}
+            className="inline-flex items-center gap-2 px-4 py-2 rounded-xl border border-border text-sm font-semibold text-muted-foreground hover:text-foreground hover:border-foreground/30 transition-all"
+            title="Save as PDF"
+          >
+            <Printer className="w-4 h-4" /> Save to device
+          </button>
+          <button
+            onClick={() => setShowOrderDialog(true)}
+            className="inline-flex items-center gap-2 px-5 py-2 rounded-xl bg-primary text-white text-sm font-bold hover:bg-primary/90 transition-all shadow-sm"
+          >
+            <Package className="w-4 h-4" /> Order printed book — $25
+          </button>
+        </div>
+      </div>
 
       <div className="bg-card shadow-sm border border-border/60 rounded-[2.5rem] overflow-hidden">
         {/* Cover image */}
@@ -298,11 +120,9 @@ export default function StoryViewer() {
                 <BookHeart className="w-3.5 h-3.5" />
                 {story.theme}
               </span>
-              {!isEditing && (
-                <h1 className="text-3xl md:text-5xl lg:text-6xl font-serif font-bold leading-[1.1] text-balance drop-shadow-lg">
-                  {story.title}
-                </h1>
-              )}
+              <h1 className="text-3xl md:text-5xl lg:text-6xl font-serif font-bold leading-[1.1] text-balance drop-shadow-lg">
+                {story.title}
+              </h1>
             </div>
           </div>
         )}
@@ -314,23 +134,16 @@ export default function StoryViewer() {
           
           <div className="relative z-10 flex flex-col items-center">
             {!coverUrl && (
-              <span className="inline-flex items-center gap-1.5 px-4 py-1.5 bg-background border border-border text-foreground text-sm font-bold rounded-full mb-8 shadow-sm">
-                <BookHeart className="w-4 h-4 text-accent" />
-                {story.theme}
-              </span>
+              <>
+                <span className="inline-flex items-center gap-1.5 px-4 py-1.5 bg-background border border-border text-foreground text-sm font-bold rounded-full mb-8 shadow-sm">
+                  <BookHeart className="w-4 h-4 text-accent" />
+                  {story.theme}
+                </span>
+                <h1 className="text-4xl md:text-5xl lg:text-6xl font-serif font-bold text-foreground mb-8 leading-[1.1] story-title text-balance">
+                  {story.title}
+                </h1>
+              </>
             )}
-            
-            {isEditing ? (
-              <input 
-                value={editTitle}
-                onChange={e => setEditTitle(e.target.value)}
-                className="w-full text-center text-4xl md:text-5xl font-serif font-bold text-foreground bg-white/50 border-b-2 border-primary focus:outline-none mb-6 px-4 py-2 rounded-t-lg"
-              />
-            ) : !coverUrl ? (
-              <h1 className="text-4xl md:text-5xl lg:text-6xl font-serif font-bold text-foreground mb-8 leading-[1.1] story-title text-balance">
-                {story.title}
-              </h1>
-            ) : null}
 
             <div className="text-muted-foreground font-medium flex items-center justify-center gap-2 flex-wrap text-base">
               <span>For <strong className="text-foreground bg-primary/10 px-2 py-0.5 rounded-md">{story.childName}</strong>, Age {story.childAge}</span>
@@ -342,79 +155,37 @@ export default function StoryViewer() {
 
         {/* Content */}
         <div className="p-8 md:p-16">
-          {isEditing ? (
-            <textarea
-              value={editContent}
-              onChange={e => setEditContent(e.target.value)}
-              className="w-full min-h-[500px] text-lg leading-relaxed bg-background/50 border border-border rounded-xl p-6 focus:outline-none focus:ring-2 focus:ring-primary/50 resize-y font-serif"
-            />
-          ) : (
-            <div className="prose prose-lg md:prose-xl max-w-none prose-p:font-serif prose-p:leading-[1.9] prose-p:text-foreground/90 prose-p:mb-6 story-content">
-              {paragraphs.map((paragraph, i) => (
-                <div key={i}>
-                  <p>{paragraph}</p>
-                  {ILLUS_AFTER[i] && (
-                    <div className="my-8 rounded-2xl overflow-hidden shadow-md not-prose">
-                      <img
-                        src={ILLUS_AFTER[i]}
-                        alt={`Illustration ${Object.keys(ILLUS_AFTER).indexOf(String(i)) + 1}`}
-                        className="w-full object-cover"
-                      />
-                    </div>
-                  )}
-                </div>
-              ))}
-            </div>
-          )}
+          <div className="prose prose-lg md:prose-xl max-w-none prose-p:font-serif prose-p:leading-[1.9] prose-p:text-foreground/90 prose-p:mb-6 story-content">
+            {paragraphs.map((paragraph, i) => (
+              <div key={i}>
+                <p>{paragraph}</p>
+                {ILLUS_AFTER[i] && (
+                  <div className="my-8 rounded-2xl overflow-hidden shadow-md not-prose">
+                    <img
+                      src={ILLUS_AFTER[i]}
+                      alt={`Illustration ${Object.keys(ILLUS_AFTER).indexOf(String(i)) + 1}`}
+                      className="w-full object-cover"
+                    />
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
         </div>
-      </div>
 
-      {/* Floating Action Bar */}
-      <div className="no-print fixed bottom-8 left-1/2 -translate-x-1/2 bg-foreground/95 backdrop-blur-md text-background px-4 py-3 rounded-full shadow-2xl flex items-center gap-2 animate-in slide-in-from-bottom-8 z-40">
-        {isEditing ? (
-          <>
-            <button onClick={() => setIsEditing(false)}
-              className="flex items-center gap-2 px-4 py-2 hover:bg-white/10 rounded-full transition-colors font-bold text-sm">
-              <X className="w-4 h-4" /> Cancel
-            </button>
-            <button onClick={handleSave} disabled={updateStory.isPending}
-              className="flex items-center gap-2 px-6 py-2 bg-primary text-primary-foreground hover:bg-primary/90 rounded-full transition-colors font-bold shadow-sm">
-              <Save className="w-4 h-4" /> Save
-            </button>
-          </>
-        ) : (
-          <>
-            <button onClick={handlePrint}
-              className="flex items-center gap-2 px-4 py-2 hover:bg-white/10 rounded-full transition-colors font-bold text-sm text-white/90 hover:text-white"
-              title="Print / PDF">
-              <Printer className="w-4 h-4" /> <span className="hidden sm:inline">Print</span>
-            </button>
-            <div className="w-px h-6 bg-white/20" />
-            {/* ── Order Printed Book ── */}
-            <button
-              onClick={() => setShowOrderDialog(true)}
-              className="flex items-center gap-2 px-4 py-2 bg-primary/20 hover:bg-primary/30 rounded-full transition-colors font-bold text-sm text-primary"
-              title="Order a printed copy"
-            >
-              <Package className="w-4 h-4" /> <span className="hidden sm:inline">Order Book</span>
-            </button>
-            <div className="w-px h-6 bg-white/20" />
-            <button onClick={handleEditInit}
-              className="flex items-center gap-2 px-4 py-2 hover:bg-white/10 rounded-full transition-colors font-bold text-sm text-white/90 hover:text-white">
-              <Edit3 className="w-4 h-4" /> <span className="hidden sm:inline">Edit</span>
-            </button>
-            <div className="w-px h-6 bg-white/20" />
-            <button onClick={handleRegenerate}
-              className="flex items-center gap-2 px-4 py-2 hover:bg-white/10 rounded-full transition-colors font-bold text-sm text-primary hover:text-primary/80">
-              <Sparkles className="w-4 h-4" /> <span className="hidden sm:inline">Regenerate</span>
-            </button>
-            <div className="w-px h-6 bg-white/20" />
-            <button onClick={handleDelete} disabled={deleteStory.isPending}
-              className="flex items-center gap-2 px-4 py-2 hover:bg-red-500/20 rounded-full transition-colors font-bold text-sm text-red-400 hover:text-red-300">
-              <Trash2 className="w-4 h-4" /> <span className="hidden md:inline">Delete</span>
-            </button>
-          </>
-        )}
+        {/* Bottom CTA */}
+        <div className="no-print border-t border-border/50 p-8 flex flex-col sm:flex-row items-center justify-between gap-4 bg-muted/20">
+          <div>
+            <p className="font-serif font-bold text-foreground">Turn this story into a real book</p>
+            <p className="text-sm text-muted-foreground">6"×9" full-colour softcover, printed &amp; shipped by Lulu Direct</p>
+          </div>
+          <button
+            onClick={() => setShowOrderDialog(true)}
+            className="shrink-0 inline-flex items-center gap-2 px-6 py-3 rounded-xl bg-primary text-white font-bold hover:bg-primary/90 transition-all shadow-sm"
+          >
+            <Package className="w-4 h-4" /> Order printed book — $25
+          </button>
+        </div>
       </div>
     </div>
   );
