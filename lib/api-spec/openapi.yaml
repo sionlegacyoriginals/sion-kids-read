@@ -238,6 +238,8 @@ components:
           type: string
         customPrompt:
           type: ["string", "null"]
+        bibleVerse:
+          type: ["string", "null"]
         title:
           type: string
         content:
@@ -274,6 +276,9 @@ components:
         customPrompt:
           type: string
           description: Custom topic or plot prompt
+        bibleVerse:
+          type: string
+          description: '"auto" to let AI choose a fitting verse, or a specific verse reference/text'
 
     StoryUpdate:
       type: object
@@ -293,6 +298,8 @@ components:
         theme:
           type: string
         customPrompt:
+          type: string
+        bibleVerse:
           type: string
 
     StoryStats:

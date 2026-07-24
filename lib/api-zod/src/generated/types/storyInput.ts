@@ -22,4 +22,6 @@ export interface StoryInput {
   theme: StoryInputTheme;
   /** Custom topic or plot prompt */
   customPrompt?: string;
+  /** "auto" to let AI choose a fitting verse, or a specific verse reference/text */
+  bibleVerse?: string;
 }

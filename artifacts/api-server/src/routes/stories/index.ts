@@ -41,13 +41,12 @@ function buildStoryPrompt(params: {
   milestones?: string | null;
   theme: string;
   customPrompt?: string | null;
+  bibleVerse?: string | null;
 }): string {
   const pronouns =
     params.childGender === "boy"
       ? { subject: "he", object: "him", possessive: "his" }
-      : params.childGender === "girl"
-        ? { subject: "she", object: "her", possessive: "her" }
-        : { subject: "they", object: "them", possessive: "their" };
+      : { subject: "she", object: "her", possessive: "her" };
 
   const milestonesLine = params.milestones
     ? `Include these personal details naturally in the story: ${params.milestones}.`
@@ -57,12 +56,20 @@ function buildStoryPrompt(params: {
     ? `Custom plot direction: ${params.customPrompt}.`
     : "";
 
+  const bibleLine =
+    params.bibleVerse === "auto"
+      ? `Weave one fitting Bible verse into the story naturally — choose a verse that powerfully reinforces the theme of ${params.theme}. Quote it exactly (with book, chapter, and verse reference) at the moment in the story where it feels most meaningful, as if a wise character says it or a narrator gently reflects on it.`
+      : params.bibleVerse
+        ? `Weave this Bible verse into the story naturally: "${params.bibleVerse}". Quote it at the moment where it feels most meaningful, as if a wise character says it or a narrator gently reflects on it.`
+        : "";
+
   return `You are a master children's story author. Write a warm, wholesome, age-appropriate children's story for a ${params.childAge}-year-old child named ${params.childName}.
 
 Theme/value to reinforce: ${params.theme}
 
 ${milestonesLine}
 ${customLine}
+${bibleLine}
 
 Requirements:
 - The story should be engaging, imaginative, and age-appropriate for a ${params.childAge}-year-old.
@@ -83,6 +90,7 @@ async function generateStory(params: {
   milestones?: string | null;
   theme: string;
   customPrompt?: string | null;
+  bibleVerse?: string | null;
 }): Promise<{ title: string; content: string }> {
   const prompt = buildStoryPrompt(params);
 
@@ -121,7 +129,7 @@ router.post("/stories", async (req, res): Promise<void> => {
     return;
   }
 
-  const { childName, childAge, childGender, milestones, theme, customPrompt } =
+  const { childName, childAge, childGender, milestones, theme, customPrompt, bibleVerse } =
     parsed.data;
 
   const { title, content } = await generateStory({
@@ -131,6 +139,7 @@ router.post("/stories", async (req, res): Promise<void> => {
     milestones,
     theme,
     customPrompt,
+    bibleVerse,
   });
 
   const [story] = await db
@@ -142,6 +151,7 @@ router.post("/stories", async (req, res): Promise<void> => {
       milestones: milestones ?? null,
       theme,
       customPrompt: customPrompt ?? null,
+      bibleVerse: bibleVerse ?? null,
       title,
       content,
     })
@@ -295,6 +305,7 @@ router.post("/stories/:id/regenerate", async (req, res): Promise<void> => {
     milestones: existing.milestones,
     theme: existing.theme,
     customPrompt: existing.customPrompt,
+    bibleVerse: existing.bibleVerse,
   });
 
   const [story] = await db

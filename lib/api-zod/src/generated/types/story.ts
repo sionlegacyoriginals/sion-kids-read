@@ -16,6 +16,8 @@ export interface Story {
   theme: string;
   /** @nullable */
   customPrompt?: string | null;
+  /** @nullable */
+  bibleVerse?: string | null;
   title: string;
   content: string;
   createdAt: string;

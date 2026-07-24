@@ -15,4 +15,5 @@ export interface StoryUpdate {
   milestones?: string;
   theme?: string;
   customPrompt?: string;
+  bibleVerse?: string;
 }

@@ -1,6 +1,7 @@
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
+import { useState } from "react";
 import { useLocation, Link } from "wouter";
 import { 
   useCreateStory, 
@@ -11,7 +12,7 @@ import {
 } from "@workspace/api-client-react";
 import { useQueryClient } from "@tanstack/react-query";
 import { MagicLoader } from "@/components/magic-loader";
-import { BookOpen, ArrowRight, Sparkles, Feather } from "lucide-react";
+import { BookOpen, ArrowRight, Sparkles, Feather, BookMarked } from "lucide-react";
 import { format } from "date-fns";
 
 const THEMES = [
@@ -37,6 +38,10 @@ export default function Home() {
   const createStory = useCreateStory();
   const { data: recentStories, isLoading: loadingRecent } = useGetRecentStories();
 
+  const [includeBibleVerse, setIncludeBibleVerse] = useState(false);
+  const [bibleVerseMode, setBibleVerseMode] = useState<"auto" | "custom">("auto");
+  const [customVerse, setCustomVerse] = useState("");
+
   const { register, handleSubmit, formState: { errors } } = useForm<StoryFormValues>({
     resolver: zodResolver(storySchema),
     defaultValues: {
@@ -50,6 +55,12 @@ export default function Home() {
   });
 
   const onSubmit = (data: StoryFormValues) => {
+    const bibleVerse = !includeBibleVerse
+      ? undefined
+      : bibleVerseMode === "auto"
+        ? "auto"
+        : customVerse.trim() || undefined;
+
     createStory.mutate({
       data: {
         childName: data.childName,
@@ -57,7 +68,8 @@ export default function Home() {
         childGender: data.childGender,
         theme: data.theme as any,
         milestones: data.milestones,
-        customPrompt: data.customPrompt
+        customPrompt: data.customPrompt,
+        bibleVerse,
       }
     }, {
       onSuccess: (story) => {
@@ -154,6 +166,68 @@ export default function Home() {
                 placeholder="A specific plot, e.g. discovering a hidden treehouse in the backyard..."
                 className="w-full px-4 py-3 rounded-xl border border-border bg-background focus:outline-none focus:ring-2 focus:ring-primary/50 transition-shadow min-h-[100px] resize-y placeholder:text-muted-foreground/60"
               />
+            </div>
+
+            {/* Bible Verse Section */}
+            <div className="space-y-3">
+              <button
+                type="button"
+                onClick={() => setIncludeBibleVerse(v => !v)}
+                className={`w-full flex items-center justify-between px-4 py-3 rounded-xl border transition-all ${
+                  includeBibleVerse
+                    ? "border-primary/50 bg-primary/5 text-primary"
+                    : "border-border bg-background text-muted-foreground hover:border-primary/30 hover:text-foreground"
+                }`}
+              >
+                <span className="flex items-center gap-2 font-bold text-sm">
+                  <BookMarked className="w-4 h-4" />
+                  Include a Bible Verse
+                </span>
+                <span className={`w-9 h-5 rounded-full flex items-center transition-colors px-0.5 ${includeBibleVerse ? "bg-primary" : "bg-border"}`}>
+                  <span className={`w-4 h-4 rounded-full bg-white shadow-sm transition-transform ${includeBibleVerse ? "translate-x-4" : "translate-x-0"}`} />
+                </span>
+              </button>
+
+              {includeBibleVerse && (
+                <div className="bg-primary/5 border border-primary/20 rounded-xl p-4 space-y-3 animate-in fade-in slide-in-from-top-1 duration-200">
+                  <div className="flex gap-3">
+                    <button
+                      type="button"
+                      onClick={() => setBibleVerseMode("auto")}
+                      className={`flex-1 py-2 px-3 rounded-lg text-sm font-bold border transition-all ${
+                        bibleVerseMode === "auto"
+                          ? "bg-primary text-primary-foreground border-primary"
+                          : "border-border bg-background text-muted-foreground hover:border-primary/40"
+                      }`}
+                    >
+                      ✨ Let AI choose
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setBibleVerseMode("custom")}
+                      className={`flex-1 py-2 px-3 rounded-lg text-sm font-bold border transition-all ${
+                        bibleVerseMode === "custom"
+                          ? "bg-primary text-primary-foreground border-primary"
+                          : "border-border bg-background text-muted-foreground hover:border-primary/40"
+                      }`}
+                    >
+                      📖 I have one in mind
+                    </button>
+                  </div>
+
+                  {bibleVerseMode === "auto" ? (
+                    <p className="text-xs text-muted-foreground">AI will weave in a fitting verse that matches the story's theme.</p>
+                  ) : (
+                    <input
+                      type="text"
+                      value={customVerse}
+                      onChange={e => setCustomVerse(e.target.value)}
+                      placeholder='e.g. "John 3:16" or paste the verse text'
+                      className="w-full px-4 py-3 rounded-xl border border-border bg-background focus:outline-none focus:ring-2 focus:ring-primary/50 transition-shadow text-sm"
+                    />
+                  )}
+                </div>
+              )}
             </div>
 
             <button 

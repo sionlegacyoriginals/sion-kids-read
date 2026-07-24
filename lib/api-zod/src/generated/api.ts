@@ -28,6 +28,7 @@ export const ListStoriesResponseItem = zod.object({
   "milestones": zod.string().nullish(),
   "theme": zod.string(),
   "customPrompt": zod.string().nullish(),
+  "bibleVerse": zod.string().nullish(),
   "title": zod.string(),
   "content": zod.string(),
   "createdAt": zod.string(),
@@ -50,7 +51,8 @@ export const CreateStoryBody = zod.object({
   "childGender": zod.enum(['boy', 'girl', 'neutral']),
   "milestones": zod.string().optional().describe('Details like favorite toys, pets, recent trips'),
   "theme": zod.enum(['Courage', 'Kindness', 'Overcoming Fear', 'Faith', 'Friendship', 'Honesty', 'Perseverance', 'Gratitude']),
-  "customPrompt": zod.string().optional().describe('Custom topic or plot prompt')
+  "customPrompt": zod.string().optional().describe('Custom topic or plot prompt'),
+  "bibleVerse": zod.string().optional().describe('\"auto\" to let AI choose a fitting verse, or a specific verse reference\/text')
 })
 
 export const CreateStoryResponse = zod.object({
@@ -61,6 +63,7 @@ export const CreateStoryResponse = zod.object({
   "milestones": zod.string().nullish(),
   "theme": zod.string(),
   "customPrompt": zod.string().nullish(),
+  "bibleVerse": zod.string().nullish(),
   "title": zod.string(),
   "content": zod.string(),
   "createdAt": zod.string(),
@@ -92,6 +95,7 @@ export const GetRecentStoriesResponseItem = zod.object({
   "milestones": zod.string().nullish(),
   "theme": zod.string(),
   "customPrompt": zod.string().nullish(),
+  "bibleVerse": zod.string().nullish(),
   "title": zod.string(),
   "content": zod.string(),
   "createdAt": zod.string(),
@@ -115,6 +119,7 @@ export const GetStoryResponse = zod.object({
   "milestones": zod.string().nullish(),
   "theme": zod.string(),
   "customPrompt": zod.string().nullish(),
+  "bibleVerse": zod.string().nullish(),
   "title": zod.string(),
   "content": zod.string(),
   "createdAt": zod.string(),
@@ -137,7 +142,8 @@ export const UpdateStoryBody = zod.object({
   "childGender": zod.string().optional(),
   "milestones": zod.string().optional(),
   "theme": zod.string().optional(),
-  "customPrompt": zod.string().optional()
+  "customPrompt": zod.string().optional(),
+  "bibleVerse": zod.string().optional()
 })
 
 export const UpdateStoryResponse = zod.object({
@@ -148,6 +154,7 @@ export const UpdateStoryResponse = zod.object({
   "milestones": zod.string().nullish(),
   "theme": zod.string(),
   "customPrompt": zod.string().nullish(),
+  "bibleVerse": zod.string().nullish(),
   "title": zod.string(),
   "content": zod.string(),
   "createdAt": zod.string(),
@@ -180,6 +187,7 @@ export const RegenerateStoryResponse = zod.object({
   "milestones": zod.string().nullish(),
   "theme": zod.string(),
   "customPrompt": zod.string().nullish(),
+  "bibleVerse": zod.string().nullish(),
   "title": zod.string(),
   "content": zod.string(),
   "createdAt": zod.string(),

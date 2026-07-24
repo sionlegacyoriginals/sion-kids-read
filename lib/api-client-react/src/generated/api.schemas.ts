@@ -23,6 +23,8 @@ export interface Story {
   theme: string;
   /** @nullable */
   customPrompt?: string | null;
+  /** @nullable */
+  bibleVerse?: string | null;
   title: string;
   content: string;
   createdAt: string;
@@ -66,6 +68,8 @@ export interface StoryInput {
   theme: StoryInputTheme;
   /** Custom topic or plot prompt */
   customPrompt?: string;
+  /** "auto" to let AI choose a fitting verse, or a specific verse reference/text */
+  bibleVerse?: string;
 }
 
 export interface StoryUpdate {
@@ -77,6 +81,7 @@ export interface StoryUpdate {
   milestones?: string;
   theme?: string;
   customPrompt?: string;
+  bibleVerse?: string;
 }
 
 export interface ThemeCount {

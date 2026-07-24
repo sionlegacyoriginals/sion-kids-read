@@ -10,6 +10,7 @@ export const storiesTable = pgTable("stories", {
   milestones: text("milestones"),
   theme: text("theme").notNull(),
   customPrompt: text("custom_prompt"),
+  bibleVerse: text("bible_verse"),
   title: text("title").notNull(),
   content: text("content").notNull(),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
