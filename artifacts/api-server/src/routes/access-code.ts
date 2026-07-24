@@ -25,11 +25,17 @@ router.post("/access-code/redeem", requireAuth, async (req: any, res): Promise<v
   }
 
   const normalized = code.trim().toUpperCase();
-  const valid = getValidCodes();
 
-  if (!valid.has(normalized)) {
-    res.status(400).json({ error: "Invalid access code" });
-    return;
+  // Master test code — checked against MASTER_TEST_CODE env secret (case-insensitive)
+  const masterCode = (process.env.MASTER_TEST_CODE ?? "").trim().toUpperCase();
+  const isMaster = masterCode.length > 0 && normalized === masterCode;
+
+  if (!isMaster) {
+    const valid = getValidCodes();
+    if (!valid.has(normalized)) {
+      res.status(400).json({ error: "Invalid access code" });
+      return;
+    }
   }
 
   // Provision user row if not yet created
