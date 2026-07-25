@@ -56,7 +56,7 @@ const THEMES = [
 
 const storySchema = z.object({
   childName: z.string().min(1, "Child's name is required"),
-  childAge: z.coerce.number().min(1, "Must be at least 1").max(18, "Must be 18 or younger"),
+  childAge: z.coerce.number().min(1, "Must be at least 1"),
   childGender: z.enum(['boy', 'girl']),
   theme: z.enum(THEMES),
   milestones: z.string().optional(),
@@ -281,7 +281,7 @@ export default function Home() {
       <div className="lg:col-span-2 space-y-8">
         <div>
           <h1 className="text-4xl md:text-5xl font-serif text-foreground mb-4">Create a New Tale</h1>
-          <p className="text-lg text-muted-foreground">Fill in the details below to generate a unique, personalized bedtime story.</p>
+          <p className="text-lg text-muted-foreground">Fill in the details below to generate a unique, personalized story — for any age.</p>
         </div>
 
         <div className="bg-card border border-border/50 rounded-3xl p-6 md:p-8 shadow-sm relative overflow-hidden">
@@ -290,10 +290,10 @@ export default function Home() {
           <form onSubmit={handleSubmit(onSubmit)} className="space-y-6 relative z-10">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div className="space-y-2">
-                <label className="text-sm font-bold text-foreground">Child's Name</label>
+                <label className="text-sm font-bold text-foreground">Who is this story about?</label>
                 <input 
                   {...register("childName")} 
-                  placeholder="e.g. Leo"
+                  placeholder="e.g. Leo, Grandma Rose, Marcus"
                   className="w-full px-4 py-3 rounded-xl border border-border bg-background focus:outline-none focus:ring-2 focus:ring-primary/50 transition-shadow"
                 />
                 {errors.childName && <p className="text-destructive text-sm font-medium">{errors.childName.message}</p>}
@@ -303,7 +303,8 @@ export default function Home() {
                 <label className="text-sm font-bold text-foreground">Age</label>
                 <input 
                   type="number"
-                  {...register("childAge")} 
+                  {...register("childAge")}
+                  placeholder="Any age"
                   className="w-full px-4 py-3 rounded-xl border border-border bg-background focus:outline-none focus:ring-2 focus:ring-primary/50 transition-shadow"
                 />
                 {errors.childAge && <p className="text-destructive text-sm font-medium">{errors.childAge.message}</p>}

@@ -12,17 +12,17 @@ export default function Landing() {
 
         <div className="max-w-3xl mx-auto">
           <span className="inline-flex items-center gap-2 px-4 py-1.5 bg-primary/10 text-primary font-bold text-sm rounded-full mb-6">
-            <Sparkles className="w-4 h-4" /> AI-Powered Children's Stories
+            <Sparkles className="w-4 h-4" /> AI-Powered Personalized Stories
           </span>
 
           <h1 className="text-5xl md:text-7xl font-serif font-bold text-foreground leading-[1.05] mb-6">
-            Bedtime stories <br />
-            <span className="text-primary">made for your child</span>
+            Stories made for <br />
+            <span className="text-primary">anyone, at any age</span>
           </h1>
 
           <p className="text-xl text-muted-foreground max-w-xl mx-auto mb-10 leading-relaxed">
-            Generate personalized, beautifully illustrated children's stories in seconds.
-            Upload a photo, pick a theme, and watch the magic unfold.
+            Generate beautifully illustrated, personalized stories starring anyone — children, teens, adults, grandparents.
+            Pick a theme, add a photo, and watch the magic unfold.
           </p>
 
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
@@ -48,7 +48,7 @@ export default function Landing() {
       <section className="py-20 px-4 bg-card/50">
         <div className="max-w-5xl mx-auto">
           <h2 className="text-3xl md:text-4xl font-serif font-bold text-center text-foreground mb-14">
-            Everything your little one deserves
+            A story as unique as the person in it
           </h2>
           <div className="grid md:grid-cols-3 gap-8">
             {[
@@ -56,13 +56,13 @@ export default function Landing() {
                 icon: BookHeart,
                 title: "Fully personalized",
                 description:
-                  "Stories star your child by name, age, and personality. Add milestones, special memories, or a Bible verse.",
+                  "Stories star anyone by name, age, and personality — kids, teens, adults, even grandparents. Add milestones, memories, or a Bible verse.",
               },
               {
                 icon: Sparkles,
                 title: "AI illustrations",
                 description:
-                  "Upload a reference photo and our AI paints a custom cover and two interior illustrations that look like your child.",
+                  "Upload a reference photo and our AI paints a custom cover and two interior illustrations tailored to your story.",
               },
               {
                 icon: Printer,

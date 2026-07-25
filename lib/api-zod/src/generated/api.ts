@@ -44,7 +44,7 @@ export const ListStoriesResponse = zod.array(ListStoriesResponseItem)
  * @summary Create and generate a new story
  */
 
-export const createStoryBodyChildAgeMax = 12;
+export const createStoryBodyChildAgeMax = 999;
 
 
 
@@ -53,7 +53,7 @@ export const CreateStoryBody = zod.object({
   "childAge": zod.number().min(1).max(createStoryBodyChildAgeMax),
   "childGender": zod.enum(['boy', 'girl']),
   "milestones": zod.string().optional().describe('Details like favorite toys, pets, recent trips'),
-  "theme": zod.enum(['Courage', 'Kindness', 'Overcoming Fear', 'Faith', 'Friendship', 'Honesty', 'Perseverance', 'Gratitude']),
+  "theme": zod.enum(['Courage', 'Kindness', 'Overcoming Fear', 'Faith', 'Friendship', 'Honesty', 'Perseverance', 'Gratitude', 'Forgiveness', 'Compassion', 'Patience', 'Generosity', 'Humility', 'Loyalty', 'Joy', 'Hope', 'Love', 'Self-Control', 'Trustworthiness', 'Responsibility', 'Creativity', 'Curiosity', 'Adventure', 'Teamwork', 'Respect', 'Empathy', 'Sharing', 'Diligence', 'Contentment', 'Bravery', 'Wisdom', 'Acceptance', 'Thankfulness', 'Service', 'Peacemaking', 'Integrity', 'Helpfulness', 'Wonder', 'Kindergarten Graduation', 'Middle School Graduation', 'High School Graduation', 'First Day of Kindergarten', 'First Day of 1st Grade', 'First Day of 2nd Grade', 'First Day of 3rd Grade', 'First Day of 4th Grade', 'First Day of 5th Grade', 'First Day of 6th Grade', 'First Day of 7th Grade', 'First Day of 8th Grade', 'First Day of 9th Grade', 'First Day of 10th Grade', 'First Day of 11th Grade', 'First Day of 12th Grade', 'Congratulations']),
   "customPrompt": zod.string().optional().describe('Custom topic or plot prompt'),
   "bibleVerse": zod.string().optional().describe('\"auto\" to let AI choose a fitting verse, or a specific verse reference\/text'),
   "referenceImagePaths": zod.string().optional().describe('JSON array of uploaded reference image object paths')

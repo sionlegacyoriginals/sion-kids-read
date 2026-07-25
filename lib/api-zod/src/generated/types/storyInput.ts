@@ -11,10 +11,7 @@ import type { StoryInputTheme } from './storyInputTheme';
 export interface StoryInput {
   /** @minLength 1 */
   childName: string;
-  /**
-     * @minimum 1
-     * @maximum 18
-     */
+  /** @minimum 1 */
   childAge: number;
   childGender: StoryInputChildGender;
   /** Details like favorite toys, pets, recent trips */
