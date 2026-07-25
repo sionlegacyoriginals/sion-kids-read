@@ -28,7 +28,7 @@ export default function Landing() {
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
             <Link href="/sign-up">
               <button className="px-8 py-4 bg-primary text-white font-bold text-lg rounded-full hover:bg-primary/90 transition-all shadow-lg hover:shadow-xl hover:-translate-y-0.5">
-                Start your free story →
+                Create your story →
               </button>
             </Link>
             <Link href="/sign-in">
@@ -39,7 +39,7 @@ export default function Landing() {
           </div>
 
           <p className="text-sm text-muted-foreground mt-4">
-            First story free · No credit card required
+            $1 per story · or $3.33/month unlimited
           </p>
         </div>
       </section>
@@ -89,33 +89,65 @@ export default function Landing() {
           <h2 className="text-3xl md:text-4xl font-serif font-bold text-foreground mb-4">
             Simple, honest pricing
           </h2>
-          <p className="text-muted-foreground mb-10">Your first story is always free.</p>
+          <p className="text-muted-foreground mb-10">Pay per story or subscribe for unlimited access.</p>
 
-          <div className="bg-card border border-border/60 rounded-3xl p-10 shadow-md">
-            <div className="flex items-baseline justify-center gap-1 mb-2">
-              <span className="text-5xl font-serif font-bold text-foreground">$3.33</span>
-              <span className="text-muted-foreground">/month</span>
+          <div className="flex flex-col gap-6">
+            {/* Pay per story */}
+            <div className="bg-card border border-border/60 rounded-3xl p-8 shadow-md text-left">
+              <div className="flex items-baseline gap-1 mb-1">
+                <span className="text-4xl font-serif font-bold text-foreground">$1</span>
+                <span className="text-muted-foreground">/story</span>
+              </div>
+              <p className="text-muted-foreground text-sm mb-5">Pay as you go — no commitment</p>
+              <ul className="space-y-3 mb-7">
+                {[
+                  "One personalised story",
+                  "AI illustrations with reference photos",
+                  "Bible verse integration",
+                  "Downloadable PDF",
+                  "Print & ship from $25 per book",
+                ].map((feature) => (
+                  <li key={feature} className="flex items-center gap-3 text-foreground">
+                    <Star className="w-4 h-4 text-primary flex-shrink-0 fill-primary" />
+                    {feature}
+                  </li>
+                ))}
+              </ul>
+              <Link href="/sign-up">
+                <button className="w-full py-3 bg-muted border border-border text-foreground font-bold text-base rounded-full hover:bg-muted/70 transition-all">
+                  Get started
+                </button>
+              </Link>
             </div>
-            <p className="text-muted-foreground text-sm mb-8">Unlimited story generation</p>
-            <ul className="space-y-3 text-left mb-10">
-              {[
-                "Unlimited personalised stories",
-                "AI illustrations with reference photos",
-                "Bible verse integration",
-                "Downloadable & printable PDFs",
-                "Print & ship from $25 per book",
-              ].map((feature) => (
-                <li key={feature} className="flex items-center gap-3 text-foreground">
-                  <Star className="w-4 h-4 text-primary flex-shrink-0 fill-primary" />
-                  {feature}
-                </li>
-              ))}
-            </ul>
-            <Link href="/sign-up">
-              <button className="w-full py-4 bg-primary text-white font-bold text-lg rounded-full hover:bg-primary/90 transition-all">
-                Get started free
-              </button>
-            </Link>
+
+            {/* Subscription */}
+            <div className="bg-primary rounded-3xl p-8 shadow-md text-left relative overflow-hidden">
+              <span className="absolute top-4 right-4 px-3 py-1 bg-accent text-accent-foreground text-xs font-bold rounded-full">Best value</span>
+              <div className="flex items-baseline gap-1 mb-1">
+                <span className="text-4xl font-serif font-bold text-white">$3.33</span>
+                <span className="text-white/70">/month</span>
+              </div>
+              <p className="text-white/70 text-sm mb-5">Unlimited story generation</p>
+              <ul className="space-y-3 mb-7">
+                {[
+                  "Unlimited personalised stories",
+                  "AI illustrations with reference photos",
+                  "Bible verse integration",
+                  "Downloadable & printable PDFs",
+                  "Print & ship from $25 per book",
+                ].map((feature) => (
+                  <li key={feature} className="flex items-center gap-3 text-white">
+                    <Star className="w-4 h-4 text-accent flex-shrink-0 fill-accent" />
+                    {feature}
+                  </li>
+                ))}
+              </ul>
+              <Link href="/sign-up">
+                <button className="w-full py-3 bg-white text-primary font-bold text-base rounded-full hover:bg-white/90 transition-all">
+                  Subscribe — $3.33/mo
+                </button>
+              </Link>
+            </div>
           </div>
         </div>
       </section>
