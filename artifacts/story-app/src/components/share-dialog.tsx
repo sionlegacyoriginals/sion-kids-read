@@ -8,12 +8,15 @@ interface ShareDialogProps {
   onClose: () => void;
 }
 
-const BASE_URL = "https://story-weaver-ai-Teriann.replit.app";
+function buildShareUrl(storyId: number) {
+  const base = import.meta.env.BASE_URL.replace(/\/$/, "");
+  return `${window.location.origin}${base}/share/${storyId}`;
+}
 
 export function ShareDialog({ storyTitle, storyId, childName, onClose }: ShareDialogProps) {
   const [copied, setCopied] = useState(false);
 
-  const url = `${BASE_URL}/share/${storyId}`;
+  const url = buildShareUrl(storyId);
   const text = `✨ I just made a personalized bedtime story for ${childName} on Sion Legacy Originals! Check it out 📖`;
 
   const copyLink = async () => {

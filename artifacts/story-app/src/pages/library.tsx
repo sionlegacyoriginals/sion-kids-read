@@ -6,7 +6,10 @@ import { format } from "date-fns";
 import { OrderDialog } from "@/components/order-dialog";
 import { ShareDialog } from "@/components/share-dialog";
 
-const BASE_URL = "https://story-weaver-ai-Teriann.replit.app";
+function buildShareUrl(storyId: number) {
+  const base = import.meta.env.BASE_URL.replace(/\/$/, "");
+  return `${window.location.origin}${base}/share/${storyId}`;
+}
 
 export default function Library() {
   const { data: stories, isLoading: loadingStories } = useListStories();
@@ -18,7 +21,7 @@ export default function Library() {
   const [sharingStory, setSharingStory] = useState<{ id: number; title: string; childName: string } | null>(null);
 
   const handleShare = async (story: { id: number; title: string; childName: string }) => {
-    const url = `${BASE_URL}/share/${story.id}`;
+    const url = buildShareUrl(story.id);
     const text = `✨ I just made a personalized bedtime story for ${story.childName} on Sion Legacy Originals! Check it out 📖`;
     if (navigator.share) {
       try {
