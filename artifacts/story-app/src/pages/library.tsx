@@ -7,8 +7,8 @@ import { OrderDialog } from "@/components/order-dialog";
 import { ShareDialog } from "@/components/share-dialog";
 
 function buildShareUrl(storyId: number) {
-  const base = import.meta.env.BASE_URL.replace(/\/$/, "");
-  return `${window.location.origin}${base}/share/${storyId}`;
+  // Points to the API-served HTML page — no Clerk, no sign-in required.
+  return `${window.location.origin}/api/share/${storyId}`;
 }
 
 export default function Library() {

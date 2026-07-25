@@ -370,7 +370,7 @@ router.get("/stories/:id", requireAuth, async (req: any, res): Promise<void> => 
   res.json(GetStoryResponse.parse(serializeStory(story)));
 });
 
-// ── GET /stories/:id/public ── no auth, for shared links ─────────────────────
+// ── GET /stories/:id/public ── no auth, JSON for internal use ─────────────────
 router.get("/stories/:id/public", async (req: any, res): Promise<void> => {
   const params = GetStoryParams.safeParse(req.params);
   if (!params.success) { res.status(400).json({ error: params.error.message }); return; }
@@ -381,6 +381,156 @@ router.get("/stories/:id/public", async (req: any, res): Promise<void> => {
   if (!story) { res.status(404).json({ error: "Story not found" }); return; }
 
   res.json(GetStoryResponse.parse(serializeStory(story)));
+});
+
+// ── GET /share/:id ── fully public HTML page, zero Clerk ──────────────────────
+router.get("/share/:id", async (req: any, res): Promise<void> => {
+  const params = GetStoryParams.safeParse(req.params);
+  if (!params.success) { res.status(404).send("Not found"); return; }
+
+  const [story] = await db.select().from(storiesTable)
+    .where(eq(storiesTable.id, params.data.id));
+
+  if (!story) {
+    res.status(404).send(`<!DOCTYPE html><html><body style="font-family:sans-serif;text-align:center;padding:4rem"><h1>Story not found</h1><p>This story may have been removed.</p><a href="/">Create your own</a></body></html>`);
+    return;
+  }
+
+  const proto = req.headers["x-forwarded-proto"] ?? "https";
+  const host  = req.headers["x-forwarded-host"] ?? req.headers.host ?? "";
+  const appUrl = `${proto}://${host}`;
+
+  function imgUrl(path: string | null | undefined): string | null {
+    if (!path) return null;
+    return `${appUrl}/api/storage${path}`;
+  }
+
+  const cover = imgUrl(story.coverImageUrl as string | null);
+  let illustrations: string[] = [];
+  try {
+    const raw = story.illustrationUrls as string | null;
+    if (raw) illustrations = (JSON.parse(raw) as string[]).map(p => imgUrl(p)!);
+  } catch { /* ignore */ }
+
+  const paragraphs = ((story.content as string) ?? "").split("\n").filter(Boolean);
+  const createdDate = story.createdAt instanceof Date
+    ? story.createdAt.toLocaleDateString("en-US", { year: "numeric", month: "long", day: "numeric" })
+    : String(story.createdAt ?? "").split("T")[0];
+
+  // Interleave illustrations after paragraph 2 and paragraph 4
+  const illustAfter: Record<number, string> = {};
+  if (illustrations[0]) illustAfter[1] = illustrations[0];
+  if (illustrations[1]) illustAfter[3] = illustrations[1];
+
+  const paragraphsHtml = paragraphs.map((p: string, i: number) => {
+    const illus = illustAfter[i] ? `<div class="illus"><img src="${illustAfter[i]}" alt="Illustration"></div>` : "";
+    return `<p>${p.replace(/</g, "&lt;").replace(/>/g, "&gt;")}</p>${illus}`;
+  }).join("\n");
+
+  const coverHtml = cover
+    ? `<div class="cover-wrap">
+        <img class="cover-img" src="${cover}" alt="Cover — ${(story.title as string ?? "").replace(/"/g, "&quot;")}">
+        <div class="cover-overlay">
+          <span class="theme-badge">${(story.theme as string ?? "").replace(/</g, "&lt;")}</span>
+          <h1 class="cover-title">${(story.title as string ?? "").replace(/</g, "&lt;")}</h1>
+        </div>
+      </div>`
+    : `<div class="header-inner">
+        <span class="theme-badge">${(story.theme as string ?? "").replace(/</g, "&lt;")}</span>
+        <h1 class="title-nocov">${(story.title as string ?? "").replace(/</g, "&lt;")}</h1>
+      </div>`;
+
+  const html = `<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>${(story.title as string ?? "A Story").replace(/</g, "&lt;")} — Sion Legacy Originals</title>
+  <meta property="og:title" content="${(story.title as string ?? "").replace(/"/g, "&quot;")}">
+  <meta property="og:description" content="A personalized bedtime story for ${(story.childName as string ?? "").replace(/"/g, "&quot;")}, made with Sion Legacy Originals.">
+  ${cover ? `<meta property="og:image" content="${cover}">` : ""}
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800&family=Playfair+Display:wght@700;800&display=swap" rel="stylesheet">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: 'Nunito', sans-serif; background: hsl(270,30%,97%); color: hsl(270,45%,10%); min-height: 100dvh; }
+
+    /* top banner */
+    .banner { background: hsl(272,65%,40%); color: #fff; text-align: center; padding: 0.75rem 1rem; font-size: 0.85rem; font-weight: 600; }
+    .banner a { color: hsl(43,90%,75%); text-decoration: underline; }
+
+    .page { max-width: 720px; margin: 0 auto; padding: 2rem 1rem 8rem; }
+
+    /* card */
+    .card { background: #fff; border-radius: 2rem; overflow: hidden; box-shadow: 0 4px 24px rgba(80,30,120,.10); border: 1px solid hsl(270,30%,90%); }
+
+    /* cover */
+    .cover-wrap { position: relative; width: 100%; aspect-ratio: 9/14; overflow: hidden; }
+    .cover-img  { width: 100%; height: 100%; object-fit: cover; display: block; }
+    .cover-overlay { position: absolute; inset: 0; background: linear-gradient(to top, rgba(30,10,60,.7) 0%, transparent 55%); display: flex; flex-direction: column; justify-content: flex-end; padding: 2rem; }
+    .cover-title { font-family: 'Playfair Display', serif; font-size: clamp(1.6rem,5vw,2.8rem); color: #fff; line-height: 1.15; text-shadow: 0 2px 8px rgba(0,0,0,.4); }
+
+    /* header (no cover) */
+    .header-inner { padding: 2.5rem 2rem; text-align: center; border-bottom: 1px solid hsl(270,30%,92%); }
+    .title-nocov  { font-family: 'Playfair Display', serif; font-size: clamp(1.6rem,5vw,2.8rem); margin-top: 1rem; }
+
+    /* theme badge */
+    .theme-badge { display: inline-flex; align-items: center; gap: .4rem; padding: .35rem .9rem; background: hsl(272,65%,40%); color: #fff; border-radius: 999px; font-size: .75rem; font-weight: 700; margin-bottom: .75rem; }
+
+    /* meta */
+    .meta { padding: 1.25rem 2rem; border-bottom: 1px solid hsl(270,30%,92%); display: flex; flex-wrap: wrap; gap: .5rem 1.5rem; font-size: .875rem; color: hsl(270,15%,45%); font-weight: 600; }
+    .meta strong { color: hsl(270,45%,10%); background: hsl(272,40%,94%); padding: .1rem .5rem; border-radius: .4rem; }
+
+    /* story text */
+    .story { padding: 2rem; }
+    .story p { font-family: 'Playfair Display', serif; font-size: 1.1rem; line-height: 1.9; color: hsl(270,45%,14%); margin-bottom: 1.4rem; }
+    .illus { margin: 1.5rem 0; border-radius: 1rem; overflow: hidden; box-shadow: 0 2px 12px rgba(80,30,120,.12); }
+    .illus img { width: 100%; display: block; }
+
+    /* sticky CTA */
+    .cta-bar { position: fixed; bottom: 0; left: 0; right: 0; background: #fff; border-top: 1px solid hsl(270,30%,90%); padding: 1rem; z-index: 10; display: flex; align-items: center; justify-content: space-between; gap: 1rem; flex-wrap: wrap; box-shadow: 0 -4px 16px rgba(80,30,120,.08); }
+    .cta-text p { font-size: .85rem; font-weight: 700; color: hsl(270,45%,10%); }
+    .cta-text small { font-size: .75rem; color: hsl(270,15%,45%); }
+    .cta-btn { display: inline-flex; align-items: center; gap: .5rem; padding: .7rem 1.4rem; background: hsl(272,65%,40%); color: #fff; font-family: 'Nunito', sans-serif; font-weight: 800; font-size: .9rem; border-radius: 999px; text-decoration: none; white-space: nowrap; box-shadow: 0 2px 8px rgba(80,30,120,.3); }
+    .cta-btn:hover { background: hsl(272,65%,33%); }
+
+    @media (max-width: 480px) {
+      .story { padding: 1.25rem; }
+      .meta { padding: 1rem 1.25rem; }
+      .cta-bar { justify-content: center; text-align: center; }
+    }
+  </style>
+</head>
+<body>
+  <div class="banner">
+    Made with <a href="${appUrl}">Sion Legacy Originals</a> — AI-powered personalized bedtime stories
+  </div>
+
+  <div class="page">
+    <div class="card">
+      ${coverHtml}
+      <div class="meta">
+        <span>For <strong>${(story.childName as string ?? "").replace(/</g, "&lt;")}</strong>, Age ${story.childAge}</span>
+        <span>${createdDate}</span>
+      </div>
+      <div class="story">
+        ${paragraphsHtml}
+      </div>
+    </div>
+  </div>
+
+  <div class="cta-bar">
+    <div class="cta-text">
+      <p>Create a personalized story for your child</p>
+      <small>$1 per story &middot; or $3.33/month unlimited</small>
+    </div>
+    <a class="cta-btn" href="${appUrl}">✨ Create your story</a>
+  </div>
+</body>
+</html>`;
+
+  res.setHeader("Content-Type", "text/html; charset=utf-8");
+  res.send(html);
 });
 
 // ── PATCH /stories/:id ────────────────────────────────────────────────────────
