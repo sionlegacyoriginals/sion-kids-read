@@ -349,7 +349,7 @@ export default function Home() {
                   <span className="text-xs font-normal text-muted-foreground">(Optional — up to 5)</span>
                 </label>
                 <p className="text-xs text-muted-foreground mt-1">
-                  Upload photos of your child and AI will paint a personalised cover image and illustrations for the book.
+                  Upload photos of your child and AI will paint a personalized cover image and illustrations for the book.
                 </p>
               </div>
 

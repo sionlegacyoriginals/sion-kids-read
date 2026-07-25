@@ -127,7 +127,7 @@ export default function Subscribe() {
 
           <ul className="space-y-2.5 mb-8 flex-1">
             {[
-              { icon: BookHeart, text: "One personalised story" },
+              { icon: BookHeart, text: "One personalized story" },
               { icon: Sparkles, text: "AI illustrations from your photos" },
               { icon: Star, text: "Bible verse weaving" },
               { icon: Printer, text: "Print & ship for $25/book" },
@@ -165,7 +165,7 @@ export default function Subscribe() {
 
           <ul className="space-y-2.5 mb-8 flex-1">
             {[
-              { icon: BookHeart, text: "Unlimited personalised stories" },
+              { icon: BookHeart, text: "Unlimited personalized stories" },
               { icon: Sparkles, text: "AI illustrations from your photos" },
               { icon: Star, text: "Bible verse weaving" },
               { icon: Printer, text: "Print & ship for $25/book" },

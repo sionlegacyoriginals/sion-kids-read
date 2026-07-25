@@ -23,7 +23,7 @@ export default function CheckoutSuccess() {
       <p className="text-muted-foreground text-lg mb-8 leading-relaxed">
         {isPrint
           ? "Your book is on its way to print. We'll send updates to your email as your order progresses."
-          : "Your membership is now active. Go create your first personalised story — it's waiting for you."}
+          : "Your membership is now active. Go create your first personalized story — it's waiting for you."}
       </p>
 
       <div className="bg-card border border-border/60 rounded-2xl p-6 mb-8 text-left">
@@ -43,7 +43,7 @@ export default function CheckoutSuccess() {
             <div>
               <p className="font-bold text-foreground">You're all set</p>
               <p className="text-muted-foreground text-sm mt-1">
-                Unlimited story generation is now unlocked. Create as many personalised bedtime stories as you like.
+                Unlimited story generation is now unlocked. Create as many personalized bedtime stories as you like.
               </p>
             </div>
           </div>

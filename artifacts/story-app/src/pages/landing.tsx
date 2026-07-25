@@ -21,7 +21,7 @@ export default function Landing() {
           </h1>
 
           <p className="text-xl text-muted-foreground max-w-xl mx-auto mb-10 leading-relaxed">
-            Generate personalised, beautifully illustrated children's stories in seconds.
+            Generate personalized, beautifully illustrated children's stories in seconds.
             Upload a photo, pick a theme, and watch the magic unfold.
           </p>
 
@@ -54,7 +54,7 @@ export default function Landing() {
             {[
               {
                 icon: BookHeart,
-                title: "Fully personalised",
+                title: "Fully personalized",
                 description:
                   "Stories star your child by name, age, and personality. Add milestones, special memories, or a Bible verse.",
               },
@@ -101,7 +101,7 @@ export default function Landing() {
               <p className="text-muted-foreground text-sm mb-5">Pay as you go — no commitment</p>
               <ul className="space-y-3 mb-7">
                 {[
-                  "One personalised story",
+                  "One personalized story",
                   "AI illustrations with reference photos",
                   "Bible verse integration",
                   "Downloadable PDF",
@@ -130,7 +130,7 @@ export default function Landing() {
               <p className="text-white/70 text-sm mb-5">Unlimited story generation</p>
               <ul className="space-y-3 mb-7">
                 {[
-                  "Unlimited personalised stories",
+                  "Unlimited personalized stories",
                   "AI illustrations with reference photos",
                   "Bible verse integration",
                   "Downloadable & printable PDFs",
