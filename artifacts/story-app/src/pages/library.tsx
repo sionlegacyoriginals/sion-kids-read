@@ -1,9 +1,12 @@
 import { useState, useMemo } from "react";
 import { Link } from "wouter";
 import { useListStories, useGetStoryStats } from "@workspace/api-client-react";
-import { BookOpen, Search, Filter, Sparkles, Package } from "lucide-react";
+import { BookOpen, Search, Filter, Sparkles, Package, Share2 } from "lucide-react";
 import { format } from "date-fns";
 import { OrderDialog } from "@/components/order-dialog";
+import { ShareDialog } from "@/components/share-dialog";
+
+const BASE_URL = "https://story-weaver-ai-Teriann.replit.app";
 
 export default function Library() {
   const { data: stories, isLoading: loadingStories } = useListStories();
@@ -12,6 +15,21 @@ export default function Library() {
   const [search, setSearch] = useState("");
   const [themeFilter, setThemeFilter] = useState<string>("all");
   const [orderingStoryId, setOrderingStoryId] = useState<number | null>(null);
+  const [sharingStory, setSharingStory] = useState<{ id: number; title: string; childName: string } | null>(null);
+
+  const handleShare = async (story: { id: number; title: string; childName: string }) => {
+    const url = `${BASE_URL}/stories/${story.id}`;
+    const text = `✨ I just made a personalized bedtime story for ${story.childName} on Sion Legacy Originals! Check it out 📖`;
+    if (navigator.share) {
+      try {
+        await navigator.share({ title: story.title, text, url });
+        return;
+      } catch {
+        // user cancelled or API failed — fall through to dialog
+      }
+    }
+    setSharingStory(story);
+  };
 
   const filteredStories = useMemo(() => {
     if (!stories) return [];
@@ -27,6 +45,14 @@ export default function Library() {
     <div className="max-w-6xl mx-auto space-y-10 animate-in fade-in duration-500">
       {orderingStoryId !== null && (
         <OrderDialog storyId={orderingStoryId} onClose={() => setOrderingStoryId(null)} />
+      )}
+      {sharingStory && (
+        <ShareDialog
+          storyId={sharingStory.id}
+          storyTitle={sharingStory.title}
+          childName={sharingStory.childName}
+          onClose={() => setSharingStory(null)}
+        />
       )}
 
       <div className="flex flex-col md:flex-row md:items-end justify-between gap-4">
@@ -98,14 +124,21 @@ export default function Library() {
                 </div>
               </Link>
 
-              {/* Order button — sits outside the Link so it doesn't navigate */}
-              <div className="px-6 pb-5 pt-0">
+              {/* Action buttons — sit outside the Link so they don't navigate */}
+              <div className="px-6 pb-5 pt-0 flex gap-2">
                 <button
                   onClick={() => setOrderingStoryId(story.id)}
-                  className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl border border-primary/30 bg-primary/5 hover:bg-primary/10 hover:border-primary/50 text-primary text-sm font-bold transition-all"
+                  className="flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl border border-primary/30 bg-primary/5 hover:bg-primary/10 hover:border-primary/50 text-primary text-sm font-bold transition-all"
                 >
                   <Package className="w-4 h-4" />
-                  Order printed book — $25
+                  Order — $25
+                </button>
+                <button
+                  onClick={() => handleShare({ id: story.id, title: story.title, childName: story.childName })}
+                  className="flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl border border-border bg-muted/50 hover:bg-muted hover:border-border/80 text-foreground text-sm font-bold transition-all"
+                  title="Share this story"
+                >
+                  <Share2 className="w-4 h-4" />
                 </button>
               </div>
             </div>
