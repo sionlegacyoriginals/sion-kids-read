@@ -16,6 +16,7 @@ import StoryViewer from "@/pages/story-viewer";
 import Subscribe from "@/pages/subscribe";
 import Account from "@/pages/account";
 import CheckoutSuccess from "@/pages/checkout-success";
+import StoryShare from "@/pages/story-share";
 import NotFound from "@/pages/not-found";
 
 // ── Clerk config ──────────────────────────────────────────────────────────────
@@ -192,6 +193,7 @@ function ClerkProviderWithRoutes() {
             <Route path="/sign-up/*?" component={SignUpPage} />
             <Route path="/create" component={() => <ProtectedRoute component={Home} />} />
             <Route path="/stories" component={() => <ProtectedRoute component={Library} />} />
+            <Route path="/share/:id" component={StoryShare} />
             <Route path="/stories/:id" component={() => <ProtectedRoute component={StoryViewer} />} />
             <Route path="/subscribe" component={() => <ProtectedRoute component={Subscribe} />} />
             <Route path="/account" component={() => <ProtectedRoute component={Account} />} />

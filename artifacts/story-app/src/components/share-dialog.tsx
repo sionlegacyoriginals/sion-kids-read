@@ -13,7 +13,7 @@ const BASE_URL = "https://story-weaver-ai-Teriann.replit.app";
 export function ShareDialog({ storyTitle, storyId, childName, onClose }: ShareDialogProps) {
   const [copied, setCopied] = useState(false);
 
-  const url = `${BASE_URL}/stories/${storyId}`;
+  const url = `${BASE_URL}/share/${storyId}`;
   const text = `✨ I just made a personalized bedtime story for ${childName} on Sion Legacy Originals! Check it out 📖`;
 
   const copyLink = async () => {

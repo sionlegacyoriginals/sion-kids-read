@@ -370,6 +370,19 @@ router.get("/stories/:id", requireAuth, async (req: any, res): Promise<void> => 
   res.json(GetStoryResponse.parse(serializeStory(story)));
 });
 
+// ── GET /stories/:id/public ── no auth, for shared links ─────────────────────
+router.get("/stories/:id/public", async (req: any, res): Promise<void> => {
+  const params = GetStoryParams.safeParse(req.params);
+  if (!params.success) { res.status(400).json({ error: params.error.message }); return; }
+
+  const [story] = await db.select().from(storiesTable)
+    .where(eq(storiesTable.id, params.data.id));
+
+  if (!story) { res.status(404).json({ error: "Story not found" }); return; }
+
+  res.json(GetStoryResponse.parse(serializeStory(story)));
+});
+
 // ── PATCH /stories/:id ────────────────────────────────────────────────────────
 router.patch("/stories/:id", requireAuth, async (req: any, res): Promise<void> => {
   const params = UpdateStoryParams.safeParse(req.params);

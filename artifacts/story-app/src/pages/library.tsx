@@ -18,7 +18,7 @@ export default function Library() {
   const [sharingStory, setSharingStory] = useState<{ id: number; title: string; childName: string } | null>(null);
 
   const handleShare = async (story: { id: number; title: string; childName: string }) => {
-    const url = `${BASE_URL}/stories/${story.id}`;
+    const url = `${BASE_URL}/share/${story.id}`;
     const text = `✨ I just made a personalized bedtime story for ${story.childName} on Sion Legacy Originals! Check it out 📖`;
     if (navigator.share) {
       try {
