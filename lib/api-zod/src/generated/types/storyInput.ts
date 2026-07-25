@@ -13,7 +13,7 @@ export interface StoryInput {
   childName: string;
   /**
      * @minimum 1
-     * @maximum 12
+     * @maximum 18
      */
   childAge: number;
   childGender: StoryInputChildGender;

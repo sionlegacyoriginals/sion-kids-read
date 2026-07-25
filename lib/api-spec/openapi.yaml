@@ -333,7 +333,7 @@ components:
         childAge:
           type: integer
           minimum: 1
-          maximum: 12
+          maximum: 18
         childGender:
           type: string
           enum: [boy, girl]
@@ -342,7 +342,17 @@ components:
           description: Details like favorite toys, pets, recent trips
         theme:
           type: string
-          enum: [Courage, Kindness, "Overcoming Fear", Faith, Friendship, Honesty, Perseverance, Gratitude]
+          enum: [Courage, Kindness, "Overcoming Fear", Faith, Friendship, Honesty, Perseverance, Gratitude,
+                 Forgiveness, Compassion, Patience, Generosity, Humility, Loyalty, Joy, Hope, Love,
+                 Self-Control, Trustworthiness, Responsibility, Creativity, Curiosity, Adventure,
+                 Teamwork, Respect, Empathy, Sharing, Diligence, Contentment, Bravery, Wisdom,
+                 Acceptance, Thankfulness, Service, Peacemaking, Integrity, Helpfulness, Wonder,
+                 "Kindergarten Graduation", "Middle School Graduation", "High School Graduation",
+                 "First Day of Kindergarten", "First Day of 1st Grade", "First Day of 2nd Grade",
+                 "First Day of 3rd Grade", "First Day of 4th Grade", "First Day of 5th Grade",
+                 "First Day of 6th Grade", "First Day of 7th Grade", "First Day of 8th Grade",
+                 "First Day of 9th Grade", "First Day of 10th Grade", "First Day of 11th Grade",
+                 "First Day of 12th Grade", Congratulations]
         customPrompt:
           type: string
           description: Custom topic or plot prompt

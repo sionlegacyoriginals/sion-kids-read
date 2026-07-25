@@ -18,26 +18,45 @@ import { format } from "date-fns";
 import { useUpload } from "@workspace/object-storage-web";
 
 const THEMES = [
-  // Original
+  // ── Values & Character ──────────────────────────────────────────────────────
   'Courage', 'Kindness', 'Overcoming Fear',
   'Faith', 'Friendship', 'Honesty',
-  'Perseverance', 'Gratitude',
-  // New additions
-  'Forgiveness', 'Compassion', 'Patience',
-  'Generosity', 'Humility', 'Loyalty',
-  'Joy', 'Hope', 'Love',
-  'Self-Control', 'Trustworthiness', 'Responsibility',
-  'Creativity', 'Curiosity', 'Adventure',
-  'Teamwork', 'Respect', 'Empathy',
-  'Sharing', 'Diligence', 'Contentment',
-  'Bravery', 'Wisdom', 'Acceptance',
-  'Thankfulness', 'Service', 'Peacemaking',
-  'Integrity', 'Helpfulness', 'Wonder',
+  'Perseverance', 'Gratitude', 'Forgiveness',
+  'Compassion', 'Patience', 'Generosity',
+  'Humility', 'Loyalty', 'Joy',
+  'Hope', 'Love', 'Self-Control',
+  'Trustworthiness', 'Responsibility', 'Creativity',
+  'Curiosity', 'Adventure', 'Teamwork',
+  'Respect', 'Empathy', 'Sharing',
+  'Diligence', 'Contentment', 'Bravery',
+  'Wisdom', 'Acceptance', 'Thankfulness',
+  'Service', 'Peacemaking', 'Integrity',
+  'Helpfulness', 'Wonder',
+  // ── Graduations ─────────────────────────────────────────────────────────────
+  'Kindergarten Graduation',
+  'Middle School Graduation',
+  'High School Graduation',
+  // ── First Day of School ─────────────────────────────────────────────────────
+  'First Day of Kindergarten',
+  'First Day of 1st Grade',
+  'First Day of 2nd Grade',
+  'First Day of 3rd Grade',
+  'First Day of 4th Grade',
+  'First Day of 5th Grade',
+  'First Day of 6th Grade',
+  'First Day of 7th Grade',
+  'First Day of 8th Grade',
+  'First Day of 9th Grade',
+  'First Day of 10th Grade',
+  'First Day of 11th Grade',
+  'First Day of 12th Grade',
+  // ── Celebrations ─────────────────────────────────────────────────────────────
+  'Congratulations',
 ] as const;
 
 const storySchema = z.object({
   childName: z.string().min(1, "Child's name is required"),
-  childAge: z.coerce.number().min(1, "Must be at least 1").max(12, "Must be 12 or younger"),
+  childAge: z.coerce.number().min(1, "Must be at least 1").max(18, "Must be 18 or younger"),
   childGender: z.enum(['boy', 'girl']),
   theme: z.enum(THEMES),
   milestones: z.string().optional(),
@@ -304,14 +323,29 @@ export default function Home() {
               </div>
 
               <div className="space-y-2">
-                <label className="text-sm font-bold text-foreground">Theme & Value</label>
+                <label className="text-sm font-bold text-foreground">Theme & Occasion</label>
                 <select 
                   {...register("theme")}
                   className="w-full px-4 py-3 rounded-xl border border-border bg-background focus:outline-none focus:ring-2 focus:ring-primary/50 transition-shadow"
                 >
-                  {THEMES.map(t => (
-                    <option key={t} value={t}>{t}</option>
-                  ))}
+                  <optgroup label="── Values & Character ──">
+                    {['Courage','Kindness','Overcoming Fear','Faith','Friendship','Honesty','Perseverance','Gratitude','Forgiveness','Compassion','Patience','Generosity','Humility','Loyalty','Joy','Hope','Love','Self-Control','Trustworthiness','Responsibility','Creativity','Curiosity','Adventure','Teamwork','Respect','Empathy','Sharing','Diligence','Contentment','Bravery','Wisdom','Acceptance','Thankfulness','Service','Peacemaking','Integrity','Helpfulness','Wonder'].map(t => (
+                      <option key={t} value={t}>{t}</option>
+                    ))}
+                  </optgroup>
+                  <optgroup label="── Graduations ──">
+                    {['Kindergarten Graduation','Middle School Graduation','High School Graduation'].map(t => (
+                      <option key={t} value={t}>{t}</option>
+                    ))}
+                  </optgroup>
+                  <optgroup label="── First Day of School ──">
+                    {['First Day of Kindergarten','First Day of 1st Grade','First Day of 2nd Grade','First Day of 3rd Grade','First Day of 4th Grade','First Day of 5th Grade','First Day of 6th Grade','First Day of 7th Grade','First Day of 8th Grade','First Day of 9th Grade','First Day of 10th Grade','First Day of 11th Grade','First Day of 12th Grade'].map(t => (
+                      <option key={t} value={t}>{t}</option>
+                    ))}
+                  </optgroup>
+                  <optgroup label="── Celebrations ──">
+                    <option value="Congratulations">Congratulations</option>
+                  </optgroup>
                 </select>
               </div>
             </div>
