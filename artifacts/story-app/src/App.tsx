@@ -214,7 +214,31 @@ function ClerkProviderWithRoutes() {
   );
 }
 
+/** Matches /share/:id without Clerk — truly public, no auth required. */
+function ShareRoute() {
+  const path = window.location.pathname.replace(basePath, "") || "/";
+  const match = path.match(/^\/share\/(\d+)/);
+  if (!match) return null;
+  return <StoryShare />;
+}
+
 function App() {
+  const path = window.location.pathname.replace(basePath, "") || "/";
+  const isShareRoute = /^\/share\/\d+/.test(path);
+
+  if (isShareRoute) {
+    // Render the share page completely outside Clerk so no auth gate can fire.
+    return (
+      <WouterRouter base={basePath}>
+        <QueryClientProvider client={queryClient}>
+          <TooltipProvider>
+            <ShareRoute />
+          </TooltipProvider>
+        </QueryClientProvider>
+      </WouterRouter>
+    );
+  }
+
   return (
     <WouterRouter base={basePath}>
       <ClerkProviderWithRoutes />
