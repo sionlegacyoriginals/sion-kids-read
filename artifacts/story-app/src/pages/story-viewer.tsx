@@ -125,6 +125,8 @@ export default function StoryViewer() {
           close={readAlong.close}
           speed={readAlong.speed}
           changeSpeed={readAlong.changeSpeed}
+          pitch={readAlong.pitch}
+          changePitch={readAlong.changePitch}
           voices={readAlong.voices}
           selectedVoice={readAlong.selectedVoice}
           changeVoice={readAlong.changeVoice}
