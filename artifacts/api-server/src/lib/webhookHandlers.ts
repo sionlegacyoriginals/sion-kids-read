@@ -4,10 +4,11 @@ import { sql } from "drizzle-orm";
 
 // Maps Stripe product names → gift card tier keys
 const GIFT_CARD_TIERS: Record<string, string> = {
-  "Gift Card – One Story":     "one_story",
-  "Gift Card – One Month":     "one_month",
-  "Gift Card – Six Months":    "six_months",
-  "Gift Card – Twelve Months": "twelve_months",
+  "Gift Card – One Story":      "one_story",
+  "Gift Card – One Month":      "one_month",
+  "Gift Card – Six Months":     "six_months",
+  "Gift Card – Twelve Months":  "twelve_months",
+  "Gift Card – Hardcover Book": "hardcover_book",
 };
 
 function generateGiftCode(): string {

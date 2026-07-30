@@ -162,7 +162,7 @@ export default function Library() {
                   className="flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl border border-primary/30 bg-primary/5 hover:bg-primary/10 hover:border-primary/50 text-primary text-sm font-bold transition-all"
                 >
                   <Package className="w-4 h-4" />
-                  Order — $25
+                  Order — $33.33
                 </button>
                 <button
                   onClick={() => handleShare({ id: story.id, title: story.title, childName: story.childName })}

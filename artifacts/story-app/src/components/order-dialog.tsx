@@ -74,7 +74,7 @@ export function OrderDialog({
           <div>
             <h2 className="font-serif font-bold text-xl text-foreground">Order Printed Book</h2>
             <p className="text-sm text-muted-foreground mt-0.5">
-              6"×9" full-colour softcover · <strong className="text-foreground">$25</strong>
+              6"×9" full-colour softcover · <strong className="text-foreground">$33.33</strong>
             </p>
           </div>
           <button onClick={onClose} className="text-muted-foreground hover:text-foreground transition-colors">
@@ -151,7 +151,7 @@ export function OrderDialog({
             {loading ? (
               <><Loader2 className="w-4 h-4 animate-spin" /> Redirecting to checkout…</>
             ) : (
-              <><Package className="w-4 h-4" /> Pay $25 &amp; order →</>
+              <><Package className="w-4 h-4" /> Pay $33.33 &amp; order →</>
             )}
           </button>
           <p className="text-[11px] text-center text-muted-foreground">

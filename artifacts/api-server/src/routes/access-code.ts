@@ -16,10 +16,11 @@ function getValidCodes(): Set<string> {
 }
 
 const TIER_LABELS: Record<string, string> = {
-  one_story:     "1 story credit",
-  one_month:     "30 days of unlimited stories",
-  six_months:    "180 days of unlimited stories",
-  twelve_months: "365 days of unlimited stories",
+  one_story:      "1 story credit",
+  one_month:      "30 days of unlimited stories",
+  six_months:     "180 days of unlimited stories",
+  twelve_months:  "365 days of unlimited stories",
+  hardcover_book: "1 printed hardcover book credit",
 };
 
 // POST /api/access-code/redeem
@@ -48,6 +49,10 @@ router.post("/access-code/redeem", requireAuth, async (req: any, res): Promise<v
     if (tier === "one_story") {
       await db.execute(sql`
         UPDATE users SET story_credits = story_credits + 1, updated_at = NOW() WHERE id = ${req.userId}
+      `);
+    } else if (tier === "hardcover_book") {
+      await db.execute(sql`
+        UPDATE users SET print_credits = print_credits + 1, updated_at = NOW() WHERE id = ${req.userId}
       `);
     } else {
       const days = tier === "one_month" ? 30 : tier === "six_months" ? 180 : 365;

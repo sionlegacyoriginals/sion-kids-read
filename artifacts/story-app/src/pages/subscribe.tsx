@@ -130,7 +130,7 @@ export default function Subscribe() {
               { icon: BookHeart, text: "One personalized story" },
               { icon: null, text: "AI illustrations from your photos" },
               { icon: Star, text: "Bible verse weaving" },
-              { icon: Printer, text: "Print & ship for $25/book" },
+              { icon: Printer, text: "Print & ship for $33.33/book" },
             ].map(({ icon: Icon, text }) => (
               <li key={text} className="flex items-center gap-3 text-foreground text-sm">
                 {Icon ? <Icon className="w-4 h-4 text-primary flex-shrink-0" /> : <Logo size={16} />}
@@ -168,7 +168,7 @@ export default function Subscribe() {
               { icon: BookHeart, text: "Unlimited personalized stories" },
               { icon: null, text: "AI illustrations from your photos" },
               { icon: Star, text: "Bible verse weaving" },
-              { icon: Printer, text: "Print & ship for $25/book" },
+              { icon: Printer, text: "Print & ship for $33.33/book" },
             ].map(({ icon: Icon, text }) => (
               <li key={text} className="flex items-center gap-3 text-foreground text-sm">
                 {Icon ? <Icon className="w-4 h-4 text-primary flex-shrink-0" /> : <Logo size={16} />}

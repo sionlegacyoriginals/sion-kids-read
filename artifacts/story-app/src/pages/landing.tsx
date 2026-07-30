@@ -107,7 +107,7 @@ export default function Landing() {
                   "AI illustrations with reference photos",
                   "Bible verse integration",
                   "Downloadable PDF",
-                  "Print & ship from $25 per book",
+                  "Print & ship from $33.33 per book",
                 ].map((feature) => (
                   <li key={feature} className="flex items-center gap-3 text-foreground">
                     <Star className="w-4 h-4 text-primary flex-shrink-0 fill-primary" />
@@ -136,7 +136,7 @@ export default function Landing() {
                   "AI illustrations with reference photos",
                   "Bible verse integration",
                   "Downloadable & printable PDFs",
-                  "Print & ship from $25 per book",
+                  "Print & ship from $33.33 per book",
                 ].map((feature) => (
                   <li key={feature} className="flex items-center gap-3 text-white">
                     <Star className="w-4 h-4 text-accent flex-shrink-0 fill-accent" />

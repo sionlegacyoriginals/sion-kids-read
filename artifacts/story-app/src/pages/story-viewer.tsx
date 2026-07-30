@@ -117,7 +117,7 @@ export default function StoryViewer() {
             onClick={() => setShowOrderDialog(true)}
             className="inline-flex items-center gap-2 px-5 py-2 rounded-xl bg-primary text-white text-sm font-bold hover:bg-primary/90 transition-all shadow-sm"
           >
-            <Package className="w-4 h-4" /> Order printed book — $25
+            <Package className="w-4 h-4" /> Order printed book — $33.33
           </button>
         </div>
       </div>
@@ -196,7 +196,7 @@ export default function StoryViewer() {
             onClick={() => setShowOrderDialog(true)}
             className="shrink-0 inline-flex items-center gap-2 px-6 py-3 rounded-xl bg-primary text-white font-bold hover:bg-primary/90 transition-all shadow-sm"
           >
-            <Package className="w-4 h-4" /> Order printed book — $25
+            <Package className="w-4 h-4" /> Order printed book — $33.33
           </button>
         </div>
       </div>

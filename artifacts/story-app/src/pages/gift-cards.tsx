@@ -34,6 +34,14 @@ const TIERS = [
     url: "https://buy.stripe.com/fZu4gzgj462eg3OfBfdQQ04",
     highlight: false,
   },
+  {
+    label: "Hardcover Book",
+    price: "$33.33",
+    description: "A printed & shipped personalized storybook",
+    perks: ["One 6\"×9\" printed hardcover book", "Personalized AI illustrations", "Ships directly to their door", "No extra work required"],
+    url: "https://buy.stripe.com/aFa4gz2se0HU04Q2OtdQQ06",
+    highlight: false,
+  },
 ];
 
 export default function GiftCards() {
