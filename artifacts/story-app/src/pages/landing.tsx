@@ -12,40 +12,36 @@ export default function Landing() {
 
         <div className="max-w-3xl mx-auto">
           <span className="inline-flex items-center gap-2 px-4 py-1.5 bg-primary/10 text-primary font-bold text-sm rounded-full mb-6">
-            <Sparkles className="w-4 h-4" /> AI-Powered Personalized Stories
+            <BookOpen className="w-4 h-4" /> Personalized AI Storybooks
           </span>
 
           <h1 className="text-5xl md:text-7xl font-serif font-bold text-foreground leading-[1.05] mb-6">
-            Bedtime stories <br />
-            <span className="text-primary">made for your child</span>
+            Your child is{" "}
+            <span className="text-primary">the main character</span>
           </h1>
 
-          <p className="text-xl text-muted-foreground max-w-xl mx-auto mb-4 leading-relaxed">
-            Generate personalized, beautifully illustrated stories in seconds.
-            Upload a photo, pick a theme, and watch the magic unfold.
+          <p className="text-xl text-muted-foreground max-w-xl mx-auto mb-10 leading-relaxed">
+            Upload a photo and we'll create a story with a cartoon character
+            inspired by your child — their name woven into every page, their
+            milestones celebrated, their values reflected.
           </p>
 
-          <p className="text-base text-muted-foreground/80 max-w-lg mx-auto mb-10 leading-relaxed italic">
-            Or create one for <em className="not-italic font-semibold text-foreground">any</em> age — a graduation, a birthday, a new chapter.
-            Honestly? It beats a greeting card.
-          </p>
+          <ol className="flex flex-col items-center gap-3 mb-10 text-left max-w-xs mx-auto">
+            {["Attach their photo", "Tell us about them", "Get their story in seconds"].map((step, i) => (
+              <li key={step} className="flex items-center gap-3 w-full">
+                <span className="w-7 h-7 rounded-full bg-primary text-white text-sm font-bold flex items-center justify-center shrink-0">
+                  {i + 1}
+                </span>
+                <span className="text-foreground font-medium">{step}</span>
+              </li>
+            ))}
+          </ol>
 
-          <div className="flex flex-col sm:flex-row gap-4 justify-center">
-            <Link href="/sign-up">
-              <button className="px-8 py-4 bg-primary text-white font-bold text-lg rounded-full hover:bg-primary/90 transition-all shadow-lg hover:shadow-xl hover:-translate-y-0.5">
-                Create your story →
-              </button>
-            </Link>
-            <Link href="/sign-in">
-              <button className="px-8 py-4 bg-card border border-border text-foreground font-bold text-lg rounded-full hover:bg-muted/50 transition-all">
-                Sign in
-              </button>
-            </Link>
-          </div>
-
-          <p className="text-sm text-muted-foreground mt-4">
-            $1 per story · or $3.33/month unlimited
-          </p>
+          <Link href="/sign-up">
+            <button className="px-10 py-4 bg-primary text-white font-bold text-lg rounded-full hover:bg-primary/90 transition-all shadow-lg hover:shadow-xl hover:-translate-y-0.5">
+              Create their story →
+            </button>
+          </Link>
         </div>
       </section>
 
