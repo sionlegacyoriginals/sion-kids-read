@@ -1,7 +1,7 @@
 import { useState, useMemo } from "react";
 import { Link } from "wouter";
-import { useListStories, useGetStoryStats, getListStoriesQueryKey } from "@workspace/api-client-react";
-import { BookOpen, Search, Filter, Sparkles, Package, Share2, Link2 } from "lucide-react";
+import { useListStories, useGetStoryStats, getListStoriesQueryKey, useDeleteStory } from "@workspace/api-client-react";
+import { BookOpen, Search, Filter, Sparkles, Package, Share2, Link2, Trash2 } from "lucide-react";
 import { format } from "date-fns";
 import { useQueryClient } from "@tanstack/react-query";
 import { OrderDialog } from "@/components/order-dialog";
@@ -23,6 +23,16 @@ export default function Library() {
   const [orderingStoryId, setOrderingStoryId] = useState<number | null>(null);
   const [sharingStory, setSharingStory] = useState<{ id: number; title: string; childName: string } | null>(null);
   const [showAddFromLink, setShowAddFromLink] = useState(false);
+  const [confirmDeleteId, setConfirmDeleteId] = useState<number | null>(null);
+
+  const { mutate: deleteStory, isPending: isDeleting } = useDeleteStory({
+    mutation: {
+      onSuccess: () => {
+        queryClient.invalidateQueries({ queryKey: getListStoriesQueryKey() });
+        setConfirmDeleteId(null);
+      },
+    },
+  });
 
   const handleShare = async (story: { id: number; title: string; childName: string }) => {
     const url = buildShareUrl(story.id);
@@ -160,6 +170,24 @@ export default function Library() {
                 >
                   <Share2 className="w-4 h-4" />
                 </button>
+                {confirmDeleteId === story.id ? (
+                  <button
+                    onClick={() => deleteStory({ id: story.id })}
+                    disabled={isDeleting}
+                    className="flex items-center justify-center gap-1.5 px-3 py-2.5 rounded-xl border border-destructive bg-destructive text-white text-xs font-bold transition-all hover:bg-destructive/90 disabled:opacity-50"
+                    title="Confirm delete"
+                  >
+                    {isDeleting ? "…" : "Delete?"}
+                  </button>
+                ) : (
+                  <button
+                    onClick={() => setConfirmDeleteId(story.id)}
+                    className="flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl border border-border bg-muted/50 hover:bg-destructive/10 hover:border-destructive/40 hover:text-destructive text-muted-foreground text-sm font-bold transition-all"
+                    title="Delete this story"
+                  >
+                    <Trash2 className="w-4 h-4" />
+                  </button>
+                )}
               </div>
             </div>
           ))}
