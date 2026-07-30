@@ -66,6 +66,11 @@ async function runAppMigrations() {
   await db.execute(sql`
     ALTER TABLE reference_photos ADD COLUMN IF NOT EXISTS data_url TEXT NOT NULL DEFAULT ''
   `);
+
+  // Soft-delete: stories are hidden from owner but share links remain valid
+  await db.execute(sql`
+    ALTER TABLE stories ADD COLUMN IF NOT EXISTS deleted_at TIMESTAMPTZ
+  `);
 }
 
 // ── Stripe init ──────────────────────────────────────────────────────────────

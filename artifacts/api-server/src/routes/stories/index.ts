@@ -1,6 +1,6 @@
 import { randomUUID } from "crypto";
 import { Router, type IRouter } from "express";
-import { desc, eq, sql } from "drizzle-orm";
+import { and, desc, eq, isNull, sql } from "drizzle-orm";
 import { db, storiesTable } from "@workspace/db";
 import {
   CreateStoryBody,
@@ -245,7 +245,7 @@ router.get("/stories", requireAuth, async (req: any, res): Promise<void> => {
   const stories = await db
     .select()
     .from(storiesTable)
-    .where(eq(storiesTable.userId, req.userId))
+    .where(and(eq(storiesTable.userId, req.userId), isNull(storiesTable.deletedAt)))
     .orderBy(desc(storiesTable.createdAt));
   res.json(ListStoriesResponse.parse(stories.map(serializeStory)));
 });
@@ -334,15 +334,15 @@ router.get("/stories/stats", requireAuth, async (req: any, res): Promise<void> =
   const [total, byTheme, recent] = await Promise.all([
     db.select({ count: sql<number>`count(*)::int` })
       .from(storiesTable)
-      .where(eq(storiesTable.userId, req.userId)),
+      .where(and(eq(storiesTable.userId, req.userId), isNull(storiesTable.deletedAt))),
     db.select({ theme: storiesTable.theme, count: sql<number>`count(*)::int` })
       .from(storiesTable)
-      .where(eq(storiesTable.userId, req.userId))
+      .where(and(eq(storiesTable.userId, req.userId), isNull(storiesTable.deletedAt)))
       .groupBy(storiesTable.theme)
       .orderBy(desc(sql`count(*)`)),
     db.select({ childName: storiesTable.childName })
       .from(storiesTable)
-      .where(eq(storiesTable.userId, req.userId))
+      .where(and(eq(storiesTable.userId, req.userId), isNull(storiesTable.deletedAt)))
       .orderBy(desc(storiesTable.createdAt))
       .limit(1),
   ]);
@@ -362,7 +362,7 @@ router.get("/stories/recent", requireAuth, async (req: any, res): Promise<void> 
   const stories = await db
     .select()
     .from(storiesTable)
-    .where(eq(storiesTable.userId, req.userId))
+    .where(and(eq(storiesTable.userId, req.userId), isNull(storiesTable.deletedAt)))
     .orderBy(desc(storiesTable.createdAt))
     .limit(5);
   res.json(GetRecentStoriesResponse.parse(stories.map(serializeStory)));
@@ -374,7 +374,7 @@ router.get("/stories/:id", requireAuth, async (req: any, res): Promise<void> => 
   if (!params.success) { res.status(400).json({ error: params.error.message }); return; }
 
   const [story] = await db.select().from(storiesTable)
-    .where(eq(storiesTable.id, params.data.id));
+    .where(and(eq(storiesTable.id, params.data.id), isNull(storiesTable.deletedAt)));
 
   if (!story) { res.status(404).json({ error: "Story not found" }); return; }
   if (story.userId && story.userId !== req.userId) { res.status(403).json({ error: "Forbidden" }); return; }
@@ -621,7 +621,10 @@ router.delete("/stories/:id", requireAuth, async (req: any, res): Promise<void> 
   if (!existing) { res.status(404).json({ error: "Story not found" }); return; }
   if (existing.userId && existing.userId !== req.userId) { res.status(403).json({ error: "Forbidden" }); return; }
 
-  await db.delete(storiesTable).where(eq(storiesTable.id, params.data.id));
+  // Soft-delete: story stays in DB so share links remain valid for anyone who has them
+  await db.update(storiesTable)
+    .set({ deletedAt: new Date() })
+    .where(eq(storiesTable.id, params.data.id));
   res.sendStatus(204);
 });
 

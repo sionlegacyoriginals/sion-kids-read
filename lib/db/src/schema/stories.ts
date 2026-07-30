@@ -22,6 +22,7 @@ export const storiesTable = pgTable("stories", {
     .notNull()
     .defaultNow()
     .$onUpdate(() => new Date()),
+  deletedAt: timestamp("deleted_at", { withTimezone: true }),
 });
 
 export const insertStorySchema = createInsertSchema(storiesTable).omit({
