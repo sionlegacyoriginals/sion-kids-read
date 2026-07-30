@@ -193,7 +193,7 @@ router.post("/checkout/book-bundle", requireAuth, async (req: any, res) => {
       payment_method_types: ["card"],
       line_items: [{ price: printPrice.id, quantity: 1 }],
       mode: "payment",
-      success_url: `${baseUrl()}${basePath()}/checkout/success?session_id={CHECKOUT_SESSION_ID}`,
+      success_url: `${baseUrl()}${basePath()}/create?bundle=1`,
       cancel_url: `${baseUrl()}${basePath()}/create?paywall=1`,
       metadata: { clerkUserId: req.userId, type: "book_bundle" },
     });

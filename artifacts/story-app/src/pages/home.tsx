@@ -125,6 +125,12 @@ export default function Home() {
   };
 
   const handlePaywallCheckout = async (type: "story" | "subscription" | "book") => {
+    // Before leaving for Stripe, save the form so we can restore it on return
+    if (type === "book") {
+      const formData = getValues();
+      const imagePaths = uploadedImages.filter(Boolean).map(img => img!.objectPath);
+      localStorage.setItem("slo_bundle", JSON.stringify({ form: formData, imagePaths }));
+    }
     setPaywallLoading(type);
     setPaywallError(null);
     try {
@@ -225,7 +231,42 @@ export default function Home() {
 
   const filledImages = uploadedImages.filter(Boolean) as UploadedImage[];
 
-  const { register, handleSubmit, formState: { errors } } = useForm<StoryFormValues>({
+  // On return from book-bundle Stripe checkout, restore saved form data and auto-submit
+  useEffect(() => {
+    if (!fromBundle) return;
+    const raw = localStorage.getItem("slo_bundle");
+    if (!raw) return;
+    try {
+      const saved = JSON.parse(raw) as {
+        form: StoryFormValues;
+        imagePaths: string[];
+      };
+      reset(saved.form);
+      if (saved.imagePaths.length > 0) {
+        const restored = saved.imagePaths.map((objectPath) => ({
+          objectPath,
+          previewUrl: objectPath.startsWith("/ref-photos/")
+            ? `/api${objectPath}`
+            : `/api/storage${objectPath}`,
+        }));
+        const slots: (UploadedImage | null)[] = Array(MAX_IMAGES).fill(null);
+        restored.forEach((img, i) => { slots[i] = img; });
+        setUploadedImages(slots);
+      }
+      localStorage.removeItem("slo_bundle");
+      // Small delay so the form values settle before submitting
+      setTimeout(() => {
+        handleSubmit(onSubmit)();
+      }, 300);
+    } catch {
+      localStorage.removeItem("slo_bundle");
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  const fromBundle = new URLSearchParams(window.location.search).get("bundle") === "1";
+
+  const { register, handleSubmit, formState: { errors }, reset, getValues } = useForm<StoryFormValues>({
     resolver: zodResolver(storySchema),
     defaultValues: {
       childName: "",
@@ -271,7 +312,8 @@ export default function Home() {
         queryClient.invalidateQueries({ queryKey: getGetRecentStoriesQueryKey() });
         queryClient.invalidateQueries({ queryKey: getListStoriesQueryKey() });
         queryClient.invalidateQueries({ queryKey: getGetStoryStatsQueryKey() });
-        setLocation(`/stories/${story.id}`);
+        // If this was a book-bundle payment, go straight to the order dialog
+        setLocation(fromBundle ? `/stories/${story.id}?order=1` : `/stories/${story.id}`);
       },
       onError: (err: any) => {
         const status = err?.status ?? 0;

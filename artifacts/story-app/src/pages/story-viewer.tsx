@@ -1,5 +1,5 @@
 import { useState, useCallback, useEffect } from "react";
-import { useRoute, useLocation, Link } from "wouter";
+import { useRoute, useLocation, useSearch, Link } from "wouter";
 import { 
   useGetStory, 
   useUpdateStory, 
@@ -56,7 +56,14 @@ export default function StoryViewer() {
   const deleteStory = useDeleteStory();
   const regenerateStory = useRegenerateStory();
 
+  const search = useSearch();
+  const autoOrder = new URLSearchParams(search).get("order") === "1";
   const [showOrderDialog, setShowOrderDialog] = useState(false);
+
+  // Auto-open order dialog when arriving from book-bundle checkout
+  useEffect(() => {
+    if (autoOrder && story && !isLoading) setShowOrderDialog(true);
+  }, [autoOrder, story, isLoading]);
 
   const handleDelete = useCallback(() => {
     if (!id || !confirm("Are you sure you want to delete this story?")) return;
