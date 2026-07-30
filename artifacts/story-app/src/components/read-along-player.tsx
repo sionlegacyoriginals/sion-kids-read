@@ -122,8 +122,19 @@ export function useReadAlong(paragraphs: string[]) {
 
     const utt = new SpeechSynthesisUtterance(text);
     utt.rate = rate;
-    utt.lang = "en-US";
-    if (voice) utt.voice = voice;
+
+    // Always resolve the voice from the live voices list — stale references are silently ignored
+    const liveName = voice?.name;
+    const liveVoice = liveName
+      ? window.speechSynthesis.getVoices().find((v) => v.name === liveName) ?? null
+      : null;
+
+    if (liveVoice) {
+      utt.voice = liveVoice;
+      utt.lang = liveVoice.lang;   // use the voice's own locale, not a hardcoded override
+    } else {
+      utt.lang = "en-US";
+    }
 
     let fired = false;
     utt.onboundary = (e) => {
