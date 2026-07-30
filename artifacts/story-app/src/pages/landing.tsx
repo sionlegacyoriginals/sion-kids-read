@@ -166,29 +166,26 @@ export default function Landing() {
             A perfect gift for any occasion — let someone else's child be the main character.
           </p>
 
-          <div className="grid grid-cols-2 gap-4 mb-8">
+          <div className="grid grid-cols-2 gap-4">
             {[
-              { label: "One story", price: "$5.55" },
-              { label: "One month", price: "$8.88" },
-              { label: "Six months", price: "$44.44" },
-              { label: "12 months", price: "$77.77" },
-            ].map(({ label, price }) => (
-              <div key={label} className="bg-card border border-border/60 rounded-2xl p-5 text-center shadow-sm">
-                <p className="text-2xl font-serif font-bold text-foreground mb-1">{price}</p>
+              { label: "One story",    price: "$5.55",  url: "https://buy.stripe.com/00waEX9UG0HU7xigFjdQQ01" },
+              { label: "One month",    price: "$8.88",  url: "https://buy.stripe.com/00wbJ15Eq3U618UfBfdQQ02" },
+              { label: "Six months",   price: "$44.44", url: "https://buy.stripe.com/aFa28raYK62e5pacp3dQQ03" },
+              { label: "12 months",    price: "$77.77", url: "https://buy.stripe.com/fZu4gzgj462eg3OfBfdQQ04" },
+            ].map(({ label, price, url }) => (
+              <a
+                key={label}
+                href={url}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="group bg-card border border-border/60 hover:border-primary/50 hover:shadow-md rounded-2xl p-5 text-center shadow-sm transition-all hover:-translate-y-0.5"
+              >
+                <p className="text-2xl font-serif font-bold text-foreground mb-1 group-hover:text-primary transition-colors">{price}</p>
                 <p className="text-sm text-muted-foreground font-medium">{label}</p>
-              </div>
+                <p className="text-xs text-primary font-semibold mt-2 opacity-0 group-hover:opacity-100 transition-opacity">Buy →</p>
+              </a>
             ))}
           </div>
-
-          {/* TODO: replace href with Stripe gift card link once set up */}
-          <a
-            href="#gift-card"
-            className="inline-block w-full py-4 bg-primary text-white font-bold text-base rounded-full hover:bg-primary/90 transition-all shadow-md opacity-60 cursor-not-allowed"
-            onClick={e => e.preventDefault()}
-          >
-            Gift cards — coming soon
-          </a>
-          <p className="text-xs text-muted-foreground mt-3">Gift card purchasing will be available shortly.</p>
         </div>
       </section>
 
