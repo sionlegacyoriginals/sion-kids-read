@@ -77,7 +77,7 @@ async function runAppMigrations() {
     ALTER TABLE users ADD COLUMN IF NOT EXISTS gift_access_expires_at TIMESTAMPTZ
   `);
 
-  // Print credits: granted by hardcover book gift card redemption
+  // Print credits: granted by printed book gift card redemption
   await db.execute(sql`
     ALTER TABLE users ADD COLUMN IF NOT EXISTS print_credits INTEGER NOT NULL DEFAULT 0
   `);

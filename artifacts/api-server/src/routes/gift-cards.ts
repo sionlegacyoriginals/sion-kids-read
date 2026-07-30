@@ -78,7 +78,7 @@ router.post("/gift-cards/redeem", requireAuth, async (req: any, res): Promise<vo
     one_month:      "30 days of unlimited stories",
     six_months:     "180 days of unlimited stories",
     twelve_months:  "365 days of unlimited stories",
-    hardcover_book: "1 printed hardcover book credit",
+    hardcover_book: "1 printed softcover book",
   };
 
   res.json({ success: true, tier, reward: tierLabels[tier] ?? tier });

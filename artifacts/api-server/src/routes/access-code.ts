@@ -20,7 +20,7 @@ const TIER_LABELS: Record<string, string> = {
   one_month:      "30 days of unlimited stories",
   six_months:     "180 days of unlimited stories",
   twelve_months:  "365 days of unlimited stories",
-  hardcover_book: "1 printed hardcover book credit",
+  hardcover_book: "1 printed softcover book",
 };
 
 // POST /api/access-code/redeem

@@ -8,7 +8,7 @@ const GIFT_CARD_TIERS: Record<string, string> = {
   "Gift Card – One Month":      "one_month",
   "Gift Card – Six Months":     "six_months",
   "Gift Card – Twelve Months":  "twelve_months",
-  "Gift Card – Hardcover Book": "hardcover_book",
+  "Gift Card – Printed Book": "hardcover_book",
 };
 
 function generateGiftCode(): string {
