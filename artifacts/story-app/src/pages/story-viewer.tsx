@@ -48,7 +48,7 @@ export default function StoryViewer() {
   useEffect(() => {
     if (!pendingImages || !id) return;
     const timer = setInterval(() => {
-      queryClient.invalidateQueries({ queryKey: getGetStoryQueryKey(id) });
+      queryClient.refetchQueries({ queryKey: getGetStoryQueryKey(id), type: 'active' });
     }, 5000);
     return () => clearInterval(timer);
   }, [pendingImages, id, queryClient]);

@@ -379,6 +379,8 @@ router.get("/stories/:id", requireAuth, async (req: any, res): Promise<void> => 
   if (!story) { res.status(404).json({ error: "Story not found" }); return; }
   if (story.userId && story.userId !== req.userId) { res.status(403).json({ error: "Forbidden" }); return; }
 
+  // Disable HTTP caching so the client always gets fresh data while images are being painted
+  res.setHeader("Cache-Control", "no-store");
   res.json(GetStoryResponse.parse(serializeStory(story)));
 });
 
