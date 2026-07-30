@@ -609,14 +609,14 @@ export default function Home() {
 
             {/* Access code */}
             <div className="mt-5 pt-5 border-t border-border">
-              <p className="text-xs text-muted-foreground text-center mb-3">Have an access code?</p>
+              <p className="text-xs text-muted-foreground text-center mb-3">Have a gift card or access code?</p>
               <div className="flex gap-2">
                 <input
                   type="text"
                   value={accessCodeInput}
                   onChange={e => { setAccessCodeInput(e.target.value); setAccessCodeError(null); }}
                   onKeyDown={e => e.key === "Enter" && handleRedeemCode()}
-                  placeholder="Enter code"
+                  placeholder="Enter gift card or access code"
                   className="flex-1 px-3 py-2 rounded-xl border border-border bg-background text-sm focus:outline-none focus:ring-2 focus:ring-primary/30"
                 />
                 <button
