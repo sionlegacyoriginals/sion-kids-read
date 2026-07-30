@@ -54,6 +54,14 @@ async function runAppMigrations() {
   await db.execute(sql`
     ALTER TABLE stories ADD COLUMN IF NOT EXISTS user_id TEXT
   `);
+
+  // Reference photos — base64 image store (replaces GCS for user-uploaded reference images)
+  await db.execute(sql`
+    CREATE TABLE IF NOT EXISTS reference_photos (
+      id   TEXT PRIMARY KEY,
+      data TEXT NOT NULL
+    )
+  `);
 }
 
 // ── Stripe init ──────────────────────────────────────────────────────────────

@@ -15,7 +15,6 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { MagicLoader } from "@/components/magic-loader";
 import { BookOpen, ArrowRight, Sparkles, Feather, BookMarked, ImagePlus, X, Loader2, BookHeart, Star, Printer } from "lucide-react";
 import { format } from "date-fns";
-import { useUpload } from "@workspace/object-storage-web";
 
 const THEMES = [
   // ── Values & Character ──────────────────────────────────────────────────────
@@ -159,9 +158,29 @@ export default function Home() {
   const activeSlotRef = useRef<number>(0);
   const [generationError, setGenerationError] = useState<string | null>(null);
 
-  const { uploadFile } = useUpload({
-    onError: () => setUploadingSlot(null),
-  });
+  const uploadFile = async (file: File): Promise<{ objectPath: string } | null> => {
+    return new Promise((resolve) => {
+      const reader = new FileReader();
+      reader.onload = async () => {
+        try {
+          const data = reader.result as string; // data URL
+          const resp = await fetch("/api/storage/upload", {
+            method: "POST",
+            credentials: "include",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ data, name: file.name }),
+          });
+          if (!resp.ok) { resolve(null); return; }
+          const json = await resp.json();
+          resolve({ objectPath: json.objectPath });
+        } catch {
+          resolve(null);
+        }
+      };
+      reader.onerror = () => resolve(null);
+      reader.readAsDataURL(file);
+    });
+  };
 
   const handleSlotClick = (idx: number) => {
     if (uploadingSlot !== null) return;

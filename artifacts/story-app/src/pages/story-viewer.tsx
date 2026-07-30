@@ -1,4 +1,4 @@
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect } from "react";
 import { useRoute, useLocation, Link } from "wouter";
 import { 
   useGetStory, 
@@ -17,16 +17,19 @@ import {
 import { MagicLoader } from "@/components/magic-loader";
 import { OrderDialog } from "@/components/order-dialog";
 
-/** Convert a stored objectPath (/objects/...) to a serving URL */
+/** Convert a stored objectPath to a serving URL */
 function toImageUrl(objectPath: string | null | undefined): string | null {
   if (!objectPath) return null;
+  if (objectPath.startsWith('/ref-photos/')) return `/api${objectPath}`;
   return `/api/storage${objectPath}`;
 }
 
 function parseIllustrations(illustrationUrls: string | null | undefined): string[] {
   if (!illustrationUrls) return [];
   try {
-    return (JSON.parse(illustrationUrls) as string[]).map(p => `/api/storage${p}`);
+    return (JSON.parse(illustrationUrls) as string[]).map(p =>
+      p.startsWith('/ref-photos/') ? `/api${p}` : `/api/storage${p}`
+    );
   } catch {
     return [];
   }
@@ -39,7 +42,17 @@ export default function StoryViewer() {
   const queryClient = useQueryClient();
 
   const { data: story, isLoading } = useGetStory(id!, { query: { enabled: !!id, queryKey: getGetStoryQueryKey(id!) } });
-  
+
+  // Poll every 5 s while illustrations are still being painted in the background
+  const pendingImages = !!story && !story.coverImageUrl && !!story.referenceImagePaths;
+  useEffect(() => {
+    if (!pendingImages || !id) return;
+    const timer = setInterval(() => {
+      queryClient.invalidateQueries({ queryKey: getGetStoryQueryKey(id) });
+    }, 5000);
+    return () => clearInterval(timer);
+  }, [pendingImages, id, queryClient]);
+
   const deleteStory = useDeleteStory();
   const regenerateStory = useRegenerateStory();
 

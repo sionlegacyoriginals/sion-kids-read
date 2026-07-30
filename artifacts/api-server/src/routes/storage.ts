@@ -1,9 +1,12 @@
+import { randomUUID } from 'crypto';
 import { Readable } from 'stream';
 import {
   RequestUploadUrlBody,
   RequestUploadUrlResponse,
 } from '@workspace/api-zod';
 import { Router, type IRouter, type Request, type Response } from 'express';
+import { db } from '@workspace/db';
+import { sql } from 'drizzle-orm';
 
 import { ObjectPermission } from '../lib/objectAcl';
 import {
@@ -26,6 +29,62 @@ function hasAuthenticatedSession(
 
   return req.isAuthenticated();
 }
+
+/**
+ * POST /storage/upload
+ *
+ * Accept a base64-encoded image from the client, store it in the reference_photos
+ * table, and return an objectPath that can be used as a reference image for story
+ * generation.  Body: { data: "data:<mime>;base64,<...>", name?: string }
+ */
+router.post('/storage/upload', async (req: Request, res: Response) => {
+  const { data, name } = req.body ?? {};
+  if (!data || typeof data !== 'string') {
+    res.status(400).json({ error: 'Missing data field (base64 data URL)' });
+    return;
+  }
+  try {
+    const id = randomUUID();
+    await db.execute(sql`INSERT INTO reference_photos (id, data) VALUES (${id}, ${data})`);
+    res.json({ objectPath: `/ref-photos/${id}` });
+  } catch (error) {
+    req.log.error({ err: error }, 'Error storing reference photo');
+    res.status(500).json({ error: 'Failed to store image' });
+  }
+});
+
+/**
+ * GET /ref-photos/:id
+ *
+ * Serve a reference photo stored as a base64 data URL in the reference_photos table.
+ */
+router.get('/ref-photos/:id', async (req: Request, res: Response) => {
+  try {
+    const result = await db.execute(
+      sql`SELECT data FROM reference_photos WHERE id = ${req.params.id}`,
+    );
+    const row = result.rows[0];
+    if (!row?.data) {
+      res.status(404).json({ error: 'Not found' });
+      return;
+    }
+    const dataUrl = row.data as string;
+    // Parse "data:<mime>;base64,<payload>"
+    const match = dataUrl.match(/^data:([^;]+);base64,(.+)$/s);
+    if (!match) {
+      res.status(500).json({ error: 'Corrupt image data' });
+      return;
+    }
+    const [, contentType, payload] = match;
+    const buffer = Buffer.from(payload, 'base64');
+    res.setHeader('Content-Type', contentType);
+    res.setHeader('Cache-Control', 'private, max-age=86400');
+    res.send(buffer);
+  } catch (error) {
+    req.log.error({ err: error }, 'Error serving reference photo');
+    res.status(500).json({ error: 'Failed to serve image' });
+  }
+});
 
 /**
  * POST /storage/uploads/request-url

@@ -1,3 +1,4 @@
+import { randomUUID } from "crypto";
 import { Router, type IRouter } from "express";
 import { desc, eq, sql } from "drizzle-orm";
 import { db, storiesTable } from "@workspace/db";
@@ -97,6 +98,16 @@ async function generateStoryImages(params: {
     await Promise.all(
       params.referenceImagePaths.slice(0, 5).map(async (objectPath) => {
         try {
+          // DB-backed reference photos (new path)
+          if (objectPath.startsWith("/ref-photos/")) {
+            const photoId = objectPath.slice("/ref-photos/".length);
+            const result = await db.execute(
+              sql`SELECT data FROM reference_photos WHERE id = ${photoId}`,
+            );
+            const dataUrl = result.rows[0]?.data as string | undefined;
+            return dataUrl ?? null;
+          }
+          // Legacy GCS path (kept for old stories but will likely 401)
           const file = await objectStorage.getObjectEntityFile(objectPath);
           const response = await objectStorage.downloadObject(file);
           const buffer = Buffer.from(await response.arrayBuffer());
@@ -158,16 +169,10 @@ async function generateStoryImages(params: {
   ]);
 
   async function storeBuffer(buffer: Buffer): Promise<string> {
-    const presignedUrl = await objectStorage.getObjectEntityUploadURL();
-    const objectPath = objectStorage.normalizeObjectEntityPath(presignedUrl);
-    const resp = await fetch(presignedUrl, {
-      method: "PUT",
-      // @ts-ignore
-      body: buffer,
-      headers: { "Content-Type": "image/png" },
-    });
-    if (!resp.ok) throw new Error(`Upload failed: ${resp.status}`);
-    return objectPath;
+    const id = randomUUID();
+    const dataUrl = `data:image/png;base64,${buffer.toString("base64")}`;
+    await db.execute(sql`INSERT INTO reference_photos (id, data) VALUES (${id}, ${dataUrl})`);
+    return `/ref-photos/${id}`;
   }
 
   const [coverImagePath, illus1Path, illus2Path] = await Promise.all([
@@ -276,25 +281,8 @@ router.post("/stories", requireAuth, async (req: any, res): Promise<void> => {
     childName, childAge, childGender, milestones, theme, customPrompt, bibleVerse,
   });
 
-  let coverImageUrl: string | null = null;
-  let illustrationUrls: string | null = null;
-
-  if (referenceImagePaths) {
-    try {
-      const paths = JSON.parse(referenceImagePaths) as string[];
-      if (paths.length > 0) {
-        const { coverImagePath, illustrationPaths } = await generateStoryImages({
-          childName, childAge, childGender, theme,
-          storyTitle: title, storyContent: content, referenceImagePaths: paths,
-        });
-        coverImageUrl = coverImagePath;
-        illustrationUrls = JSON.stringify(illustrationPaths);
-      }
-    } catch (err) {
-      console.error("Image generation failed — story saved without illustrations:", err);
-    }
-  }
-
+  // Insert story immediately so we can respond before the 60-second proxy timeout.
+  // Images are generated in the background and written back once ready.
   const [story] = await db
     .insert(storiesTable)
     .values({
@@ -305,14 +293,38 @@ router.post("/stories", requireAuth, async (req: any, res): Promise<void> => {
       customPrompt: customPrompt ?? null,
       bibleVerse: bibleVerse ?? null,
       referenceImagePaths: referenceImagePaths ?? null,
-      coverImageUrl,
-      illustrationUrls,
+      coverImageUrl: null,
+      illustrationUrls: null,
       title,
       content,
     })
     .returning();
 
   res.status(201).json(CreateStoryResponse.parse(serializeStory(story)));
+
+  // Generate images in the background after responding
+  if (referenceImagePaths) {
+    setImmediate(async () => {
+      try {
+        const paths = JSON.parse(referenceImagePaths) as string[];
+        if (paths.length > 0) {
+          const { coverImagePath, illustrationPaths } = await generateStoryImages({
+            childName, childAge, childGender, theme,
+            storyTitle: title, storyContent: content, referenceImagePaths: paths,
+          });
+          await db.execute(sql`
+            UPDATE stories
+            SET cover_image_url   = ${coverImagePath},
+                illustration_urls = ${JSON.stringify(illustrationPaths)},
+                updated_at        = NOW()
+            WHERE id = ${story.id}
+          `);
+        }
+      } catch (err) {
+        console.error("Background image generation failed:", err);
+      }
+    });
+  }
 });
 
 // ── GET /stories/stats ────────────────────────────────────────────────────────
