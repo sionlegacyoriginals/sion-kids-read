@@ -97,7 +97,7 @@ export default function Landing() {
             {/* Pay per story */}
             <div className="bg-card border border-border/60 rounded-3xl p-8 shadow-md text-left">
               <div className="flex items-baseline gap-1 mb-1">
-                <span className="text-4xl font-serif font-bold text-foreground">$5.55</span>
+                <span className="text-4xl font-serif font-bold text-foreground">$1</span>
                 <span className="text-muted-foreground">/story</span>
               </div>
               <p className="text-muted-foreground text-sm mb-5">Pay as you go — no commitment</p>
