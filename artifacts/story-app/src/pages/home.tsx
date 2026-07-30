@@ -650,7 +650,7 @@ export default function Home() {
           </div>
           <div className="flex-1 min-w-0">
             <p className="text-sm font-bold text-foreground leading-tight">Give the gift of stories</p>
-            <p className="text-xs text-muted-foreground mt-0.5">Buy a gift card for someone special — starting at $5.55</p>
+            <p className="text-xs text-muted-foreground mt-0.5">Buy a gift card for someone special — starting at $1</p>
           </div>
           <ArrowRight className="w-4 h-4 text-primary shrink-0 group-hover:translate-x-0.5 transition-transform" />
         </div>

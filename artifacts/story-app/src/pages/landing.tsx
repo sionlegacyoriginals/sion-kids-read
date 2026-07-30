@@ -168,7 +168,7 @@ export default function Landing() {
 
           <div className="grid grid-cols-2 gap-4">
             {[
-              { label: "One story",    price: "$5.55",  url: "https://buy.stripe.com/00waEX9UG0HU7xigFjdQQ01" },
+              { label: "One story",    price: "$1.00",  url: "https://buy.stripe.com/aFa9AT2se0HUdVG2OtdQQ05" },
               { label: "One month",    price: "$8.88",  url: "https://buy.stripe.com/00wbJ15Eq3U618UfBfdQQ02" },
               { label: "Six months",   price: "$44.44", url: "https://buy.stripe.com/aFa28raYK62e5pacp3dQQ03" },
               { label: "12 months",    price: "$77.77", url: "https://buy.stripe.com/fZu4gzgj462eg3OfBfdQQ04" },
