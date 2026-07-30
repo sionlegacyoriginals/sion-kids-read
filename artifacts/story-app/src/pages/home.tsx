@@ -13,7 +13,7 @@ import {
 } from "@workspace/api-client-react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { MagicLoader } from "@/components/magic-loader";
-import { BookOpen, ArrowRight, Sparkles, Feather, BookMarked, ImagePlus, X, Loader2, BookHeart, Star, Printer } from "lucide-react";
+import { BookOpen, ArrowRight, Sparkles, Feather, BookMarked, ImagePlus, X, Loader2, BookHeart, Star, Printer, Gift } from "lucide-react";
 import { format } from "date-fns";
 
 const THEMES = [
@@ -641,6 +641,20 @@ export default function Home() {
           </div>
         </div>
       )}
+
+      {/* Gift card promo */}
+      <Link href="/#gift-cards">
+        <div className="flex items-center gap-3 p-4 rounded-2xl bg-primary/5 border border-primary/20 hover:bg-primary/10 hover:border-primary/30 transition-all cursor-pointer group">
+          <div className="w-10 h-10 rounded-xl bg-primary/15 flex items-center justify-center shrink-0">
+            <Gift className="w-5 h-5 text-primary" />
+          </div>
+          <div className="flex-1 min-w-0">
+            <p className="text-sm font-bold text-foreground leading-tight">Give the gift of stories</p>
+            <p className="text-xs text-muted-foreground mt-0.5">Buy a gift card for someone special — starting at $5.55</p>
+          </div>
+          <ArrowRight className="w-4 h-4 text-primary shrink-0 group-hover:translate-x-0.5 transition-transform" />
+        </div>
+      </Link>
 
       <div className="space-y-6">
         <div className="flex items-center justify-between">
