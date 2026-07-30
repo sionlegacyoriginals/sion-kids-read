@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from "react";
-import { Play, Pause, Square, Headphones, ChevronDown, Mic } from "lucide-react";
+import { Play, Pause, Square, Headphones, ChevronDown, ChevronUp, User, Users } from "lucide-react";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -39,41 +39,44 @@ export function buildReadAlongData(paragraphs: string[]): {
 
 // ─── Voice helpers ────────────────────────────────────────────────────────────
 
-const KNOWN_MALE_HINTS = [
-  "male", "alex", "daniel", "tom", "david", "mark", "james", "fred", "ralph",
-  "junior", "aaron", "arthur", "gordon", "lee", "oliver", "rishi", "rocko",
-  "samson", "sandy", "bob", "bruce", "charlie", "eric", "george", "henry",
-  "jake", "joe", "john", "kevin", "michael", "mike", "paul", "peter", "ryan",
-  "scott", "steve", "thomas", "william", "zach",
+// Names/substrings strongly associated with male voices
+const MALE_HINTS = [
+  "male", " al ", "alex", "daniel", "tom", "david", "mark", "james",
+  "fred", "ralph", "junior", "aaron", "arthur", "gordon", "lee", "oliver",
+  "rishi", "rocko", "samson", "bob", "bruce", "charlie", "eric", "george",
+  "henry", "jake", "joe", "john", "kevin", "michael", " mike", "paul",
+  "peter", "ryan", "scott", "steve", "thomas", "william",
+];
+
+const FEMALE_HINTS = [
+  "female", "samantha", "victoria", "karen", "moira", "fiona", "susan",
+  "alice", "alva", "amelie", "anna", "ellen", "joana", "kanya", "laura",
+  "lekha", "luciana", "mariska", "milena", "monica", "paulina", "petra",
+  "sara", "satu", "sin-ji", "soledad", "ting-ting", "yuna", "zosia",
+  "zuzana", "tessa", "veena", "serena", "ava", "jessica", "kate",
 ];
 
 export function guessGender(voice: SpeechSynthesisVoice): "male" | "female" | "unknown" {
-  const lower = voice.name.toLowerCase();
-  if (lower.includes("female")) return "female";
-  if (KNOWN_MALE_HINTS.some((h) => lower.includes(h))) return "male";
-  if (lower.includes("male")) return "male";
+  const lower = " " + voice.name.toLowerCase() + " ";
+  if (FEMALE_HINTS.some((h) => lower.includes(h))) return "female";
+  if (MALE_HINTS.some((h) => lower.includes(h))) return "male";
   return "unknown";
 }
 
-function shortName(voice: SpeechSynthesisVoice): string {
-  // Strip common suffixes like "(en-US)" or "Online (Natural) - English (United States)"
-  let name = voice.name
-    .replace(/\s*\(.*?\)\s*/g, "")            // remove parenthetical
-    .replace(/online\s*/i, "")
-    .replace(/natural\s*/i, "")
-    .replace(/english\s*/i, "")
-    .replace(/united states/i, "")
-    .replace(/united kingdom/i, "UK")
-    .replace(/australia/i, "AU")
+export function shortName(voice: SpeechSynthesisVoice): string {
+  return voice.name
+    .replace(/\s*\([^)]*\)\s*/g, "")
+    .replace(/online/gi, "")
+    .replace(/natural/gi, "")
+    .replace(/english/gi, "")
+    .replace(/united states/gi, "US")
+    .replace(/united kingdom/gi, "UK")
     .replace(/\s+/g, " ")
-    .trim();
-  return name || voice.name;
+    .trim() || voice.name;
 }
 
 function loadEnglishVoices(): SpeechSynthesisVoice[] {
-  return window.speechSynthesis
-    .getVoices()
-    .filter((v) => v.lang.startsWith("en"));
+  return window.speechSynthesis.getVoices().filter((v) => v.lang.startsWith("en"));
 }
 
 // ─── Hook ─────────────────────────────────────────────────────────────────────
@@ -106,8 +109,11 @@ export function useReadAlong(paragraphs: string[]) {
       const v = loadEnglishVoices();
       if (v.length > 0) {
         setVoices(v);
-        // Default to first voice so there's always something selected
-        setSelectedVoice((prev) => prev ?? v[0]);
+        setSelectedVoice((prev) => {
+          if (prev) return prev; // keep existing selection
+          // Default to a female voice
+          return v.find((x) => guessGender(x) === "female") ?? v[0];
+        });
       }
     };
     update();
@@ -115,50 +121,52 @@ export function useReadAlong(paragraphs: string[]) {
     return () => window.speechSynthesis.removeEventListener("voiceschanged", update);
   }, []);
 
-  const startSpeaking = useCallback((fromChar: number, rate: number, voice: SpeechSynthesisVoice | null) => {
-    window.speechSynthesis.cancel();
-    const text = fullTextRef.current.slice(fromChar);
-    if (!text.trim()) return;
+  const startSpeaking = useCallback(
+    (fromChar: number, rate: number, voice: SpeechSynthesisVoice | null) => {
+      window.speechSynthesis.cancel();
+      const text = fullTextRef.current.slice(fromChar);
+      if (!text.trim()) return;
 
-    const utt = new SpeechSynthesisUtterance(text);
-    utt.rate = rate;
+      const utt = new SpeechSynthesisUtterance(text);
+      utt.rate = rate;
 
-    // Always resolve the voice from the live voices list — stale references are silently ignored
-    const liveName = voice?.name;
-    const liveVoice = liveName
-      ? window.speechSynthesis.getVoices().find((v) => v.name === liveName) ?? null
-      : null;
+      // Always re-resolve voice from live list — stale references are silently ignored
+      const liveVoice = voice
+        ? window.speechSynthesis.getVoices().find((v) => v.name === voice.name) ?? null
+        : null;
 
-    if (liveVoice) {
-      utt.voice = liveVoice;
-      utt.lang = liveVoice.lang;   // use the voice's own locale, not a hardcoded override
-    } else {
-      utt.lang = "en-US";
-    }
+      if (liveVoice) {
+        utt.voice = liveVoice;
+        utt.lang = liveVoice.lang;
+      } else {
+        utt.lang = "en-US";
+      }
 
-    let fired = false;
-    utt.onboundary = (e) => {
-      if (e.name !== "word") return;
-      fired = true;
-      setActiveCharIndex(fromChar + e.charIndex);
-    };
-    utt.onstart = () => {
-      setIsPlaying(true);
-      setTimeout(() => { if (!fired) setBoundarySupported(false); }, 700);
-    };
-    utt.onend = () => {
-      setIsPlaying(false);
-      setActiveCharIndex(null);
-      resumeCharRef.current = 0;
-    };
-    utt.onerror = () => {
-      setIsPlaying(false);
-      setActiveCharIndex(null);
-    };
+      let fired = false;
+      utt.onboundary = (e) => {
+        if (e.name !== "word") return;
+        fired = true;
+        setActiveCharIndex(fromChar + e.charIndex);
+      };
+      utt.onstart = () => {
+        setIsPlaying(true);
+        setTimeout(() => { if (!fired) setBoundarySupported(false); }, 700);
+      };
+      utt.onend = () => {
+        setIsPlaying(false);
+        setActiveCharIndex(null);
+        resumeCharRef.current = 0;
+      };
+      utt.onerror = () => {
+        setIsPlaying(false);
+        setActiveCharIndex(null);
+      };
 
-    resumeCharRef.current = fromChar;
-    window.speechSynthesis.speak(utt);
-  }, []);
+      resumeCharRef.current = fromChar;
+      window.speechSynthesis.speak(utt);
+    },
+    []
+  );
 
   const togglePlay = useCallback(() => {
     if (isPlaying) {
@@ -179,15 +187,21 @@ export function useReadAlong(paragraphs: string[]) {
     resumeCharRef.current = 0;
   }, []);
 
-  const changeSpeed = useCallback((s: Speed) => {
-    setSpeed(s);
-    if (isPlaying) startSpeaking(resumeCharRef.current, s, voiceRef.current);
-  }, [isPlaying, startSpeaking]);
+  const changeSpeed = useCallback(
+    (s: Speed) => {
+      setSpeed(s);
+      if (isPlaying) startSpeaking(resumeCharRef.current, s, voiceRef.current);
+    },
+    [isPlaying, startSpeaking]
+  );
 
-  const changeVoice = useCallback((v: SpeechSynthesisVoice) => {
-    setSelectedVoice(v);
-    if (isPlaying) startSpeaking(resumeCharRef.current, speedRef.current, v);
-  }, [isPlaying, startSpeaking]);
+  const changeVoice = useCallback(
+    (v: SpeechSynthesisVoice) => {
+      setSelectedVoice(v);
+      if (isPlaying) startSpeaking(resumeCharRef.current, speedRef.current, v);
+    },
+    [isPlaying, startSpeaking]
+  );
 
   const open = useCallback(() => setVisible(true), []);
   const close = useCallback(() => { stop(); setVisible(false); }, [stop]);
@@ -225,113 +239,183 @@ export function ReadAlongBar({
   childName, isPlaying, togglePlay, stop, close,
   speed, changeSpeed,
   voices, selectedVoice, changeVoice,
-  boundarySupported,
 }: PlayerBarProps) {
   const [showVoices, setShowVoices] = useState(false);
+
+  const maleVoices   = voices.filter((v) => guessGender(v) === "male");
+  const femaleVoices = voices.filter((v) => guessGender(v) === "female");
+  const otherVoices  = voices.filter((v) => guessGender(v) === "unknown");
 
   return (
     <div className="fixed bottom-0 left-0 right-0 z-50 flex justify-center pointer-events-none">
       <div className="pointer-events-auto w-full max-w-2xl mx-4 mb-4 flex flex-col gap-2">
 
-        {/* Voice picker panel */}
-        {showVoices && voices.length > 0 && (
-          <div className="bg-white/95 backdrop-blur-sm border border-border/60 rounded-2xl shadow-xl p-3 animate-in slide-in-from-bottom-2">
-            <p className="text-xs font-bold text-muted-foreground uppercase tracking-wide mb-2 px-1">Choose a voice</p>
-            <div className="flex flex-wrap gap-2">
-              {voices.map((v) => {
-                const gender = guessGender(v);
-                const isSelected = selectedVoice?.name === v.name;
-                return (
-                  <button
-                    key={v.name}
-                    onClick={() => { changeVoice(v); setShowVoices(false); }}
-                    className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-sm font-semibold border transition-all ${
-                      isSelected
-                        ? "bg-primary text-white border-primary"
-                        : "bg-muted/60 text-foreground border-border hover:border-primary/40 hover:bg-primary/5"
-                    }`}
-                  >
-                    <span className="text-base leading-none">
-                      {gender === "male" ? "👨" : gender === "female" ? "👩" : "🎙️"}
-                    </span>
-                    {shortName(v)}
-                  </button>
-                );
-              })}
+        {/* ── Voice picker panel ── */}
+        {showVoices && (
+          <div className="bg-white border border-border/60 rounded-2xl shadow-2xl p-4 animate-in slide-in-from-bottom-2">
+            <div className="flex items-center justify-between mb-3">
+              <p className="font-bold text-foreground">Choose a reading voice</p>
+              <button
+                onClick={() => setShowVoices(false)}
+                className="text-muted-foreground hover:text-foreground"
+              >
+                <ChevronDown className="w-5 h-5" />
+              </button>
             </div>
+
+            {voices.length === 0 && (
+              <p className="text-sm text-muted-foreground">No voices available on this device.</p>
+            )}
+
+            {maleVoices.length > 0 && (
+              <div className="mb-3">
+                <p className="text-xs font-bold text-muted-foreground uppercase tracking-wide mb-2 flex items-center gap-1">
+                  <User className="w-3.5 h-3.5" /> Men's voices
+                </p>
+                <div className="flex flex-wrap gap-2">
+                  {maleVoices.map((v) => (
+                    <VoiceChip key={v.name} voice={v} selected={selectedVoice?.name === v.name} onSelect={() => { changeVoice(v); setShowVoices(false); }} />
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {femaleVoices.length > 0 && (
+              <div className="mb-3">
+                <p className="text-xs font-bold text-muted-foreground uppercase tracking-wide mb-2 flex items-center gap-1">
+                  <User className="w-3.5 h-3.5" /> Women's voices
+                </p>
+                <div className="flex flex-wrap gap-2">
+                  {femaleVoices.map((v) => (
+                    <VoiceChip key={v.name} voice={v} selected={selectedVoice?.name === v.name} onSelect={() => { changeVoice(v); setShowVoices(false); }} />
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {otherVoices.length > 0 && (
+              <div>
+                <p className="text-xs font-bold text-muted-foreground uppercase tracking-wide mb-2 flex items-center gap-1">
+                  <Users className="w-3.5 h-3.5" /> Other voices
+                </p>
+                <div className="flex flex-wrap gap-2">
+                  {otherVoices.map((v) => (
+                    <VoiceChip key={v.name} voice={v} selected={selectedVoice?.name === v.name} onSelect={() => { changeVoice(v); setShowVoices(false); }} />
+                  ))}
+                </div>
+              </div>
+            )}
           </div>
         )}
 
-        {/* Main bar */}
-        <div className="bg-primary rounded-2xl shadow-2xl shadow-primary/30 px-4 py-3 flex items-center gap-3">
-          {/* Play / Pause */}
-          <button
-            onClick={togglePlay}
-            className="w-12 h-12 rounded-xl bg-white/20 hover:bg-white/30 flex items-center justify-center transition-all shrink-0"
-            aria-label={isPlaying ? "Pause" : "Play"}
-          >
-            {isPlaying
-              ? <Pause className="w-6 h-6 text-white fill-white" />
-              : <Play  className="w-6 h-6 text-white fill-white" />}
-          </button>
+        {/* ── Main player card ── */}
+        <div className="bg-primary rounded-2xl shadow-2xl shadow-primary/30 p-4 flex flex-col gap-3">
 
-          {/* Label */}
-          <div className="flex-1 min-w-0">
-            <p className="text-white font-bold text-sm truncate leading-tight">
-              {isPlaying ? `Reading for ${childName}…` : "Read Along"}
-            </p>
-            <p className="text-white/60 text-xs leading-tight mt-0.5">
-              {selectedVoice ? shortName(selectedVoice) : "Tap ▶ to start"}
-            </p>
+          {/* Row 1 — play controls + close */}
+          <div className="flex items-center gap-3">
+            {/* Play / Pause */}
+            <button
+              onClick={togglePlay}
+              className="w-14 h-14 rounded-2xl bg-white/20 hover:bg-white/30 flex items-center justify-center transition-all shrink-0"
+              aria-label={isPlaying ? "Pause" : "Play"}
+            >
+              {isPlaying
+                ? <Pause className="w-7 h-7 text-white fill-white" />
+                : <Play  className="w-7 h-7 text-white fill-white" />}
+            </button>
+
+            <div className="flex-1 min-w-0">
+              <p className="text-white font-bold text-base leading-tight truncate">
+                {isPlaying ? `Reading for ${childName}…` : "Read Along"}
+              </p>
+              <p className="text-white/70 text-sm leading-tight mt-0.5">
+                {isPlaying ? "Words highlight as you follow along" : "Tap ▶ to begin"}
+              </p>
+            </div>
+
+            {/* Stop */}
+            <button
+              onClick={stop}
+              className="w-10 h-10 rounded-xl bg-white/10 hover:bg-white/20 flex items-center justify-center transition-all shrink-0"
+              aria-label="Stop"
+            >
+              <Square className="w-5 h-5 text-white fill-white" />
+            </button>
+
+            {/* Close */}
+            <button
+              onClick={close}
+              className="w-10 h-10 rounded-xl bg-white/10 hover:bg-white/20 flex items-center justify-center transition-all shrink-0"
+              aria-label="Close player"
+            >
+              <ChevronDown className="w-5 h-5 text-white" />
+            </button>
           </div>
 
-          {/* Voice picker toggle */}
-          <button
-            onClick={() => setShowVoices((v) => !v)}
-            className={`w-9 h-9 rounded-xl flex items-center justify-center transition-all shrink-0 ${
-              showVoices ? "bg-white text-primary" : "bg-white/10 hover:bg-white/20 text-white"
-            }`}
-            aria-label="Choose voice"
-            title="Choose voice"
-          >
-            <Mic className="w-4 h-4" />
-          </button>
+          {/* Row 2 — voice + speed */}
+          <div className="flex items-center gap-2 pt-1 border-t border-white/20">
 
-          {/* Speed */}
-          <div className="flex items-center gap-0.5 shrink-0">
-            {SPEEDS.map((s) => (
-              <button
-                key={s}
-                onClick={() => changeSpeed(s)}
-                className={`text-xs font-bold px-2 py-1 rounded-lg transition-all ${
-                  speed === s ? "bg-white text-primary" : "text-white/60 hover:text-white"
-                }`}
-              >
-                {s}×
-              </button>
-            ))}
+            {/* Voice selector — full width label, always visible */}
+            <button
+              onClick={() => setShowVoices((v) => !v)}
+              className="flex-1 flex items-center gap-2 bg-white/10 hover:bg-white/20 rounded-xl px-3 py-2 transition-all text-left min-w-0"
+            >
+              <span className="text-lg leading-none shrink-0">
+                {selectedVoice
+                  ? guessGender(selectedVoice) === "male" ? "👨" : guessGender(selectedVoice) === "female" ? "👩" : "🎙️"
+                  : "🎙️"}
+              </span>
+              <div className="flex-1 min-w-0">
+                <p className="text-white/60 text-[10px] font-bold uppercase tracking-wide leading-none mb-0.5">Voice</p>
+                <p className="text-white font-semibold text-sm truncate leading-tight">
+                  {selectedVoice ? shortName(selectedVoice) : "Choose a voice"}
+                </p>
+              </div>
+              {showVoices
+                ? <ChevronUp className="w-4 h-4 text-white/60 shrink-0" />
+                : <ChevronDown className="w-4 h-4 text-white/60 shrink-0" />}
+            </button>
+
+            {/* Speed selector */}
+            <div className="flex items-center gap-0.5 shrink-0 bg-white/10 rounded-xl px-2 py-2">
+              <p className="text-white/60 text-[10px] font-bold uppercase tracking-wide mr-1 hidden sm:block">Speed</p>
+              {SPEEDS.map((s) => (
+                <button
+                  key={s}
+                  onClick={() => changeSpeed(s)}
+                  className={`text-xs font-bold px-2 py-1 rounded-lg transition-all ${
+                    speed === s ? "bg-white text-primary" : "text-white/70 hover:text-white"
+                  }`}
+                >
+                  {s}×
+                </button>
+              ))}
+            </div>
           </div>
-
-          {/* Stop */}
-          <button
-            onClick={stop}
-            className="w-9 h-9 rounded-xl bg-white/10 hover:bg-white/20 flex items-center justify-center transition-all shrink-0"
-            aria-label="Stop"
-          >
-            <Square className="w-4 h-4 text-white fill-white" />
-          </button>
-
-          {/* Close */}
-          <button
-            onClick={close}
-            className="w-9 h-9 rounded-xl bg-white/10 hover:bg-white/20 flex items-center justify-center transition-all shrink-0"
-            aria-label="Close"
-          >
-            <ChevronDown className="w-4 h-4 text-white" />
-          </button>
         </div>
       </div>
     </div>
+  );
+}
+
+function VoiceChip({
+  voice, selected, onSelect,
+}: {
+  voice: SpeechSynthesisVoice;
+  selected: boolean;
+  onSelect: () => void;
+}) {
+  return (
+    <button
+      onClick={onSelect}
+      className={`px-3 py-1.5 rounded-full text-sm font-semibold border transition-all ${
+        selected
+          ? "bg-primary text-white border-primary"
+          : "bg-muted/60 text-foreground border-border hover:border-primary/40 hover:bg-primary/5"
+      }`}
+    >
+      {shortName(voice)}
+    </button>
   );
 }
 
