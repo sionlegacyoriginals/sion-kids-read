@@ -93,7 +93,7 @@ export default function Home() {
 
   // Paywall modal state — auto-open if ?paywall=1 is in the URL (returning from cancelled Stripe checkout)
   const [showPaywall, setShowPaywall] = useState(() => new URLSearchParams(window.location.search).get("paywall") === "1");
-  const [paywallLoading, setPaywallLoading] = useState<"story" | "subscription" | "book" | null>(null);
+  const [paywallLoading, setPaywallLoading] = useState<"story" | "book" | "monthly" | "6months" | "yearly" | null>(null);
   const [paywallError, setPaywallError] = useState<string | null>(null);
   const [accessCodeInput, setAccessCodeInput] = useState("");
   const [accessCodeLoading, setAccessCodeLoading] = useState(false);
@@ -124,7 +124,7 @@ export default function Home() {
     }
   };
 
-  const handlePaywallCheckout = async (type: "story" | "subscription" | "book") => {
+  const handlePaywallCheckout = async (type: "story" | "book" | "monthly" | "6months" | "yearly") => {
     // Before leaving for Stripe, save the form so we can restore it on return
     if (type === "book") {
       const formData = getValues();
@@ -134,6 +134,7 @@ export default function Home() {
     setPaywallLoading(type);
     setPaywallError(null);
     try {
+      const isSubscription = type === "monthly" || type === "6months" || type === "yearly";
       const endpoint =
         type === "story" ? "/api/checkout/story" :
         type === "book"  ? "/api/checkout/book-bundle" :
@@ -142,7 +143,10 @@ export default function Home() {
         method: "POST",
         credentials: "include",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email: user?.primaryEmailAddress?.emailAddress }),
+        body: JSON.stringify({
+          email: user?.primaryEmailAddress?.emailAddress,
+          ...(isSubscription ? { period: type } : {}),
+        }),
       });
       const data = await resp.json();
       if (!resp.ok) throw new Error(data.error ?? "Checkout failed");
@@ -648,9 +652,41 @@ export default function Home() {
                 {paywallLoading === "book" && <Loader2 className="w-4 h-4 animate-spin text-primary shrink-0" />}
               </button>
 
-              {/* $3.33/month */}
+              {/* Monthly */}
               <button
-                onClick={() => handlePaywallCheckout("subscription")}
+                onClick={() => handlePaywallCheckout("monthly")}
+                disabled={paywallLoading !== null}
+                className="w-full flex items-center gap-4 p-4 rounded-2xl border border-border hover:border-primary/40 hover:bg-primary/5 transition-all text-left disabled:opacity-60"
+              >
+                <span className="w-11 h-11 rounded-xl bg-primary/10 flex items-center justify-center shrink-0">
+                  <Sparkles className="w-5 h-5 text-primary" />
+                </span>
+                <div className="flex-1 min-w-0">
+                  <div className="font-bold text-foreground">Monthly — $8.88/mo</div>
+                  <div className="text-xs text-muted-foreground">Unlimited stories, cancel anytime</div>
+                </div>
+                {paywallLoading === "monthly" && <Loader2 className="w-4 h-4 animate-spin text-primary shrink-0" />}
+              </button>
+
+              {/* 6 months */}
+              <button
+                onClick={() => handlePaywallCheckout("6months")}
+                disabled={paywallLoading !== null}
+                className="w-full flex items-center gap-4 p-4 rounded-2xl border border-border hover:border-primary/40 hover:bg-primary/5 transition-all text-left disabled:opacity-60"
+              >
+                <span className="w-11 h-11 rounded-xl bg-primary/10 flex items-center justify-center shrink-0">
+                  <Sparkles className="w-5 h-5 text-primary" />
+                </span>
+                <div className="flex-1 min-w-0">
+                  <div className="font-bold text-foreground">6 months — $44.44</div>
+                  <div className="text-xs text-muted-foreground">Unlimited stories for 6 months</div>
+                </div>
+                {paywallLoading === "6months" && <Loader2 className="w-4 h-4 animate-spin text-primary shrink-0" />}
+              </button>
+
+              {/* Yearly */}
+              <button
+                onClick={() => handlePaywallCheckout("yearly")}
                 disabled={paywallLoading !== null}
                 className="w-full flex items-center gap-4 p-4 rounded-2xl border-2 border-primary bg-primary/5 hover:bg-primary/10 transition-all text-left disabled:opacity-60"
               >
@@ -659,12 +695,12 @@ export default function Home() {
                 </span>
                 <div className="flex-1 min-w-0">
                   <div className="font-bold text-foreground flex items-center gap-2">
-                    Membership — $3.33/mo
+                    1 year — $77.77
                     <span className="text-[10px] bg-primary text-white px-1.5 py-0.5 rounded-full font-bold">Best value</span>
                   </div>
-                  <div className="text-xs text-muted-foreground">Unlimited stories, cancel anytime</div>
+                  <div className="text-xs text-muted-foreground">Unlimited stories for a full year</div>
                 </div>
-                {paywallLoading === "subscription" && <Loader2 className="w-4 h-4 animate-spin text-primary shrink-0" />}
+                {paywallLoading === "yearly" && <Loader2 className="w-4 h-4 animate-spin text-primary shrink-0" />}
               </button>
             </div>
 

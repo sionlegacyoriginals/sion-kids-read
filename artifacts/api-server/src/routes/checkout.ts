@@ -43,9 +43,18 @@ router.get("/users/me", requireAuth, async (req: any, res) => {
 });
 
 // ── POST /api/checkout/subscription ─────────────────────────────────────────
+// period: "monthly" (default) | "6months" | "yearly"
+// Amounts: $8.88/mo, $44.44/6mo, $77.77/yr
+const PERIOD_CONFIG: Record<string, { intervalCount: number; amount: number; label: string }> = {
+  monthly:  { intervalCount: 1,  amount: 888,  label: "$8.88/mo" },
+  "6months": { intervalCount: 6,  amount: 4444, label: "$44.44/6mo" },
+  yearly:   { intervalCount: 12, amount: 7777, label: "$77.77/yr" },
+};
+
 router.post("/checkout/subscription", requireAuth, async (req: any, res) => {
   try {
-    const { email } = req.body;
+    const { email, period = "monthly" } = req.body;
+    const periodCfg = PERIOD_CONFIG[period] ?? PERIOD_CONFIG.monthly;
     await ensureUser(req.userId, email);
 
     const stripe = await getUncachableStripeClient();
@@ -67,7 +76,7 @@ router.post("/checkout/subscription", requireAuth, async (req: any, res) => {
       );
     }
 
-    // Look up membership price directly from Stripe API
+    // Find the membership product then pick the right price by interval_count + amount
     const membershipProducts = await stripe.products.search({
       query: "name:'StoryBloom Membership' AND active:'true'",
     });
@@ -75,10 +84,14 @@ router.post("/checkout/subscription", requireAuth, async (req: any, res) => {
     if (!membershipProduct) {
       return res.status(500).json({ error: "Membership product not found. Run the seed script." });
     }
-    const membershipPrices = await stripe.prices.list({ product: membershipProduct.id, active: true, limit: 1 });
-    const membershipPrice = membershipPrices.data[0];
+    const allPrices = await stripe.prices.list({ product: membershipProduct.id, active: true, limit: 100 });
+    const membershipPrice = allPrices.data.find(
+      p => p.recurring?.interval === "month" &&
+           p.recurring?.interval_count === periodCfg.intervalCount &&
+           p.unit_amount === periodCfg.amount
+    );
     if (!membershipPrice) {
-      return res.status(500).json({ error: "Membership price not found. Run the seed script." });
+      return res.status(500).json({ error: `Membership price for "${period}" not found. Run add-multi-period-prices script.` });
     }
 
     const session = await stripe.checkout.sessions.create({
