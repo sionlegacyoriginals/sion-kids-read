@@ -4,10 +4,10 @@ import { Gift, ArrowLeft, Check, ArrowRight } from "lucide-react";
 const TIERS = [
   {
     label: "One Story",
-    price: "$1.00",
+    price: "$1.11",
     description: "A single personalized story",
     perks: ["One AI-illustrated story", "Reference photo support", "Downloadable PDF"],
-    url: "https://buy.stripe.com/aFa9AT2se0HUdVG2OtdQQ05",
+    url: "https://buy.stripe.com/dRm4gz9UGeyKeZKbkZdQQ07",
     highlight: false,
   },
   {

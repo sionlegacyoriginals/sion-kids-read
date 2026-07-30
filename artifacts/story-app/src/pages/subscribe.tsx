@@ -120,7 +120,7 @@ export default function Subscribe() {
         {/* Pay per story */}
         <div className="bg-card border border-border/60 rounded-3xl p-8 shadow-sm flex flex-col">
           <div className="flex items-baseline justify-center gap-1 mb-1">
-            <span className="text-5xl font-serif font-bold text-foreground">$1</span>
+            <span className="text-5xl font-serif font-bold text-foreground">$1.11</span>
             <span className="text-muted-foreground">/story</span>
           </div>
           <p className="text-center text-muted-foreground text-sm mb-6">Pay only when you create</p>
@@ -147,7 +147,7 @@ export default function Subscribe() {
             {checkoutLoading === "story" ? (
               <><Loader2 className="w-4 h-4 animate-spin" /> Redirecting…</>
             ) : (
-              "Buy one story — $1"
+              "Buy one story — $1.11"
             )}
           </button>
         </div>

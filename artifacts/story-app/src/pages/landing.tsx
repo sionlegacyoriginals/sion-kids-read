@@ -97,7 +97,7 @@ export default function Landing() {
             {/* Pay per story */}
             <div className="bg-card border border-border/60 rounded-3xl p-8 shadow-md text-left">
               <div className="flex items-baseline gap-1 mb-1">
-                <span className="text-4xl font-serif font-bold text-foreground">$1</span>
+                <span className="text-4xl font-serif font-bold text-foreground">$1.11</span>
                 <span className="text-muted-foreground">/story</span>
               </div>
               <p className="text-muted-foreground text-sm mb-5">Pay as you go — no commitment</p>
@@ -169,7 +169,7 @@ export default function Landing() {
 
           <div className="grid grid-cols-2 gap-4">
             {[
-              { label: "One story",    price: "$1.00",  url: "https://buy.stripe.com/aFa9AT2se0HUdVG2OtdQQ05" },
+              { label: "One story",    price: "$1.11",  url: "https://buy.stripe.com/dRm4gz9UGeyKeZKbkZdQQ07" },
               { label: "One month",    price: "$8.88",  url: "https://buy.stripe.com/00wbJ15Eq3U618UfBfdQQ02" },
               { label: "Six months",   price: "$44.44", url: "https://buy.stripe.com/aFa28raYK62e5pacp3dQQ03" },
               { label: "12 months",    price: "$77.77", url: "https://buy.stripe.com/fZu4gzgj462eg3OfBfdQQ04" },

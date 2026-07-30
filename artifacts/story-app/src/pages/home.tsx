@@ -616,7 +616,7 @@ export default function Home() {
             )}
 
             <div className="space-y-3">
-              {/* $1 single story */}
+              {/* $1.11 single story */}
               <button
                 onClick={() => handlePaywallCheckout("story")}
                 disabled={paywallLoading !== null}
@@ -626,7 +626,7 @@ export default function Home() {
                   <BookHeart className="w-5 h-5 text-primary" />
                 </span>
                 <div className="flex-1 min-w-0">
-                  <div className="font-bold text-foreground">One story — $1</div>
+                  <div className="font-bold text-foreground">One story — $1.11</div>
                   <div className="text-xs text-muted-foreground">Pay once, generate this story</div>
                 </div>
                 {paywallLoading === "story" && <Loader2 className="w-4 h-4 animate-spin text-primary shrink-0" />}
@@ -712,7 +712,7 @@ export default function Home() {
           </div>
           <div className="flex-1 min-w-0">
             <p className="text-sm font-bold text-foreground leading-tight">Give the gift of stories</p>
-            <p className="text-xs text-muted-foreground mt-0.5">Buy a gift card for someone special — starting at $1</p>
+            <p className="text-xs text-muted-foreground mt-0.5">Buy a gift card for someone special — starting at $1.11</p>
           </div>
           <ArrowRight className="w-4 h-4 text-primary shrink-0 group-hover:translate-x-0.5 transition-transform" />
         </div>

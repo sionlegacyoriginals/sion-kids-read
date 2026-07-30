@@ -157,7 +157,7 @@ export default function StoryShare() {
         <div className="max-w-3xl mx-auto flex flex-col sm:flex-row items-center gap-3 justify-between">
           <div className="text-center sm:text-left">
             <p className="font-serif font-bold text-foreground text-sm">Create a personalized story for your child</p>
-            <p className="text-xs text-muted-foreground">$1 per story · or $3.33/month unlimited</p>
+            <p className="text-xs text-muted-foreground">$1.11 per story · or $3.33/month unlimited</p>
           </div>
           <Link href="/sign-up">
             <button className="flex items-center gap-2 px-6 py-3 bg-primary text-white font-bold rounded-full hover:bg-primary/90 transition-all shadow-md whitespace-nowrap">
