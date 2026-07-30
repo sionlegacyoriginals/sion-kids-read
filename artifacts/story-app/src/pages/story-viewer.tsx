@@ -125,6 +125,9 @@ export default function StoryViewer() {
           close={readAlong.close}
           speed={readAlong.speed}
           changeSpeed={readAlong.changeSpeed}
+          voices={readAlong.voices}
+          selectedVoice={readAlong.selectedVoice}
+          changeVoice={readAlong.changeVoice}
           boundarySupported={readAlong.boundarySupported}
         />
       )}
