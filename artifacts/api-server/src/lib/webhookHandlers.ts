@@ -64,6 +64,21 @@ export class WebhookHandlers {
         return;
       }
 
+      if (session.mode === "payment" && session.metadata?.type === "book_bundle") {
+        const clerkUserId = session.metadata?.clerkUserId;
+        if (clerkUserId) {
+          await db.execute(sql`
+            UPDATE users
+            SET story_credits = story_credits + 1,
+                print_credits  = print_credits  + 1,
+                updated_at     = NOW()
+            WHERE id = ${clerkUserId}
+          `);
+          console.log(`Book bundle: story + print credit added for user ${clerkUserId}`);
+        }
+        return;
+      }
+
       if (session.mode === "payment" && session.metadata?.orderId) {
         const orderId = parseInt(session.metadata.orderId, 10);
 

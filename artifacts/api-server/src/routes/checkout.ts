@@ -153,6 +153,57 @@ router.post("/checkout/story", requireAuth, async (req: any, res) => {
   }
 });
 
+// ── POST /api/checkout/book-bundle ───────────────────────────────────────────
+// Charges $33.33 for the printed book — grants 1 story credit + 1 print credit on success.
+// Perfect for users who just want to write one story and hold the book.
+router.post("/checkout/book-bundle", requireAuth, async (req: any, res) => {
+  try {
+    const { email } = req.body;
+    await ensureUser(req.userId, email);
+
+    const stripe = await getUncachableStripeClient();
+
+    const userRow = await db.execute(
+      sql`SELECT stripe_customer_id, email FROM users WHERE id = ${req.userId}`,
+    );
+    let customerId = userRow.rows[0]?.stripe_customer_id as string | null;
+    if (!customerId) {
+      const customer = await stripe.customers.create({
+        email: email ?? (userRow.rows[0]?.email as string | undefined),
+        metadata: { clerkUserId: req.userId },
+      });
+      customerId = customer.id;
+      await db.execute(
+        sql`UPDATE users SET stripe_customer_id = ${customerId}, updated_at = NOW() WHERE id = ${req.userId}`,
+      );
+    }
+
+    const printProducts = await stripe.products.search({
+      query: "name:'Printed Storybook' AND active:'true'",
+    });
+    const printProduct = printProducts.data[0];
+    if (!printProduct) return res.status(500).json({ error: "Print product not found." });
+
+    const printPrices = await stripe.prices.list({ product: printProduct.id, active: true, limit: 1 });
+    const printPrice = printPrices.data[0];
+    if (!printPrice) return res.status(500).json({ error: "Print price not found." });
+
+    const session = await stripe.checkout.sessions.create({
+      customer: customerId,
+      payment_method_types: ["card"],
+      line_items: [{ price: printPrice.id, quantity: 1 }],
+      mode: "payment",
+      success_url: `${baseUrl()}${basePath()}/checkout/success?session_id={CHECKOUT_SESSION_ID}`,
+      cancel_url: `${baseUrl()}${basePath()}/create?paywall=1`,
+      metadata: { clerkUserId: req.userId, type: "book_bundle" },
+    });
+
+    res.json({ url: session.url });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // ── POST /api/checkout/print ─────────────────────────────────────────────────
 router.post("/checkout/print", requireAuth, async (req: any, res) => {
   try {

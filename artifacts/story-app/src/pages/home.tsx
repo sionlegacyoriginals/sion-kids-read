@@ -93,7 +93,7 @@ export default function Home() {
 
   // Paywall modal state — auto-open if ?paywall=1 is in the URL (returning from cancelled Stripe checkout)
   const [showPaywall, setShowPaywall] = useState(() => new URLSearchParams(window.location.search).get("paywall") === "1");
-  const [paywallLoading, setPaywallLoading] = useState<"story" | "subscription" | null>(null);
+  const [paywallLoading, setPaywallLoading] = useState<"story" | "subscription" | "book" | null>(null);
   const [paywallError, setPaywallError] = useState<string | null>(null);
   const [accessCodeInput, setAccessCodeInput] = useState("");
   const [accessCodeLoading, setAccessCodeLoading] = useState(false);
@@ -124,11 +124,14 @@ export default function Home() {
     }
   };
 
-  const handlePaywallCheckout = async (type: "story" | "subscription") => {
+  const handlePaywallCheckout = async (type: "story" | "subscription" | "book") => {
     setPaywallLoading(type);
     setPaywallError(null);
     try {
-      const endpoint = type === "story" ? "/api/checkout/story" : "/api/checkout/subscription";
+      const endpoint =
+        type === "story" ? "/api/checkout/story" :
+        type === "book"  ? "/api/checkout/book-bundle" :
+        "/api/checkout/subscription";
       const resp = await fetch(endpoint, {
         method: "POST",
         credentials: "include",
@@ -585,6 +588,22 @@ export default function Home() {
                   <div className="text-xs text-muted-foreground">Pay once, generate this story</div>
                 </div>
                 {paywallLoading === "story" && <Loader2 className="w-4 h-4 animate-spin text-primary shrink-0" />}
+              </button>
+
+              {/* $33.33 printed book bundle */}
+              <button
+                onClick={() => handlePaywallCheckout("book")}
+                disabled={paywallLoading !== null}
+                className="w-full flex items-center gap-4 p-4 rounded-2xl border border-border hover:border-primary/40 hover:bg-primary/5 transition-all text-left disabled:opacity-60"
+              >
+                <span className="w-11 h-11 rounded-xl bg-primary/10 flex items-center justify-center shrink-0">
+                  <Printer className="w-5 h-5 text-primary" />
+                </span>
+                <div className="flex-1 min-w-0">
+                  <div className="font-bold text-foreground">Printed book — $33.33</div>
+                  <div className="text-xs text-muted-foreground">Story + softcover book printed & shipped</div>
+                </div>
+                {paywallLoading === "book" && <Loader2 className="w-4 h-4 animate-spin text-primary shrink-0" />}
               </button>
 
               {/* $3.33/month */}
