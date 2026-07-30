@@ -93,60 +93,62 @@ export default function Landing() {
           </h2>
           <p className="text-muted-foreground mb-10">Pay per story or subscribe for unlimited access.</p>
 
-          <div className="flex flex-col gap-6">
+          <div className="flex flex-col gap-4">
             {/* Pay per story */}
-            <div className="bg-card border border-border/60 rounded-3xl p-8 shadow-md text-left">
-              <div className="flex items-baseline gap-1 mb-1">
-                <span className="text-4xl font-serif font-bold text-foreground">$1.11</span>
-                <span className="text-muted-foreground">/story</span>
+            <div className="bg-card border border-border/60 rounded-3xl p-6 shadow-sm text-left">
+              <div className="flex items-center justify-between mb-1">
+                <div className="flex items-baseline gap-1">
+                  <span className="text-3xl font-serif font-bold text-foreground">$1.11</span>
+                  <span className="text-muted-foreground">/story</span>
+                </div>
               </div>
-              <p className="text-muted-foreground text-sm mb-5">Pay as you go — no commitment</p>
-              <ul className="space-y-3 mb-7">
-                {[
-                  "One personalized story",
-                  "AI illustrations with reference photos",
-                  "Bible verse integration",
-                  "Downloadable PDF",
-                  "Print & ship from $33.33 per book",
-                ].map((feature) => (
-                  <li key={feature} className="flex items-center gap-3 text-foreground">
-                    <Star className="w-4 h-4 text-primary flex-shrink-0 fill-primary" />
-                    {feature}
-                  </li>
-                ))}
-              </ul>
+              <p className="text-muted-foreground text-sm mb-4">Pay as you go — no commitment</p>
               <Link href="/sign-up">
-                <button className="w-full py-3 bg-muted border border-border text-foreground font-bold text-base rounded-full hover:bg-muted/70 transition-all">
+                <button className="w-full py-2.5 bg-muted border border-border text-foreground font-bold text-sm rounded-full hover:bg-muted/70 transition-all">
                   Get started
                 </button>
               </Link>
             </div>
 
-            {/* Subscription */}
-            <div className="bg-primary rounded-3xl p-8 shadow-md text-left relative overflow-hidden">
+            {/* Monthly */}
+            <div className="bg-card border border-border/60 rounded-3xl p-6 shadow-sm text-left">
+              <div className="flex items-baseline gap-1 mb-1">
+                <span className="text-3xl font-serif font-bold text-foreground">$8.88</span>
+                <span className="text-muted-foreground">/month</span>
+              </div>
+              <p className="text-muted-foreground text-sm mb-4">Unlimited stories, cancel anytime</p>
+              <Link href="/sign-up">
+                <button className="w-full py-2.5 bg-muted border border-border text-foreground font-bold text-sm rounded-full hover:bg-muted/70 transition-all">
+                  Subscribe monthly
+                </button>
+              </Link>
+            </div>
+
+            {/* 6 months */}
+            <div className="bg-card border border-border/60 rounded-3xl p-6 shadow-sm text-left">
+              <div className="flex items-baseline gap-1 mb-1">
+                <span className="text-3xl font-serif font-bold text-foreground">$44.44</span>
+                <span className="text-muted-foreground">/6 months</span>
+              </div>
+              <p className="text-muted-foreground text-sm mb-4">Unlimited stories for 6 months</p>
+              <Link href="/sign-up">
+                <button className="w-full py-2.5 bg-muted border border-border text-foreground font-bold text-sm rounded-full hover:bg-muted/70 transition-all">
+                  Get 6 months
+                </button>
+              </Link>
+            </div>
+
+            {/* Yearly — featured */}
+            <div className="bg-primary rounded-3xl p-6 shadow-md text-left relative overflow-hidden">
               <span className="absolute top-4 right-4 px-3 py-1 bg-accent text-accent-foreground text-xs font-bold rounded-full">Best value</span>
               <div className="flex items-baseline gap-1 mb-1">
-                <span className="text-4xl font-serif font-bold text-white">$8.88</span>
-                <span className="text-white/70">/month</span>
+                <span className="text-3xl font-serif font-bold text-white">$77.77</span>
+                <span className="text-white/70">/year</span>
               </div>
-              <p className="text-white/70 text-sm mb-5">Unlimited story generation</p>
-              <ul className="space-y-3 mb-7">
-                {[
-                  "Unlimited personalized stories",
-                  "AI illustrations with reference photos",
-                  "Bible verse integration",
-                  "Downloadable & printable PDFs",
-                  "Print & ship from $33.33 per book",
-                ].map((feature) => (
-                  <li key={feature} className="flex items-center gap-3 text-white">
-                    <Star className="w-4 h-4 text-accent flex-shrink-0 fill-accent" />
-                    {feature}
-                  </li>
-                ))}
-              </ul>
+              <p className="text-white/70 text-sm mb-4">Unlimited stories for a full year</p>
               <Link href="/sign-up">
-                <button className="w-full py-3 bg-white text-primary font-bold text-base rounded-full hover:bg-white/90 transition-all">
-                  Subscribe — $8.88/mo
+                <button className="w-full py-2.5 bg-white text-primary font-bold text-sm rounded-full hover:bg-white/90 transition-all">
+                  Get 1 year
                 </button>
               </Link>
             </div>
