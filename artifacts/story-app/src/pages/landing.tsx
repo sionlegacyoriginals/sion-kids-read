@@ -154,7 +154,7 @@ export default function Landing() {
       </section>
 
       {/* Gift Cards */}
-      <section className="py-20 px-4 bg-card/50">
+      <section id="gift-cards" className="py-20 px-4 bg-card/50">
         <div className="max-w-lg mx-auto text-center">
           <div className="w-14 h-14 bg-primary/10 rounded-2xl flex items-center justify-center mx-auto mb-5">
             <Gift className="w-7 h-7 text-primary" />
