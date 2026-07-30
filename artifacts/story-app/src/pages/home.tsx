@@ -643,7 +643,7 @@ export default function Home() {
       )}
 
       {/* Gift card promo */}
-      <a href="/#gift-cards">
+      <a href="/gift-cards">
         <div className="flex items-center gap-3 p-4 rounded-2xl bg-primary/5 border border-primary/20 hover:bg-primary/10 hover:border-primary/30 transition-all cursor-pointer group">
           <div className="w-10 h-10 rounded-xl bg-primary/15 flex items-center justify-center shrink-0">
             <Gift className="w-5 h-5 text-primary" />
