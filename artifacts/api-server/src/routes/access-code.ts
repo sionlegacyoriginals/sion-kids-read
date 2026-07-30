@@ -15,6 +15,13 @@ function getValidCodes(): Set<string> {
   );
 }
 
+const TIER_LABELS: Record<string, string> = {
+  one_story:     "1 story credit",
+  one_month:     "30 days of unlimited stories",
+  six_months:    "180 days of unlimited stories",
+  twelve_months: "365 days of unlimited stories",
+};
+
 // POST /api/access-code/redeem
 router.post("/access-code/redeem", requireAuth, async (req: any, res): Promise<void> => {
   const { code } = req.body ?? {};
@@ -26,7 +33,41 @@ router.post("/access-code/redeem", requireAuth, async (req: any, res): Promise<v
 
   const normalized = code.trim().toUpperCase();
 
-  // Master test code — checked against MASTER_TEST_CODE env secret (case-insensitive)
+  // ── Gift card codes (SLO-XXXXXXXX) ─────────────────────────────────────────
+  if (normalized.startsWith("SLO-")) {
+    const result = await db.execute(
+      sql`SELECT code, tier, redeemed_at FROM gift_card_codes WHERE code = ${normalized} LIMIT 1`,
+    );
+    const row = result.rows[0];
+    if (!row)            { res.status(400).json({ error: "Gift card code not found." }); return; }
+    if (row.redeemed_at) { res.status(400).json({ error: "This gift card has already been redeemed." }); return; }
+
+    await ensureUser(req.userId);
+
+    const tier = row.tier as string;
+    if (tier === "one_story") {
+      await db.execute(sql`
+        UPDATE users SET story_credits = story_credits + 1, updated_at = NOW() WHERE id = ${req.userId}
+      `);
+    } else {
+      const days = tier === "one_month" ? 30 : tier === "six_months" ? 180 : 365;
+      await db.execute(sql`
+        UPDATE users
+        SET gift_access_expires_at = GREATEST(NOW(), COALESCE(gift_access_expires_at, NOW())) + (${days} || ' days')::interval,
+            updated_at = NOW()
+        WHERE id = ${req.userId}
+      `);
+    }
+
+    await db.execute(sql`
+      UPDATE gift_card_codes SET redeemed_at = NOW(), redeemed_by_user_id = ${req.userId}
+      WHERE code = ${normalized}
+    `);
+
+    return res.json({ success: true, reward: TIER_LABELS[tier] ?? tier });
+  }
+
+  // ── Admin / master access codes ─────────────────────────────────────────────
   const masterCode = (process.env.MASTER_TEST_CODE ?? "").trim().toUpperCase();
   const isMaster = masterCode.length > 0 && normalized === masterCode;
 
@@ -38,10 +79,8 @@ router.post("/access-code/redeem", requireAuth, async (req: any, res): Promise<v
     }
   }
 
-  // Provision user row if not yet created
   await ensureUser(req.userId);
 
-  // Mark user as having a valid access code
   await db.execute(
     sql`UPDATE users SET has_access_code = TRUE, updated_at = NOW() WHERE id = ${req.userId}`,
   );
