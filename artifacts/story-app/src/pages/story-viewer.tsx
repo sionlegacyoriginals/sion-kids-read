@@ -16,6 +16,12 @@ import {
 } from "lucide-react";
 import { MagicLoader } from "@/components/magic-loader";
 import { OrderDialog } from "@/components/order-dialog";
+import {
+  useReadAlong,
+  ReadAloudButton,
+  ReadAlongBar,
+  ReadAlongParagraph,
+} from "@/components/read-along-player";
 
 /** Convert a stored objectPath to a serving URL */
 function toImageUrl(objectPath: string | null | undefined): string | null {
@@ -101,18 +107,37 @@ export default function StoryViewer() {
   if (illustrations[0]) ILLUS_AFTER[1] = illustrations[0];
   if (illustrations[1]) ILLUS_AFTER[3] = illustrations[1];
 
+  // Read-along
+  const readAlong = useReadAlong(paragraphs);
+
   return (
-    <div className="max-w-3xl mx-auto pb-16 animate-in fade-in duration-500">
+    <div className={`max-w-3xl mx-auto pb-16 animate-in fade-in duration-500 ${readAlong.visible ? "pb-32" : ""}`}>
       {showOrderDialog && id && (
         <OrderDialog storyId={id} onClose={() => setShowOrderDialog(false)} />
       )}
 
+      {readAlong.visible && (
+        <ReadAlongBar
+          childName={story.childName}
+          isPlaying={readAlong.isPlaying}
+          togglePlay={readAlong.togglePlay}
+          stop={readAlong.stop}
+          close={readAlong.close}
+          speed={readAlong.speed}
+          changeSpeed={readAlong.changeSpeed}
+          boundarySupported={readAlong.boundarySupported}
+        />
+      )}
+
       {/* Top nav row */}
-      <div className="no-print flex items-center justify-between mb-8">
+      <div className="no-print flex items-center justify-between mb-8 flex-wrap gap-2">
         <Link href="/stories" className="inline-flex items-center gap-2 text-muted-foreground hover:text-foreground font-bold transition-colors">
           <ArrowLeft className="w-5 h-5" /> Back to Library
         </Link>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 flex-wrap">
+          {!readAlong.visible && (
+            <ReadAloudButton onClick={readAlong.open} />
+          )}
           <button
             onClick={() => window.print()}
             className="inline-flex items-center gap-2 px-4 py-2 rounded-xl border border-border text-sm font-semibold text-muted-foreground hover:text-foreground hover:border-foreground/30 transition-all"
@@ -176,9 +201,12 @@ export default function StoryViewer() {
         {/* Content */}
         <div className="p-8 md:p-16">
           <div className="prose prose-lg md:prose-xl max-w-none prose-p:font-serif prose-p:leading-[1.9] prose-p:text-foreground/90 prose-p:mb-6 story-content">
-            {paragraphs.map((paragraph, i) => (
+            {readAlong.paragraphData.map((pd, i) => (
               <div key={i}>
-                <p>{paragraph}</p>
+                <ReadAlongParagraph
+                  tokens={pd.tokens}
+                  activeCharIndex={readAlong.activeCharIndex}
+                />
                 {ILLUS_AFTER[i] && (
                   <div className="my-8 rounded-2xl overflow-hidden shadow-md not-prose">
                     <img
