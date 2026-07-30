@@ -1,7 +1,7 @@
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import { useLocation, Link } from "wouter";
 import { useUser } from "@clerk/react";
 import { 
