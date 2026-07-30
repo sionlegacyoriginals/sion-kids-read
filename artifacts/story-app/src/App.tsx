@@ -1,5 +1,5 @@
 import { useEffect, useRef } from "react";
-import { ClerkProvider, SignIn, SignUp, Show, useClerk } from "@clerk/react";
+import { ClerkProvider, SignIn, SignUp, Show, useClerk, useAuth } from "@clerk/react";
 import { publishableKeyFromHost } from "@clerk/react/internal";
 import { shadcn } from "@clerk/themes";
 import { Switch, Route, Redirect, useLocation, Router as WouterRouter } from "wouter";
@@ -120,18 +120,19 @@ function SignUpPage() {
 
 /** Public home: Landing for logged-out users, redirect to /create for logged-in. */
 function HomeRedirect() {
-  return (
-    <>
-      <Show when="signed-in">
-        <Redirect to="/create" />
-      </Show>
-      <Show when="signed-out">
-        <Layout>
-          <Landing />
-        </Layout>
-      </Show>
-    </>
-  );
+  const { isLoaded, isSignedIn } = useAuth();
+
+  // While Clerk is still initialising, render the landing page (unauthenticated view).
+  // Once loaded, signed-in users are silently redirected to /create.
+  if (!isLoaded || !isSignedIn) {
+    return (
+      <Layout>
+        <Landing />
+      </Layout>
+    );
+  }
+
+  return <Redirect to="/create" />;
 }
 
 function ProtectedRoute({ component: Page }: { component: React.ComponentType }) {
