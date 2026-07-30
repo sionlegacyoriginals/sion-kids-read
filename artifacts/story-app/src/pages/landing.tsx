@@ -1,5 +1,5 @@
 import { Link } from "wouter";
-import { BookHeart, Sparkles, Printer, BookOpen, Star } from "lucide-react";
+import { BookHeart, Sparkles, Printer, BookOpen, Star, Gift } from "lucide-react";
 
 export default function Landing() {
   return (
@@ -96,7 +96,7 @@ export default function Landing() {
             {/* Pay per story */}
             <div className="bg-card border border-border/60 rounded-3xl p-8 shadow-md text-left">
               <div className="flex items-baseline gap-1 mb-1">
-                <span className="text-4xl font-serif font-bold text-foreground">$1</span>
+                <span className="text-4xl font-serif font-bold text-foreground">$5.55</span>
                 <span className="text-muted-foreground">/story</span>
               </div>
               <p className="text-muted-foreground text-sm mb-5">Pay as you go — no commitment</p>
@@ -125,7 +125,7 @@ export default function Landing() {
             <div className="bg-primary rounded-3xl p-8 shadow-md text-left relative overflow-hidden">
               <span className="absolute top-4 right-4 px-3 py-1 bg-accent text-accent-foreground text-xs font-bold rounded-full">Best value</span>
               <div className="flex items-baseline gap-1 mb-1">
-                <span className="text-4xl font-serif font-bold text-white">$3.33</span>
+                <span className="text-4xl font-serif font-bold text-white">$8.88</span>
                 <span className="text-white/70">/month</span>
               </div>
               <p className="text-white/70 text-sm mb-5">Unlimited story generation</p>
@@ -145,11 +145,50 @@ export default function Landing() {
               </ul>
               <Link href="/sign-up">
                 <button className="w-full py-3 bg-white text-primary font-bold text-base rounded-full hover:bg-white/90 transition-all">
-                  Subscribe — $3.33/mo
+                  Subscribe — $8.88/mo
                 </button>
               </Link>
             </div>
           </div>
+        </div>
+      </section>
+
+      {/* Gift Cards */}
+      <section className="py-20 px-4 bg-card/50">
+        <div className="max-w-lg mx-auto text-center">
+          <div className="w-14 h-14 bg-primary/10 rounded-2xl flex items-center justify-center mx-auto mb-5">
+            <Gift className="w-7 h-7 text-primary" />
+          </div>
+          <h2 className="text-3xl md:text-4xl font-serif font-bold text-foreground mb-3">
+            Give the gift of stories
+          </h2>
+          <p className="text-muted-foreground mb-10">
+            A perfect gift for any occasion — let someone else's child be the main character.
+          </p>
+
+          <div className="grid grid-cols-2 gap-4 mb-8">
+            {[
+              { label: "One story", price: "$5.55" },
+              { label: "One month", price: "$8.88" },
+              { label: "Six months", price: "$44.44" },
+              { label: "12 months", price: "$77.77" },
+            ].map(({ label, price }) => (
+              <div key={label} className="bg-card border border-border/60 rounded-2xl p-5 text-center shadow-sm">
+                <p className="text-2xl font-serif font-bold text-foreground mb-1">{price}</p>
+                <p className="text-sm text-muted-foreground font-medium">{label}</p>
+              </div>
+            ))}
+          </div>
+
+          {/* TODO: replace href with Stripe gift card link once set up */}
+          <a
+            href="#gift-card"
+            className="inline-block w-full py-4 bg-primary text-white font-bold text-base rounded-full hover:bg-primary/90 transition-all shadow-md opacity-60 cursor-not-allowed"
+            onClick={e => e.preventDefault()}
+          >
+            Gift cards — coming soon
+          </a>
+          <p className="text-xs text-muted-foreground mt-3">Gift card purchasing will be available shortly.</p>
         </div>
       </section>
 
