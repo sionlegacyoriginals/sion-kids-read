@@ -173,6 +173,7 @@ export default function Landing() {
               { label: "One month",    price: "$8.88",  url: "https://buy.stripe.com/00wbJ15Eq3U618UfBfdQQ02" },
               { label: "Six months",   price: "$44.44", url: "https://buy.stripe.com/aFa28raYK62e5pacp3dQQ03" },
               { label: "12 months",    price: "$77.77", url: "https://buy.stripe.com/fZu4gzgj462eg3OfBfdQQ04" },
+              { label: "Printed book", price: "$33.33", url: "https://buy.stripe.com/aFa4gz2se0HU04Q2OtdQQ06" },
             ].map(({ label, price, url }) => (
               <a
                 key={label}
