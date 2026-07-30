@@ -102,9 +102,9 @@ async function generateStoryImages(params: {
           if (objectPath.startsWith("/ref-photos/")) {
             const photoId = objectPath.slice("/ref-photos/".length);
             const result = await db.execute(
-              sql`SELECT data FROM reference_photos WHERE id = ${photoId}`,
+              sql`SELECT data_url FROM reference_photos WHERE id = ${photoId}`,
             );
-            const dataUrl = result.rows[0]?.data as string | undefined;
+            const dataUrl = result.rows[0]?.data_url as string | undefined;
             return dataUrl ?? null;
           }
           // Legacy GCS path (kept for old stories but will likely 401)
@@ -171,7 +171,7 @@ async function generateStoryImages(params: {
   async function storeBuffer(buffer: Buffer): Promise<string> {
     const id = randomUUID();
     const dataUrl = `data:image/png;base64,${buffer.toString("base64")}`;
-    await db.execute(sql`INSERT INTO reference_photos (id, data) VALUES (${id}, ${dataUrl})`);
+    await db.execute(sql`INSERT INTO reference_photos (id, data_url) VALUES (${id}, ${dataUrl})`);
     return `/ref-photos/${id}`;
   }
 

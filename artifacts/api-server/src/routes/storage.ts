@@ -45,7 +45,7 @@ router.post('/storage/upload', async (req: Request, res: Response) => {
   }
   try {
     const id = randomUUID();
-    await db.execute(sql`INSERT INTO reference_photos (id, data) VALUES (${id}, ${data})`);
+    await db.execute(sql`INSERT INTO reference_photos (id, data_url) VALUES (${id}, ${data})`);
     res.json({ objectPath: `/ref-photos/${id}` });
   } catch (error) {
     req.log.error({ err: error }, 'Error storing reference photo');
@@ -61,14 +61,14 @@ router.post('/storage/upload', async (req: Request, res: Response) => {
 router.get('/ref-photos/:id', async (req: Request, res: Response) => {
   try {
     const result = await db.execute(
-      sql`SELECT data FROM reference_photos WHERE id = ${req.params.id}`,
+      sql`SELECT data_url FROM reference_photos WHERE id = ${req.params.id}`,
     );
     const row = result.rows[0];
-    if (!row?.data) {
+    if (!row?.data_url) {
       res.status(404).json({ error: 'Not found' });
       return;
     }
-    const dataUrl = row.data as string;
+    const dataUrl = row.data_url as string;
     // Parse "data:<mime>;base64,<payload>"
     const match = dataUrl.match(/^data:([^;]+);base64,(.+)$/s);
     if (!match) {

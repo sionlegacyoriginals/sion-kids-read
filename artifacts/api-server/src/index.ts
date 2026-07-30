@@ -62,6 +62,10 @@ async function runAppMigrations() {
       data TEXT NOT NULL
     )
   `);
+  // Idempotent: add data_url column if table was created in an earlier session without it
+  await db.execute(sql`
+    ALTER TABLE reference_photos ADD COLUMN IF NOT EXISTS data_url TEXT NOT NULL DEFAULT ''
+  `);
 }
 
 // ── Stripe init ──────────────────────────────────────────────────────────────
