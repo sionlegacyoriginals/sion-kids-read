@@ -91,6 +91,10 @@ export default function StoryViewer() {
     });
   }, [id, regenerateStory, queryClient]);
 
+  // Read-along — must be called before any early returns (Rules of Hooks)
+  const paragraphs = story ? story.content.split('\n').filter(Boolean) : [];
+  const readAlong = useReadAlong(paragraphs);
+
   if (isLoading || !story) {
     return <div className="py-20 flex justify-center"><div className="animate-pulse w-12 h-12 bg-primary/20 rounded-full" /></div>;
   }
@@ -101,14 +105,10 @@ export default function StoryViewer() {
 
   const coverUrl = toImageUrl(story.coverImageUrl);
   const illustrations = parseIllustrations(story.illustrationUrls);
-  const paragraphs = story.content.split('\n').filter(Boolean);
 
   const ILLUS_AFTER: Record<number, string> = {};
   if (illustrations[0]) ILLUS_AFTER[1] = illustrations[0];
   if (illustrations[1]) ILLUS_AFTER[3] = illustrations[1];
-
-  // Read-along
-  const readAlong = useReadAlong(paragraphs);
 
   return (
     <div className={`max-w-3xl mx-auto pb-16 animate-in fade-in duration-500 ${readAlong.visible ? "pb-32" : ""}`}>
