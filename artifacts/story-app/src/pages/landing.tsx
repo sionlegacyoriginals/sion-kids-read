@@ -1,5 +1,6 @@
 import { Link } from "wouter";
-import { BookHeart, Sparkles, Printer, BookOpen, Star, Gift } from "lucide-react";
+import { BookHeart, Printer, BookOpen, Star, Gift } from "lucide-react";
+import { Logo } from "@/components/logo";
 
 export default function Landing() {
   return (
@@ -60,7 +61,7 @@ export default function Landing() {
                   "Stories star anyone by name, age, and personality — kids, teens, adults, even grandparents. Add milestones, memories, or a Bible verse.",
               },
               {
-                icon: Sparkles,
+                icon: null,
                 title: "AI illustrations",
                 description:
                   "Upload a reference photo and our AI paints a custom cover and two interior illustrations tailored to your story.",
@@ -74,7 +75,7 @@ export default function Landing() {
             ].map(({ icon: Icon, title, description }) => (
               <div key={title} className="bg-card rounded-2xl p-8 border border-border/60 shadow-sm">
                 <div className="w-12 h-12 bg-primary/10 rounded-xl flex items-center justify-center mb-5">
-                  <Icon className="w-6 h-6 text-primary" />
+                  {Icon ? <Icon className="w-6 h-6 text-primary" /> : <Logo size={28} />}
                 </div>
                 <h3 className="font-serif font-bold text-xl text-foreground mb-2">{title}</h3>
                 <p className="text-muted-foreground leading-relaxed">{description}</p>

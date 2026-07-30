@@ -13,7 +13,8 @@ import {
 } from "@workspace/api-client-react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { MagicLoader } from "@/components/magic-loader";
-import { BookOpen, ArrowRight, Sparkles, Feather, BookMarked, ImagePlus, X, Loader2, BookHeart, Star, Printer, Gift } from "lucide-react";
+import { BookOpen, ArrowRight, Feather, BookMarked, ImagePlus, X, Loader2, BookHeart, Star, Printer, Gift, Sparkles } from "lucide-react";
+import { Logo } from "@/components/logo";
 import { format } from "date-fns";
 
 const THEMES = [
@@ -696,7 +697,7 @@ export default function Home() {
           </div>
         ) : (
           <div className="text-center p-8 border border-dashed border-border rounded-2xl bg-card/50">
-            <Sparkles className="w-8 h-8 text-muted-foreground/30 mx-auto mb-3" />
+            <Logo size={36} className="mx-auto mb-3 opacity-40" />
             <p className="text-muted-foreground">No stories yet. Create your first one!</p>
           </div>
         )}

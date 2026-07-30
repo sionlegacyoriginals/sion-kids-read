@@ -3,9 +3,9 @@ import { useUser } from "@clerk/react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link, useLocation } from "wouter";
 import {
-  Sparkles, Star, BookHeart, Printer, CheckCircle2,
-  Loader2, ChevronDown, KeyRound,
+  Star, BookHeart, Printer, CheckCircle2, Loader2,
 } from "lucide-react";
+import { Logo } from "@/components/logo";
 
 async function fetchUserMe() {
   const resp = await fetch("/api/users/me", { credentials: "include" });
@@ -100,7 +100,7 @@ export default function Subscribe() {
     <div className="max-w-xl mx-auto py-16 px-4 animate-in fade-in">
       <div className="text-center mb-10">
         <span className="inline-flex items-center gap-2 px-4 py-1.5 bg-primary/10 text-primary font-bold text-sm rounded-full mb-5">
-          <Sparkles className="w-4 h-4" /> Unlock StoryBloom
+          <Logo size={16} /> Unlock StoryBloom
         </span>
         <h1 className="text-4xl font-serif font-bold text-foreground mb-3">
           Choose your plan
@@ -128,12 +128,12 @@ export default function Subscribe() {
           <ul className="space-y-2.5 mb-8 flex-1">
             {[
               { icon: BookHeart, text: "One personalized story" },
-              { icon: Sparkles, text: "AI illustrations from your photos" },
+              { icon: null, text: "AI illustrations from your photos" },
               { icon: Star, text: "Bible verse weaving" },
               { icon: Printer, text: "Print & ship for $25/book" },
             ].map(({ icon: Icon, text }) => (
               <li key={text} className="flex items-center gap-3 text-foreground text-sm">
-                <Icon className="w-4 h-4 text-primary flex-shrink-0" />
+                {Icon ? <Icon className="w-4 h-4 text-primary flex-shrink-0" /> : <Logo size={16} />}
                 {text}
               </li>
             ))}
@@ -166,12 +166,12 @@ export default function Subscribe() {
           <ul className="space-y-2.5 mb-8 flex-1">
             {[
               { icon: BookHeart, text: "Unlimited personalized stories" },
-              { icon: Sparkles, text: "AI illustrations from your photos" },
+              { icon: null, text: "AI illustrations from your photos" },
               { icon: Star, text: "Bible verse weaving" },
               { icon: Printer, text: "Print & ship for $25/book" },
             ].map(({ icon: Icon, text }) => (
               <li key={text} className="flex items-center gap-3 text-foreground text-sm">
-                <Icon className="w-4 h-4 text-primary flex-shrink-0" />
+                {Icon ? <Icon className="w-4 h-4 text-primary flex-shrink-0" /> : <Logo size={16} />}
                 {text}
               </li>
             ))}

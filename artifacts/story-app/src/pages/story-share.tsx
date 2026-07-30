@@ -1,6 +1,7 @@
 import { useRoute, Link } from "wouter";
 import { useEffect, useState } from "react";
-import { BookHeart, Sparkles } from "lucide-react";
+import { BookHeart, BookOpen } from "lucide-react";
+import { Logo } from "@/components/logo";
 import { format } from "date-fns";
 
 function toImageUrl(objectPath: string | null | undefined): string | null {
@@ -160,7 +161,7 @@ export default function StoryShare() {
           </div>
           <Link href="/sign-up">
             <button className="flex items-center gap-2 px-6 py-3 bg-primary text-white font-bold rounded-full hover:bg-primary/90 transition-all shadow-md whitespace-nowrap">
-              <Sparkles className="w-4 h-4" />
+              <Logo size={16} />
               Create your story
             </button>
           </Link>

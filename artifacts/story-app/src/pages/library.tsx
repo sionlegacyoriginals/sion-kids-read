@@ -1,7 +1,8 @@
 import { useState, useMemo } from "react";
 import { Link } from "wouter";
 import { useListStories, useGetStoryStats, getListStoriesQueryKey, useDeleteStory } from "@workspace/api-client-react";
-import { BookOpen, Search, Filter, Sparkles, Package, Share2, Link2, Trash2 } from "lucide-react";
+import { BookOpen, Search, Filter, Package, Share2, Link2, Trash2 } from "lucide-react";
+import { Logo } from "@/components/logo";
 import { format } from "date-fns";
 import { useQueryClient } from "@tanstack/react-query";
 import { OrderDialog } from "@/components/order-dialog";
@@ -82,7 +83,7 @@ export default function Library() {
         <div>
           <h1 className="text-4xl md:text-5xl font-serif text-foreground">Story Library</h1>
           <p className="text-muted-foreground mt-3 text-lg flex items-center gap-2">
-            <Sparkles className="w-5 h-5 text-primary" />
+            <Logo size={20} />
             {stats ? `A collection of ${stats.totalStories} magical tales.` : "Your collection of tales."}
           </p>
         </div>

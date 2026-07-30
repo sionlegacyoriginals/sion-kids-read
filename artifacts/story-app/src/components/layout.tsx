@@ -1,7 +1,8 @@
 import { useEffect, useRef, useState } from "react";
 import { Link, useLocation } from "wouter";
 import { Show, useUser, useClerk } from "@clerk/react";
-import { Sparkles, BookHeart, LogOut, Settings, ChevronDown } from "lucide-react";
+import { BookHeart, LogOut, Settings, ChevronDown } from "lucide-react";
+import { Logo } from "@/components/logo";
 
 function UserMenu() {
   const { user } = useUser();
@@ -113,7 +114,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
       <header className="sticky top-0 z-50 w-full border-b border-border/50 bg-background/80 backdrop-blur-md">
         <div className="container mx-auto px-4 h-16 flex items-center justify-between">
           <Link href="/" className="flex items-center gap-2 text-primary hover:opacity-80 transition-opacity">
-            <Sparkles className="w-6 h-6" />
+            <Logo size={28} />
             <span className="font-serif text-2xl font-bold tracking-tight">Sion Legacy Originals</span>
           </Link>
 
