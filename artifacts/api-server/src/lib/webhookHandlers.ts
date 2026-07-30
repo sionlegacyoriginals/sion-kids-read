@@ -1,6 +1,20 @@
-import { getStripeSync } from "./stripeClient";
+import { getStripeSync, getUncachableStripeClient } from "./stripeClient";
 import { db } from "@workspace/db";
 import { sql } from "drizzle-orm";
+
+// Maps Stripe product names → gift card tier keys
+const GIFT_CARD_TIERS: Record<string, string> = {
+  "Gift Card – One Story":     "one_story",
+  "Gift Card – One Month":     "one_month",
+  "Gift Card – Six Months":    "six_months",
+  "Gift Card – Twelve Months": "twelve_months",
+};
+
+function generateGiftCode(): string {
+  const chars = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"; // excludes O, 0, I, 1
+  const rand = Array.from({ length: 8 }, () => chars[Math.floor(Math.random() * chars.length)]).join("");
+  return `SLO-${rand}`;
+}
 
 export class WebhookHandlers {
   static async processWebhook(payload: Buffer, signature: string): Promise<void> {
@@ -74,6 +88,41 @@ export class WebhookHandlers {
           );
         }
       }
+      // ── Gift card purchase via Payment Link ────────────────────────────────
+      // Payment Links don't carry our custom metadata, so detect by product name.
+      if (session.mode === "payment" && !session.metadata?.type && !session.metadata?.orderId) {
+        try {
+          const stripe = await getUncachableStripeClient();
+          const full = await stripe.checkout.sessions.retrieve(session.id, {
+            expand: ["line_items.data.price.product"],
+          });
+          const lineItems = full.line_items?.data ?? [];
+          for (const item of lineItems) {
+            const product = (item.price as any)?.product as any;
+            const productName: string = product?.name ?? "";
+            const tier = GIFT_CARD_TIERS[productName];
+            if (tier) {
+              // Generate a unique code (retry on collision)
+              let code = generateGiftCode();
+              for (let attempt = 0; attempt < 5; attempt++) {
+                const existing = await db.execute(sql`SELECT code FROM gift_card_codes WHERE code = ${code}`);
+                if (existing.rows.length === 0) break;
+                code = generateGiftCode();
+              }
+              const buyerEmail = full.customer_details?.email ?? null;
+              await db.execute(sql`
+                INSERT INTO gift_card_codes (code, tier, stripe_session_id, buyer_email)
+                VALUES (${code}, ${tier}, ${session.id}, ${buyerEmail})
+              `);
+              console.log(`Gift card created: ${code} (${tier}) for ${buyerEmail ?? "unknown"}`);
+              break;
+            }
+          }
+        } catch (giftErr: any) {
+          console.error("Gift card webhook error:", giftErr.message);
+        }
+      }
+
       // subscription mode: stripe-replit-sync handles syncing automatically
     } catch (err) {
       console.error("handleCheckoutCompleted error:", err);

@@ -17,6 +17,8 @@ import Subscribe from "@/pages/subscribe";
 import Account from "@/pages/account";
 import CheckoutSuccess from "@/pages/checkout-success";
 import StoryShare from "@/pages/story-share";
+import GiftCardSuccess from "@/pages/gift-card-success";
+import GiftCardRedeem from "@/pages/gift-card-redeem";
 import NotFound from "@/pages/not-found";
 
 // ── Clerk config ──────────────────────────────────────────────────────────────
@@ -194,6 +196,15 @@ function ClerkProviderWithRoutes() {
             <Route path="/create" component={() => <ProtectedRoute component={Home} />} />
             <Route path="/stories" component={() => <ProtectedRoute component={Library} />} />
             <Route path="/share/:id" component={StoryShare} />
+            <Route
+              path="/gift-card/success"
+              component={() => (
+                <Layout>
+                  <GiftCardSuccess />
+                </Layout>
+              )}
+            />
+            <Route path="/gift-card/redeem" component={() => <ProtectedRoute component={GiftCardRedeem} />} />
             <Route path="/stories/:id" component={() => <ProtectedRoute component={StoryViewer} />} />
             <Route path="/subscribe" component={() => <ProtectedRoute component={Subscribe} />} />
             <Route path="/account" component={() => <ProtectedRoute component={Account} />} />

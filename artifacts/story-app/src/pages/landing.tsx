@@ -196,6 +196,13 @@ export default function Landing() {
           <span className="font-bold text-foreground">Sion Legacy Originals</span>
         </div>
         <p>© {new Date().getFullYear()} Sion Legacy Originals. All rights reserved.</p>
+        <div className="mt-3">
+          <Link href="/gift-card/redeem">
+            <span className="text-primary font-semibold hover:underline cursor-pointer">
+              Redeem a gift card
+            </span>
+          </Link>
+        </div>
       </footer>
     </div>
   );

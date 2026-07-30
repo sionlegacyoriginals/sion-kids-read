@@ -217,7 +217,7 @@ async function generateStory(params: {
 async function checkStoryAccess(userId: string): Promise<{ allowed: boolean; reason?: string; usedCredit?: boolean }> {
   // Check user record
   const userRow = await db.execute(
-    sql`SELECT stripe_customer_id, has_access_code, story_credits FROM users WHERE id = ${userId}`,
+    sql`SELECT stripe_customer_id, has_access_code, story_credits, gift_access_expires_at FROM users WHERE id = ${userId}`,
   );
   const row = userRow.rows[0];
 
@@ -228,6 +228,10 @@ async function checkStoryAccess(userId: string): Promise<{ allowed: boolean; rea
   const customerId = (row?.stripe_customer_id as string) ?? null;
   const subscribed = await hasActiveSubscription(customerId);
   if (subscribed) return { allowed: true };
+
+  // Active gift card access = unlimited stories until expiry
+  const giftExpiry = row?.gift_access_expires_at ? new Date(row.gift_access_expires_at as string) : null;
+  if (giftExpiry && giftExpiry > new Date()) return { allowed: true };
 
   // Story credits (pay-per-story)
   const credits = parseInt((row?.story_credits as string) ?? "0", 10);
