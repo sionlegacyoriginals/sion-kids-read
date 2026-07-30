@@ -453,7 +453,14 @@ export function ReadAlongParagraph({
           activeCharIndex >= token.start &&
           activeCharIndex < token.start + token.text.length;
         return (
-          <span key={i} className={isActive ? "bg-accent/50 rounded px-[1px] -mx-[1px] transition-colors duration-75" : "transition-colors duration-75"}>
+          <span
+            key={i}
+            className={
+              isActive
+                ? "bg-yellow-300 text-gray-900 rounded-sm px-[2px] -mx-[2px] underline underline-offset-2 decoration-2 decoration-yellow-500 transition-colors duration-75 font-bold"
+                : "transition-colors duration-75"
+            }
+          >
             {token.text}
           </span>
         );
