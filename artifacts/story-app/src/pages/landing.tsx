@@ -21,13 +21,13 @@ export default function Landing() {
           </h1>
 
           <p className="text-xl text-muted-foreground max-w-xl mx-auto mb-10 leading-relaxed">
-            Upload a photo and we'll create a story with a cartoon character
-            inspired by your child — their name woven into every page, their
-            milestones celebrated, their values reflected.
+            Upload a photo and we'll bring your child to life as an animated
+            character in their own story — their names woven into every page,
+            their milestones celebrated, their values reflected.
           </p>
 
           <ol className="flex flex-col items-center gap-3 mb-10 text-left max-w-xs mx-auto">
-            {["Attach their photo", "Tell us about them", "Get their story in seconds"].map((step, i) => (
+            {["Attach their photos", "Tell us about them", "Get their stories in seconds"].map((step, i) => (
               <li key={step} className="flex items-center gap-3 w-full">
                 <span className="w-7 h-7 rounded-full bg-primary text-white text-sm font-bold flex items-center justify-center shrink-0">
                   {i + 1}
@@ -39,7 +39,7 @@ export default function Landing() {
 
           <Link href="/sign-up">
             <button className="px-10 py-4 bg-primary text-white font-bold text-lg rounded-full hover:bg-primary/90 transition-all shadow-lg hover:shadow-xl hover:-translate-y-0.5">
-              Create their story →
+              Create their stories →
             </button>
           </Link>
         </div>
