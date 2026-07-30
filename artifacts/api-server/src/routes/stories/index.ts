@@ -384,6 +384,42 @@ router.get("/stories/:id", requireAuth, async (req: any, res): Promise<void> => 
   res.json(GetStoryResponse.parse(serializeStory(story)));
 });
 
+// ── POST /stories/save-shared ── clone a public story into the current user's library ──
+router.post("/stories/save-shared", requireAuth, async (req: any, res): Promise<void> => {
+  const { storyId } = req.body;
+  if (!storyId || typeof storyId !== "number") {
+    res.status(400).json({ error: "storyId must be a number" });
+    return;
+  }
+
+  const [original] = await db.select().from(storiesTable).where(eq(storiesTable.id, storyId));
+  if (!original) {
+    res.status(404).json({ error: "Story not found" });
+    return;
+  }
+
+  const [saved] = await db
+    .insert(storiesTable)
+    .values({
+      userId: req.userId,
+      childName: original.childName,
+      childAge: original.childAge,
+      childGender: original.childGender,
+      milestones: original.milestones,
+      theme: original.theme,
+      customPrompt: original.customPrompt,
+      bibleVerse: original.bibleVerse,
+      referenceImagePaths: original.referenceImagePaths,
+      coverImageUrl: original.coverImageUrl,
+      illustrationUrls: original.illustrationUrls,
+      title: original.title,
+      content: original.content,
+    })
+    .returning();
+
+  res.status(201).json({ id: saved.id, title: saved.title });
+});
+
 // ── GET /stories/:id/public ── no auth, JSON for internal use ─────────────────
 router.get("/stories/:id/public", async (req: any, res): Promise<void> => {
   const params = GetStoryParams.safeParse(req.params);

@@ -1,10 +1,12 @@
 import { useState, useMemo } from "react";
 import { Link } from "wouter";
-import { useListStories, useGetStoryStats } from "@workspace/api-client-react";
-import { BookOpen, Search, Filter, Sparkles, Package, Share2 } from "lucide-react";
+import { useListStories, useGetStoryStats, getListStoriesQueryKey } from "@workspace/api-client-react";
+import { BookOpen, Search, Filter, Sparkles, Package, Share2, Link2 } from "lucide-react";
 import { format } from "date-fns";
+import { useQueryClient } from "@tanstack/react-query";
 import { OrderDialog } from "@/components/order-dialog";
 import { ShareDialog } from "@/components/share-dialog";
+import { AddFromLinkDialog } from "@/components/add-from-link-dialog";
 
 function buildShareUrl(storyId: number) {
   // Points to the API-served HTML page — no Clerk, no sign-in required.
@@ -14,11 +16,13 @@ function buildShareUrl(storyId: number) {
 export default function Library() {
   const { data: stories, isLoading: loadingStories } = useListStories();
   const { data: stats } = useGetStoryStats();
+  const queryClient = useQueryClient();
   
   const [search, setSearch] = useState("");
   const [themeFilter, setThemeFilter] = useState<string>("all");
   const [orderingStoryId, setOrderingStoryId] = useState<number | null>(null);
   const [sharingStory, setSharingStory] = useState<{ id: number; title: string; childName: string } | null>(null);
+  const [showAddFromLink, setShowAddFromLink] = useState(false);
 
   const handleShare = async (story: { id: number; title: string; childName: string }) => {
     const url = buildShareUrl(story.id);
@@ -57,6 +61,12 @@ export default function Library() {
           onClose={() => setSharingStory(null)}
         />
       )}
+      {showAddFromLink && (
+        <AddFromLinkDialog
+          onClose={() => setShowAddFromLink(false)}
+          onAdded={() => queryClient.invalidateQueries({ queryKey: getListStoriesQueryKey() })}
+        />
+      )}
 
       <div className="flex flex-col md:flex-row md:items-end justify-between gap-4">
         <div>
@@ -66,6 +76,13 @@ export default function Library() {
             {stats ? `A collection of ${stats.totalStories} magical tales.` : "Your collection of tales."}
           </p>
         </div>
+        <button
+          onClick={() => setShowAddFromLink(true)}
+          className="flex items-center gap-2 px-5 py-3 rounded-xl border border-primary/30 bg-primary/5 hover:bg-primary/10 hover:border-primary/50 text-primary text-sm font-bold transition-all shrink-0"
+        >
+          <Link2 className="w-4 h-4" />
+          Add from link
+        </button>
       </div>
 
       {/* Filters */}
