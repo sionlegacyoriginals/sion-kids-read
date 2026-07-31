@@ -11,7 +11,7 @@ const PT_PER_INCH = 72;
 const PAGE_W = 6 * PT_PER_INCH;   // 432 pt
 const PAGE_H = 9 * PT_PER_INCH;   // 648 pt
 const MARGIN = 0.75 * PT_PER_INCH; // 54 pt
-const MIN_INTERIOR_PAGES = 24;     // Lulu minimum for most softcover formats
+const MIN_INTERIOR_PAGES = 32;     // Lulu minimum for 6×9 perfect-bound softcover
 
 function bufferFromDoc(doc: any): Promise<Buffer> {
   return new Promise((resolve, reject) => {

@@ -342,6 +342,8 @@ router.get("/admin/retrigger-lulu", async (req: any, res) => {
       addr.phone_number = phone;
       await db.execute(sql`UPDATE print_orders SET shipping_address = ${JSON.stringify(addr)} WHERE id = ${orderId}`);
     }
+    // Reset status so triggerLuluOrder's "paid" check passes (handles rejected/stuck orders)
+    await db.execute(sql`UPDATE print_orders SET status = 'paid', lulu_job_id = NULL WHERE id = ${orderId}`);
     const { triggerLuluOrder } = await import("../lib/luluService");
     await triggerLuluOrder(orderId);
     res.json({ ok: true, message: `Order ${orderId} submitted to Lulu` });
