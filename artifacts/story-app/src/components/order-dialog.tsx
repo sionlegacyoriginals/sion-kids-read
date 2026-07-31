@@ -4,6 +4,7 @@ import { X, Package, Loader2 } from "lucide-react";
 interface ShippingForm {
   customerName: string;
   customerEmail: string;
+  phone: string;
   street1: string;
   street2: string;
   city: string;
@@ -13,7 +14,7 @@ interface ShippingForm {
 }
 
 const EMPTY_SHIPPING: ShippingForm = {
-  customerName: "", customerEmail: "",
+  customerName: "", customerEmail: "", phone: "",
   street1: "", street2: "",
   city: "", state_code: "", postcode: "", country_code: "US",
 };
@@ -48,6 +49,7 @@ export function OrderDialog({
           customerEmail: form.customerEmail,
           shippingAddress: {
             name: form.customerName,
+            phone_number: form.phone,
             street1: form.street1,
             street2: form.street2 || undefined,
             city: form.city,
@@ -94,6 +96,12 @@ export function OrderDialog({
               <label className="text-xs font-bold text-foreground">Email</label>
               <input required type="email" value={form.customerEmail} onChange={set("customerEmail")}
                 placeholder="you@example.com"
+                className="w-full px-3 py-2 text-sm rounded-xl border border-border bg-background focus:outline-none focus:ring-2 focus:ring-primary/50" />
+            </div>
+            <div className="col-span-2 space-y-1.5">
+              <label className="text-xs font-bold text-foreground">Phone number</label>
+              <input required type="tel" value={form.phone} onChange={set("phone")}
+                placeholder="555-867-5309"
                 className="w-full px-3 py-2 text-sm rounded-xl border border-border bg-background focus:outline-none focus:ring-2 focus:ring-primary/50" />
             </div>
             <div className="col-span-2 space-y-1.5">

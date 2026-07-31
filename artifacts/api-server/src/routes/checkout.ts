@@ -333,6 +333,15 @@ router.get("/admin/retrigger-lulu", async (req: any, res) => {
   const orderId = parseInt(req.query.orderId as string, 10);
   if (isNaN(orderId)) return res.status(400).json({ error: "orderId required" });
   try {
+    // Optional: patch phone number into shipping address before triggering
+    const phone = (req.query.phone as string | undefined)?.trim();
+    if (phone) {
+      const row = await db.execute(sql`SELECT shipping_address FROM print_orders WHERE id = ${orderId}`);
+      const existing = row.rows[0]?.shipping_address;
+      const addr = typeof existing === "string" ? JSON.parse(existing) : existing ?? {};
+      addr.phone_number = phone;
+      await db.execute(sql`UPDATE print_orders SET shipping_address = ${JSON.stringify(addr)} WHERE id = ${orderId}`);
+    }
     const { triggerLuluOrder } = await import("../lib/luluService");
     await triggerLuluOrder(orderId);
     res.json({ ok: true, message: `Order ${orderId} submitted to Lulu` });
