@@ -8,16 +8,38 @@ import { ReplitConnectors } from "@replit/connectors-sdk";
 const FROM = "Sion Legacy Originals <orders@sionlegacyoriginals.com>";
 
 async function sendEmail(to: string, subject: string, html: string): Promise<void> {
-  const connectors = new ReplitConnectors();
-  const response = await connectors.proxy("resend", "/emails", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ from: FROM, to, subject, html }),
-  });
+  // Prefer a directly-set RESEND_API_KEY; fall back to the Replit connector
+  const directKey = process.env.RESEND_API_KEY;
+
+  let response: Response;
+  if (directKey) {
+    response = await fetch("https://api.resend.com/emails", {
+      method: "POST",
+      headers: {
+        "Authorization": `Bearer ${directKey}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ from: FROM, to, subject, html }),
+    });
+  } else {
+    try {
+      const connectors = new ReplitConnectors();
+      response = await connectors.proxy("resend", "/emails", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ from: FROM, to, subject, html }),
+      });
+    } catch (err: any) {
+      console.warn(`Email skipped (no Resend key configured): ${err.message}`);
+      return;
+    }
+  }
 
   if (!response.ok) {
     const text = await response.text();
-    throw new Error(`Resend error ${response.status}: ${text}`);
+    // Log but don't throw — email failure should never block order fulfillment
+    console.error(`Resend error ${response.status} sending to ${to}: ${text}`);
+    return;
   }
 
   const data = await response.json();
