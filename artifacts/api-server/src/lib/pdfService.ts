@@ -99,38 +99,44 @@ async function buildCoverPdf(params: {
   const spineW = Math.max(6, params.pageCount * 0.00254 * PT_PER_INCH);
   const totalW = PAGE_W * 2 + spineW;
 
+  // Lulu requires 0.125" bleed on all 4 edges of the cover PDF
+  const BLEED = 0.125 * PT_PER_INCH; // 9 pt
+  const docW = totalW + 2 * BLEED;
+  const docH = PAGE_H + 2 * BLEED;
+
   const doc = new PDFDocument({
-    size: [totalW, PAGE_H],
+    size: [docW, docH],
     margins: { top: 0, bottom: 0, left: 0, right: 0 },
     autoFirstPage: false,
   });
 
-  doc.addPage({ size: [totalW, PAGE_H] });
+  doc.addPage({ size: [docW, docH] });
 
-  // Cream background for entire cover
-  doc.rect(0, 0, totalW, PAGE_H).fill("#fdfbf7");
+  // All coordinates offset by BLEED so content sits correctly inside the bleed area
+  // Cream background across the entire document (including bleed)
+  doc.rect(0, 0, docW, docH).fill("#fdfbf7");
 
   // --- Front cover (right panel) ---
-  const frontX = PAGE_W + spineW;
+  const frontX = BLEED + PAGE_W + spineW;
   if (params.coverImageBuffer) {
-    doc.image(params.coverImageBuffer, frontX, 0, {
+    doc.image(params.coverImageBuffer, frontX, BLEED, {
       width: PAGE_W,
       height: PAGE_H,
       cover: [PAGE_W, PAGE_H],
     });
   } else {
-    doc.rect(frontX, 0, PAGE_W, PAGE_H).fill("#f5a224");
+    doc.rect(frontX, BLEED, PAGE_W, PAGE_H).fill("#f5a224");
   }
 
-  // Gradient-like dark overlay on lower front for title legibility
-  doc.rect(frontX, PAGE_H * 0.58, PAGE_W, PAGE_H * 0.42).fillOpacity(0.55).fill("#000000");
+  // Dark overlay on lower front for title legibility
+  doc.rect(frontX, BLEED + PAGE_H * 0.58, PAGE_W, PAGE_H * 0.42).fillOpacity(0.55).fill("#000000");
   doc.fillOpacity(1);
 
   doc
     .font("Helvetica-Bold")
     .fontSize(20)
     .fillColor("#ffffff")
-    .text(params.title, frontX + 24, PAGE_H * 0.63, { width: PAGE_W - 48, align: "center" });
+    .text(params.title, frontX + 24, BLEED + PAGE_H * 0.63, { width: PAGE_W - 48, align: "center" });
   doc
     .font("Helvetica")
     .fontSize(11)
@@ -138,19 +144,19 @@ async function buildCoverPdf(params: {
     .text(`A story for ${params.childName}`, { width: PAGE_W - 48, align: "center" });
 
   // --- Spine ---
-  doc.rect(PAGE_W, 0, spineW, PAGE_H).fill("#f5a224");
+  doc.rect(BLEED + PAGE_W, BLEED, spineW, PAGE_H).fill("#f5a224");
 
   // --- Back cover (left panel) ---
   doc
     .font("Helvetica-Bold")
     .fontSize(16)
     .fillColor("#f5a224")
-    .text("StoryBloom", 24, 32, { width: PAGE_W - 48 });
+    .text("Sion Legacy Originals", BLEED + 24, BLEED + 32, { width: PAGE_W - 48 });
   doc
     .font("Helvetica")
     .fontSize(9)
     .fillColor("#526070")
-    .text("Personalised AI-generated children's stories", 24, 58, { width: PAGE_W - 48 });
+    .text("Personalised AI-generated children's stories", BLEED + 24, BLEED + 58, { width: PAGE_W - 48 });
 
   return bufferFromDoc(doc);
 }
