@@ -307,6 +307,27 @@ router.post("/checkout/print", requireAuth, async (req: any, res) => {
   }
 });
 
+// ── GET /api/checkout/session/:sessionId — order confirmation lookup ──────────
+// No auth required — the Stripe session ID is itself a secret token
+router.get("/checkout/session/:sessionId", async (req: any, res) => {
+  try {
+    const result = await db.execute(sql`
+      SELECT po.id, po.status, po.customer_name, po.customer_email,
+             po.shipping_address, po.amount_cents, po.created_at,
+             s.title AS story_title, s.cover_image_url
+      FROM   print_orders po
+      LEFT JOIN stories s ON s.id = po.story_id
+      WHERE  po.stripe_session_id = ${req.params.sessionId}
+      LIMIT  1
+    `);
+    const order = result.rows[0];
+    if (!order) return res.status(404).json({ error: "Order not found" });
+    res.json({ order });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // ── GET /api/checkout/orders ─────────────────────────────────────────────────
 router.get("/checkout/orders", requireAuth, async (req: any, res) => {
   try {
