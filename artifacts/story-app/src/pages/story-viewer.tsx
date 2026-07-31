@@ -227,7 +227,7 @@ export default function StoryViewer() {
               <div key={i}>
                 <ReadAlongParagraph
                   tokens={pd.tokens}
-                  activeCharIndex={readAlong.activeCharIndex}
+                  activeRange={readAlong.activeRange}
                 />
                 {ILLUS_AFTER[i] && (
                   <div className="my-8 rounded-2xl overflow-hidden shadow-md not-prose">

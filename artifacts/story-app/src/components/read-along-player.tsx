@@ -37,6 +37,38 @@ export function buildReadAlongData(paragraphs: string[]): {
   return { fullText: paragraphs.join(SEPARATOR), paragraphData };
 }
 
+// ─── Sentence splitting ───────────────────────────────────────────────────────
+
+interface Sentence {
+  text: string;
+  start: number;
+  end: number;
+}
+
+function splitSentences(text: string): Sentence[] {
+  const results: Sentence[] = [];
+  // Match runs of text ending in sentence-closing punctuation + optional whitespace
+  const re = /[^!?.]+[!?.]+\s*/g;
+  let match: RegExpExecArray | null;
+  while ((match = re.exec(text)) !== null) {
+    const raw = match[0];
+    if (raw.trim()) {
+      results.push({ text: raw, start: match.index, end: match.index + raw.length });
+    }
+  }
+  // Capture any trailing text that has no sentence-ending punctuation
+  const lastEnd = results.length > 0 ? results[results.length - 1].end : 0;
+  if (lastEnd < text.length) {
+    const trailing = text.slice(lastEnd);
+    if (trailing.trim()) results.push({ text: trailing, start: lastEnd, end: text.length });
+  }
+  // If nothing matched (very short text), treat the whole thing as one sentence
+  if (results.length === 0 && text.trim()) {
+    results.push({ text, start: 0, end: text.length });
+  }
+  return results;
+}
+
 // ─── Voice helpers ────────────────────────────────────────────────────────────
 
 const MALE_HINTS = [
@@ -62,7 +94,6 @@ export function guessGender(voice: SpeechSynthesisVoice): "male" | "female" | "u
   return "unknown";
 }
 
-/** Region label from a BCP-47 lang tag */
 function regionLabel(lang: string): string {
   const map: Record<string, string> = {
     "en-US": "United States",
@@ -80,7 +111,6 @@ function regionLabel(lang: string): string {
 }
 
 export function shortName(voice: SpeechSynthesisVoice): string {
-  // Strip "(en-US)" style suffixes and vendor noise
   return voice.name
     .replace(/\s*\([^)]*\)\s*/g, "")
     .replace(/google/gi, "")
@@ -98,13 +128,7 @@ function loadEnglishVoices(): SpeechSynthesisVoice[] {
   return window.speechSynthesis.getVoices().filter((v) => v.lang.startsWith("en"));
 }
 
-interface VoiceGroup {
-  region: string;
-  lang: string;
-  voices: SpeechSynthesisVoice[];
-}
-
-function groupByRegion(voices: SpeechSynthesisVoice[]): VoiceGroup[] {
+export function groupByRegion(voices: SpeechSynthesisVoice[]) {
   const map = new Map<string, SpeechSynthesisVoice[]>();
   for (const v of voices) {
     const key = v.lang || "en";
@@ -121,74 +145,44 @@ function groupByRegion(voices: SpeechSynthesisVoice[]): VoiceGroup[] {
 type Speed = 0.75 | 1 | 1.25 | 1.5;
 const SPEEDS: Speed[] = [0.75, 1, 1.25, 1.5];
 
-// Pitch presets: normal female, deeper / more masculine, higher / more childlike
 type PitchPreset = "normal" | "deeper" | "higher";
 const PITCH_MAP: Record<PitchPreset, number> = { normal: 1, deeper: 0.6, higher: 1.4 };
 
-// ms per character at rate=1 — calibrated to ~150 words/min (~5 chars/word)
-const MS_PER_CHAR_BASE = 80;
+// activeRange: [startCharInclusive, endCharExclusive] of the sentence currently being read
+export type ActiveRange = [number, number] | null;
 
 export function useReadAlong(paragraphs: string[]) {
   const [visible, setVisible] = useState(false);
   const [isPlaying, setIsPlaying] = useState(false);
   const [speed, setSpeed] = useState<Speed>(1);
   const [pitch, setPitch] = useState<PitchPreset>("normal");
-  const [activeCharIndex, setActiveCharIndex] = useState<number | null>(null);
+  const [activeRange, setActiveRange] = useState<ActiveRange>(null);
   const [voices, setVoices] = useState<SpeechSynthesisVoice[]>([]);
   const [selectedVoice, setSelectedVoice] = useState<SpeechSynthesisVoice | null>(null);
 
-  const resumeCharRef = useRef(0);
   const speedRef = useRef(speed);
   speedRef.current = speed;
   const pitchRef = useRef(pitch);
   pitchRef.current = pitch;
   const voiceRef = useRef<SpeechSynthesisVoice | null>(selectedVoice);
   voiceRef.current = selectedVoice;
-  const rafRef = useRef<number | null>(null);
-  const speechStartMsRef = useRef(0);
-  const usingBoundaryRef = useRef(false);
+
+  // Which sentence is currently active (for restarting from the right place on speed/voice change)
+  const currentSentenceIdxRef = useRef(0);
+  // Flag to ignore onend fired after a manual cancel()
+  const stoppedRef = useRef(true);
 
   const { fullText, paragraphData } = buildReadAlongData(paragraphs);
   const fullTextRef = useRef(fullText);
   fullTextRef.current = fullText;
-  const paragraphDataRef = useRef(paragraphData);
-  paragraphDataRef.current = paragraphData;
+  const sentencesRef = useRef<Sentence[]>([]);
 
-  // All word tokens in order — used by the timer fallback
-  const allTokensRef = useRef<ReadAlongToken[]>([]);
-  allTokensRef.current = paragraphData.flatMap((p) => p.tokens.filter((t) => t.isWord));
+  // Rebuild sentences whenever the story changes
+  useEffect(() => {
+    sentencesRef.current = splitSentences(fullText);
+  }, [fullText]);
 
-  const stopTimer = useCallback(() => {
-    if (rafRef.current !== null) {
-      cancelAnimationFrame(rafRef.current);
-      rafRef.current = null;
-    }
-  }, []);
-
-  // Timer-based word advancement (fallback when onboundary doesn't fire)
-  const startTimer = useCallback((fromChar: number, rate: number) => {
-    stopTimer();
-    const msPerChar = MS_PER_CHAR_BASE / rate;
-    speechStartMsRef.current = performance.now();
-
-    function tick() {
-      const elapsed = performance.now() - speechStartMsRef.current;
-      const estimatedChar = fromChar + elapsed / msPerChar;
-      const tokens = allTokensRef.current;
-
-      // Find the last word token whose start is <= estimatedChar
-      let active: ReadAlongToken | null = null;
-      for (const t of tokens) {
-        if (t.start <= estimatedChar) active = t;
-        else break;
-      }
-      if (active) setActiveCharIndex(active.start);
-      rafRef.current = requestAnimationFrame(tick);
-    }
-    rafRef.current = requestAnimationFrame(tick);
-  }, [stopTimer]);
-
-  // Load voices (async on Chrome)
+  // Load voices (Chrome resolves them async after voiceschanged)
   useEffect(() => {
     const update = () => {
       const v = loadEnglishVoices();
@@ -202,67 +196,60 @@ export function useReadAlong(paragraphs: string[]) {
     return () => window.speechSynthesis.removeEventListener("voiceschanged", update);
   }, []);
 
-  const startSpeaking = useCallback(
-    (fromChar: number, rate: number, pitchPreset: PitchPreset, voice: SpeechSynthesisVoice | null) => {
-      window.speechSynthesis.cancel();
-      stopTimer();
-      const text = fullTextRef.current.slice(fromChar);
-      if (!text.trim()) return;
-
+  /** Build a configured utterance for a sentence */
+  const makeUtt = useCallback(
+    (text: string, rate: number, pitchPreset: PitchPreset, voice: SpeechSynthesisVoice | null) => {
       const utt = new SpeechSynthesisUtterance(text);
       utt.rate = rate;
       utt.pitch = PITCH_MAP[pitchPreset];
-
-      // Always re-resolve voice from live list — stale refs are silently ignored
       const liveVoice = voice
         ? window.speechSynthesis.getVoices().find((v) => v.name === voice.name) ?? null
         : null;
-      if (liveVoice) {
-        utt.voice = liveVoice;
-        utt.lang = liveVoice.lang;
-      } else {
-        utt.lang = "en-US";
-      }
-
-      usingBoundaryRef.current = false;
-
-      utt.onboundary = (e) => {
-        if (e.name !== "word") return;
-        // Boundary events work — use them and stop the timer fallback
-        if (!usingBoundaryRef.current) {
-          usingBoundaryRef.current = true;
-          stopTimer();
-        }
-        setActiveCharIndex(fromChar + e.charIndex);
-      };
-
-      utt.onstart = () => {
-        setIsPlaying(true);
-        // Start timer immediately; if boundary events fire we'll cancel it
-        startTimer(fromChar, rate);
-        // After 600ms with no boundary event, keep the timer running
-        setTimeout(() => {
-          if (!usingBoundaryRef.current) {
-            // Timer stays active — boundary events not supported
-          }
-        }, 600);
-      };
-      utt.onend = () => {
-        stopTimer();
-        setIsPlaying(false);
-        setActiveCharIndex(null);
-        resumeCharRef.current = 0;
-      };
-      utt.onerror = () => {
-        stopTimer();
-        setIsPlaying(false);
-        setActiveCharIndex(null);
-      };
-
-      resumeCharRef.current = fromChar;
-      window.speechSynthesis.speak(utt);
+      if (liveVoice) { utt.voice = liveVoice; utt.lang = liveVoice.lang; }
+      else { utt.lang = "en-US"; }
+      return utt;
     },
     []
+  );
+
+  /**
+   * Queue all sentences from `fromIdx` onward as separate utterances.
+   * Each utterance's onstart fires at exactly the right moment → perfect sync.
+   */
+  const queueFrom = useCallback(
+    (fromIdx: number, rate: number, pitchPreset: PitchPreset, voice: SpeechSynthesisVoice | null) => {
+      window.speechSynthesis.cancel();
+      stoppedRef.current = false;
+      const sentences = sentencesRef.current;
+      if (fromIdx >= sentences.length) return;
+
+      sentences.slice(fromIdx).forEach((s, relIdx) => {
+        const absIdx = fromIdx + relIdx;
+        const utt = makeUtt(s.text, rate, pitchPreset, voice);
+
+        utt.onstart = () => {
+          if (stoppedRef.current) return;
+          currentSentenceIdxRef.current = absIdx;
+          setActiveRange([s.start, s.end]);
+          if (absIdx === fromIdx) setIsPlaying(true);
+        };
+
+        // Only the last sentence needs an onend to clean up
+        if (absIdx === sentences.length - 1) {
+          utt.onend = () => {
+            if (stoppedRef.current) return;
+            stoppedRef.current = true;
+            setIsPlaying(false);
+            setActiveRange(null);
+            currentSentenceIdxRef.current = 0;
+          };
+        }
+
+        utt.onerror = () => { /* ignore — browser fires this on cancel() too */ };
+        window.speechSynthesis.speak(utt);
+      });
+    },
+    [makeUtt]
   );
 
   const togglePlay = useCallback(() => {
@@ -273,37 +260,46 @@ export function useReadAlong(paragraphs: string[]) {
       window.speechSynthesis.resume();
       setIsPlaying(true);
     } else {
-      startSpeaking(resumeCharRef.current, speedRef.current, pitchRef.current, voiceRef.current);
+      queueFrom(currentSentenceIdxRef.current, speedRef.current, pitchRef.current, voiceRef.current);
     }
-  }, [isPlaying, startSpeaking]);
+  }, [isPlaying, queueFrom]);
 
   const stop = useCallback(() => {
+    stoppedRef.current = true;
     window.speechSynthesis.cancel();
-    stopTimer();
     setIsPlaying(false);
-    setActiveCharIndex(null);
-    resumeCharRef.current = 0;
-  }, [stopTimer]);
+    setActiveRange(null);
+    currentSentenceIdxRef.current = 0;
+  }, []);
 
-  const changeSpeed = useCallback((s: Speed) => {
-    setSpeed(s);
-    if (isPlaying) startSpeaking(resumeCharRef.current, s, pitchRef.current, voiceRef.current);
-  }, [isPlaying, startSpeaking]);
+  const changeSpeed = useCallback(
+    (s: Speed) => {
+      setSpeed(s);
+      if (isPlaying) queueFrom(currentSentenceIdxRef.current, s, pitchRef.current, voiceRef.current);
+    },
+    [isPlaying, queueFrom]
+  );
 
-  const changePitch = useCallback((p: PitchPreset) => {
-    setPitch(p);
-    if (isPlaying) startSpeaking(resumeCharRef.current, speedRef.current, p, voiceRef.current);
-  }, [isPlaying, startSpeaking]);
+  const changePitch = useCallback(
+    (p: PitchPreset) => {
+      setPitch(p);
+      if (isPlaying) queueFrom(currentSentenceIdxRef.current, speedRef.current, p, voiceRef.current);
+    },
+    [isPlaying, queueFrom]
+  );
 
-  const changeVoice = useCallback((v: SpeechSynthesisVoice) => {
-    setSelectedVoice(v);
-    if (isPlaying) startSpeaking(resumeCharRef.current, speedRef.current, pitchRef.current, v);
-  }, [isPlaying, startSpeaking]);
+  const changeVoice = useCallback(
+    (v: SpeechSynthesisVoice) => {
+      setSelectedVoice(v);
+      if (isPlaying) queueFrom(currentSentenceIdxRef.current, speedRef.current, pitchRef.current, v);
+    },
+    [isPlaying, queueFrom]
+  );
 
   const open = useCallback(() => setVisible(true), []);
   const close = useCallback(() => { stop(); setVisible(false); }, [stop]);
 
-  useEffect(() => () => { window.speechSynthesis.cancel(); stopTimer(); }, [stopTimer]);
+  useEffect(() => () => { window.speechSynthesis.cancel(); }, []);
 
   return {
     visible, open, close,
@@ -311,7 +307,7 @@ export function useReadAlong(paragraphs: string[]) {
     speed, changeSpeed,
     pitch, changePitch,
     voices, selectedVoice, changeVoice,
-    activeCharIndex,
+    activeRange,
     paragraphData,
   };
 }
@@ -439,7 +435,7 @@ export function ReadAlongBar({
                 {isPlaying ? `Reading for ${childName}…` : "Read Along"}
               </p>
               <p className="text-white/70 text-sm leading-tight mt-0.5">
-                {isPlaying ? "Words highlight as you follow along" : "Tap ▶ to begin"}
+                {isPlaying ? "Each sentence lights up as it's read" : "Tap ▶ to begin"}
               </p>
             </div>
 
@@ -495,26 +491,27 @@ export function ReadAlongBar({
 // ─── Highlighted paragraph ────────────────────────────────────────────────────
 
 export function ReadAlongParagraph({
-  tokens, activeCharIndex,
+  tokens,
+  activeRange,
 }: {
   tokens: ReadAlongToken[];
-  activeCharIndex: number | null;
+  activeRange: ActiveRange;
 }) {
   return (
     <p>
       {tokens.map((token, i) => {
         if (!token.isWord) return <span key={i}>{token.text}</span>;
         const isActive =
-          activeCharIndex !== null &&
-          activeCharIndex >= token.start &&
-          activeCharIndex < token.start + token.text.length;
+          activeRange !== null &&
+          token.start >= activeRange[0] &&
+          token.start < activeRange[1];
         return (
           <span
             key={i}
             className={
               isActive
-                ? "bg-yellow-300 text-gray-900 rounded-sm px-[2px] -mx-[2px] underline underline-offset-2 decoration-2 decoration-yellow-500 transition-colors duration-75 font-bold"
-                : "transition-colors duration-75"
+                ? "bg-yellow-300 text-gray-900 rounded px-[2px] -mx-[2px] underline underline-offset-2 decoration-2 decoration-yellow-500 font-bold transition-colors duration-100"
+                : "transition-colors duration-100"
             }
           >
             {token.text}
