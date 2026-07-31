@@ -122,6 +122,10 @@ if (Number.isNaN(port) || port <= 0) throw new Error(`Invalid PORT: "${rawPort}"
 await runAppMigrations();
 await initStripe();
 
+// Start background Lulu status poller — alerts owner on rejected orders
+const { startLuluStatusPoller } = await import("./lib/luluService");
+startLuluStatusPoller();
+
 app.listen(port, (err) => {
   if (err) {
     logger.error({ err }, "Error listening on port");

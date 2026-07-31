@@ -14,6 +14,7 @@ import { db } from "@workspace/db";
 import { sql } from "drizzle-orm";
 import { storeTempPdf, deleteTempPdf } from "./tempPdfStore";
 import { generateStoryPdfs } from "./pdfService";
+import { sendOwnerAlert } from "./mailerService";
 
 const LULU_API_BASE = "https://api.lulu.com";
 const LULU_TOKEN_URL = `${LULU_API_BASE}/auth/realms/glasstree/protocol/openid-connect/token`;
@@ -122,6 +123,19 @@ export async function getLuluJobStatus(
  *  5. Update order status in DB
  */
 export async function triggerLuluOrder(orderId: number): Promise<void> {
+  try {
+    await _triggerLuluOrder(orderId);
+  } catch (err: any) {
+    // Alert the owner immediately on any submission failure
+    sendOwnerAlert({
+      subject: `Print order #${orderId} failed to submit`,
+      body: `Order #${orderId} could not be sent to Lulu.\n\nError: ${err.message}\n\nPlease check the order and retrigger it from the account page or admin endpoint.`,
+    }).catch(() => {}); // fire-and-forget, don't mask original error
+    throw err;
+  }
+}
+
+async function _triggerLuluOrder(orderId: number): Promise<void> {
   // 1. Fetch order + story
   const result = await db.execute(sql`
     SELECT po.*, s.title, s.content, s.cover_image_url, s.child_name, s.child_age
@@ -189,4 +203,80 @@ export async function triggerLuluOrder(orderId: number): Promise<void> {
   // asynchronously after the print job is created. The route handler deletes
   // on first fetch; TTL cleanup handles anything Lulu never fetches.
   console.log(`Order ${orderId} submitted to Lulu as job ${luluJob.id}`);
+}
+
+/**
+ * Background poller — runs every 30 minutes.
+ * Checks all orders stuck in 'sent_to_lulu' and alerts the owner if Lulu
+ * has rejected any of them, updating the DB status so it shows in the UI.
+ */
+export function startLuluStatusPoller(): void {
+  const INTERVAL_MS = 30 * 60 * 1000; // 30 minutes
+
+  async function poll() {
+    try {
+      const result = await db.execute(sql`
+        SELECT po.id, po.lulu_job_id, po.customer_name, po.customer_email,
+               s.title AS story_title
+        FROM   print_orders po
+        JOIN   stories s ON s.id = po.story_id
+        WHERE  po.status = 'sent_to_lulu'
+          AND  po.lulu_job_id IS NOT NULL
+      `);
+
+      if (result.rows.length === 0) return;
+
+      const token = await getLuluAccessToken().catch(() => null);
+      if (!token) return;
+
+      for (const order of result.rows) {
+        try {
+          const resp = await fetch(`${LULU_API_BASE}/print-jobs/${order.lulu_job_id}/`, {
+            headers: { Authorization: `Bearer ${token}` },
+          });
+          if (!resp.ok) continue;
+
+          const job = await resp.json();
+          const statusName: string = job.status?.name ?? "";
+
+          if (statusName === "REJECTED") {
+            const messages = JSON.stringify(job.line_items?.[0]?.status?.messages ?? {}, null, 2);
+
+            // Update DB so it's visible in the UI
+            await db.execute(sql`
+              UPDATE print_orders
+              SET status = 'lulu_rejected', updated_at = NOW()
+              WHERE id = ${order.id}
+            `);
+
+            // Alert owner
+            await sendOwnerAlert({
+              subject: `Order #${order.id} was rejected by Lulu — needs attention`,
+              body: `Order #${order.id} for "${order.story_title}" (${order.customer_name}) was rejected by Lulu.\n\nLulu Job ID: ${order.lulu_job_id}\n\nReason:\n${messages}\n\nRetrigger this order from the account page or the admin endpoint once the issue is resolved.`,
+            });
+
+            console.warn(`Order ${order.id} (Lulu job ${order.lulu_job_id}) REJECTED — owner alerted`);
+          } else if (statusName === "IN_PRODUCTION" || statusName === "SHIPPED") {
+            // Keep status in sync
+            const newStatus = statusName === "SHIPPED" ? "shipped" : "in_production";
+            await db.execute(sql`
+              UPDATE print_orders SET status = ${newStatus}, updated_at = NOW() WHERE id = ${order.id}
+            `);
+          }
+        } catch {
+          // Skip individual order errors — don't break the whole poll loop
+        }
+      }
+    } catch (err: any) {
+      console.error("Lulu status poller error:", err.message);
+    }
+  }
+
+  // Run once at startup after a short delay, then every 30 minutes
+  setTimeout(() => {
+    poll();
+    setInterval(poll, INTERVAL_MS);
+  }, 60_000); // wait 1 min after startup before first check
+
+  console.log("Lulu status poller started (30-min interval)");
 }

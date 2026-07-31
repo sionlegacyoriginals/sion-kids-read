@@ -46,6 +46,44 @@ async function sendEmail(to: string, subject: string, html: string): Promise<voi
   console.log(`Email sent to ${to} — id: ${data.id}`);
 }
 
+export async function sendOwnerAlert(params: {
+  subject: string;
+  body: string;
+}): Promise<void> {
+  const ownerEmail = process.env.OWNER_EMAIL;
+  if (!ownerEmail) {
+    console.warn("OWNER_EMAIL not set — skipping owner alert");
+    return;
+  }
+
+  const html = `
+<!DOCTYPE html>
+<html>
+<head><meta charset="utf-8"></head>
+<body style="margin:0;padding:0;background:#fdf9f6;font-family:'Georgia',serif;">
+  <table width="100%" cellpadding="0" cellspacing="0" style="background:#fdf9f6;padding:40px 0;">
+    <tr><td align="center">
+      <table width="560" cellpadding="0" cellspacing="0" style="background:#ffffff;border-radius:16px;overflow:hidden;box-shadow:0 2px 12px rgba(0,0,0,0.08);">
+        <tr><td style="background:#dc2626;padding:24px 40px;text-align:center;">
+          <p style="margin:0;color:#fecaca;font-size:13px;letter-spacing:1px;text-transform:uppercase;">Sion Legacy Originals — Admin Alert</p>
+          <h1 style="margin:8px 0 0;color:#ffffff;font-size:22px;font-weight:normal;">⚠️ ${params.subject}</h1>
+        </td></tr>
+        <tr><td style="padding:32px 40px;">
+          <div style="color:#374151;font-size:15px;line-height:1.7;white-space:pre-wrap;">${params.body}</div>
+          <hr style="border:none;border-top:1px solid #e5e7eb;margin:24px 0;">
+          <p style="margin:0;color:#9ca3af;font-size:12px;">
+            Manage orders at <a href="https://sionlegacyoriginals.com/account" style="color:#7c3aed;">sionlegacyoriginals.com/account</a>
+          </p>
+        </td></tr>
+      </table>
+    </td></tr>
+  </table>
+</body>
+</html>`;
+
+  await sendEmail(ownerEmail, `[Sion Legacy] ${params.subject}`, html);
+}
+
 export async function sendPrintOrderConfirmation(params: {
   customerEmail: string;
   customerName: string;
