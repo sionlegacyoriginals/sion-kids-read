@@ -1,10 +1,10 @@
 import { useState } from "react";
 import { useUser, useClerk } from "@clerk/react";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link } from "wouter";
 import {
   User, CreditCard, Printer, CheckCircle2, XCircle,
-  Loader2, LogOut, Package
+  Loader2, LogOut, Package, Send
 } from "lucide-react";
 
 async function fetchUserMe() {
@@ -32,8 +32,30 @@ const ORDER_STATUS_LABELS: Record<string, string> = {
 export default function Account() {
   const { user } = useUser();
   const { signOut } = useClerk();
+  const queryClient = useQueryClient();
   const [portalLoading, setPortalLoading] = useState(false);
   const [portalError, setPortalError] = useState<string | null>(null);
+  const [retriggerLoading, setRetriggerLoading] = useState<number | null>(null);
+  const [retriggerMsg, setRetriggerMsg] = useState<Record<number, string>>({});
+
+  const handleRetrigger = async (orderId: number) => {
+    setRetriggerLoading(orderId);
+    setRetriggerMsg(m => ({ ...m, [orderId]: "" }));
+    try {
+      const resp = await fetch(`/api/checkout/orders/${orderId}/retrigger-lulu`, {
+        method: "POST",
+        credentials: "include",
+      });
+      const data = await resp.json();
+      if (!resp.ok) throw new Error(data.error ?? "Failed");
+      setRetriggerMsg(m => ({ ...m, [orderId]: "✓ Sent to Lulu! Check your email for shipping updates." }));
+      queryClient.invalidateQueries({ queryKey: ["print-orders"] });
+    } catch (err: any) {
+      setRetriggerMsg(m => ({ ...m, [orderId]: `Error: ${err.message}` }));
+    } finally {
+      setRetriggerLoading(null);
+    }
+  };
 
   const { data: me, isLoading: meLoading } = useQuery({
     queryKey: ["users-me"],
@@ -171,13 +193,36 @@ export default function Account() {
                     {order.customer_name}
                   </p>
                 </div>
-                <div className="flex-shrink-0 text-right">
-                  <span className="text-xs font-bold px-2.5 py-1 rounded-full bg-muted text-muted-foreground">
+                <div className="flex-shrink-0 text-right space-y-1.5">
+                  <span className={`text-xs font-bold px-2.5 py-1 rounded-full ${
+                    order.status === "shipped" || order.status === "delivered"
+                      ? "bg-green-100 text-green-700"
+                      : order.status === "paid"
+                      ? "bg-amber-100 text-amber-700"
+                      : "bg-muted text-muted-foreground"
+                  }`}>
                     {ORDER_STATUS_LABELS[order.status] ?? order.status}
                   </span>
-                  <p className="text-xs text-muted-foreground mt-1">
+                  <p className="text-xs text-muted-foreground">
                     ${((order.amount_cents ?? 0) / 100).toFixed(2)}
                   </p>
+                  {order.status === "paid" && (
+                    <button
+                      onClick={() => handleRetrigger(order.id)}
+                      disabled={retriggerLoading === order.id}
+                      className="flex items-center gap-1.5 px-3 py-1.5 bg-primary text-white text-xs font-bold rounded-full hover:bg-primary/90 transition-all disabled:opacity-60 ml-auto"
+                    >
+                      {retriggerLoading === order.id
+                        ? <Loader2 className="w-3 h-3 animate-spin" />
+                        : <Send className="w-3 h-3" />}
+                      Send to printer
+                    </button>
+                  )}
+                  {retriggerMsg[order.id] && (
+                    <p className={`text-xs mt-1 ${retriggerMsg[order.id].startsWith("Error") ? "text-destructive" : "text-green-600"}`}>
+                      {retriggerMsg[order.id]}
+                    </p>
+                  )}
                 </div>
               </div>
             ))}
