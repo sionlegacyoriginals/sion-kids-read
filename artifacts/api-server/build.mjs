@@ -3,7 +3,7 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { build as esbuild } from "esbuild";
 import esbuildPluginPino from "esbuild-plugin-pino";
-import { rm } from "node:fs/promises";
+import { rm, cp, mkdir } from "node:fs/promises";
 
 // Plugins (e.g. 'esbuild-plugin-pino') may use `require` to resolve dependencies
 globalThis.require = createRequire(import.meta.url);
@@ -118,6 +118,17 @@ globalThis.__dirname = __bannerPath.dirname(globalThis.__filename);
     `,
     },
   });
+  await copyPdfkitData();
+}
+
+async function copyPdfkitData() {
+  // pdfkit loads font/ICC files from the filesystem relative to __dirname.
+  // When bundled, __dirname = dist/, so copy pdfkit's data dir there.
+  const src = path.resolve(artifactDir, "node_modules/pdfkit/js/data");
+  const dest = path.resolve(artifactDir, "dist/data");
+  await mkdir(dest, { recursive: true });
+  await cp(src, dest, { recursive: true });
+  console.log("✓ Copied pdfkit font data → dist/data");
 }
 
 buildAll().catch((err) => {
