@@ -323,6 +323,24 @@ router.get("/checkout/orders", requireAuth, async (req: any, res) => {
   }
 });
 
+// ── GET /api/admin/retrigger-lulu — admin-only, MASTER_TEST_CODE auth ─────────
+router.get("/admin/retrigger-lulu", async (req: any, res) => {
+  const secret = req.query.secret as string;
+  const masterCode = process.env.MASTER_TEST_CODE;
+  if (!masterCode || secret !== masterCode) {
+    return res.status(403).json({ error: "Forbidden" });
+  }
+  const orderId = parseInt(req.query.orderId as string, 10);
+  if (isNaN(orderId)) return res.status(400).json({ error: "orderId required" });
+  try {
+    const { triggerLuluOrder } = await import("../lib/luluService");
+    await triggerLuluOrder(orderId);
+    res.json({ ok: true, message: `Order ${orderId} submitted to Lulu` });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // ── POST /api/checkout/orders/:id/retrigger-lulu ─────────────────────────────
 // Manually re-sends a stuck "paid" order to Lulu (owner only)
 router.post("/checkout/orders/:id/retrigger-lulu", requireAuth, async (req: any, res) => {
