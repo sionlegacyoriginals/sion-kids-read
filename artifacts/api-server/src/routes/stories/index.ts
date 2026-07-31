@@ -484,6 +484,8 @@ router.get("/share/:id", async (req: any, res): Promise<void> => {
 
   function imgUrl(path: string | null | undefined): string | null {
     if (!path) return null;
+    // ref-photos are served directly at /api/ref-photos/:id, not under /api/storage
+    if (path.startsWith("/ref-photos/")) return `${appUrl}/api${path}`;
     return `${appUrl}/api/storage${path}`;
   }
 
