@@ -506,9 +506,31 @@ router.get("/share/:id", async (req: any, res): Promise<void> => {
   if (illustrations[0]) illustAfter[1] = illustrations[0];
   if (illustrations[1]) illustAfter[3] = illustrations[1];
 
+  // Split a paragraph into sentence spans so JS can highlight them during read-along
+  let globalSentenceIdx = 0;
+  function toSentenceSpans(text: string): string {
+    const escaped = text.replace(/</g, "&lt;").replace(/>/g, "&gt;");
+    const parts: string[] = [];
+    const re = /[^!?.]+[!?.]+\s*/g;
+    let m: RegExpExecArray | null;
+    let last = 0;
+    while ((m = re.exec(escaped)) !== null) {
+      if (m[0].trim()) {
+        parts.push(`<span class="sentence" data-idx="${globalSentenceIdx++}">${m[0]}</span>`);
+      }
+      last = re.lastIndex;
+    }
+    if (last < escaped.length) {
+      const tail = escaped.slice(last).trim();
+      if (tail) parts.push(`<span class="sentence" data-idx="${globalSentenceIdx++}">${tail}</span>`);
+    }
+    if (parts.length === 0) parts.push(`<span class="sentence" data-idx="${globalSentenceIdx++}">${escaped}</span>`);
+    return parts.join("");
+  }
+
   const paragraphsHtml = paragraphs.map((p: string, i: number) => {
     const illus = illustAfter[i] ? `<div class="illus"><img src="${illustAfter[i]}" alt="Illustration"></div>` : "";
-    return `<p>${p.replace(/</g, "&lt;").replace(/>/g, "&gt;")}</p>${illus}`;
+    return `<p>${toSentenceSpans(p)}</p>${illus}`;
   }).join("\n");
 
   const coverHtml = cover
@@ -561,15 +583,45 @@ router.get("/share/:id", async (req: any, res): Promise<void> => {
     /* theme badge */
     .theme-badge { display: inline-flex; align-items: center; gap: .4rem; padding: .35rem .9rem; background: hsl(272,65%,40%); color: #fff; border-radius: 999px; font-size: .75rem; font-weight: 700; margin-bottom: .75rem; }
 
-    /* meta */
-    .meta { padding: 1.25rem 2rem; border-bottom: 1px solid hsl(270,30%,92%); display: flex; flex-wrap: wrap; gap: .5rem 1.5rem; font-size: .875rem; color: hsl(270,15%,45%); font-weight: 600; }
+    /* meta row */
+    .meta { padding: 1.25rem 2rem; border-bottom: 1px solid hsl(270,30%,92%); display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: .75rem; font-size: .875rem; color: hsl(270,15%,45%); font-weight: 600; }
     .meta strong { color: hsl(270,45%,10%); background: hsl(272,40%,94%); padding: .1rem .5rem; border-radius: .4rem; }
+
+    /* listen button */
+    #listen-btn { display: none; align-items: center; gap: .5rem; padding: .55rem 1.1rem; background: hsl(272,65%,40%); color: #fff; font-family: 'Nunito', sans-serif; font-weight: 800; font-size: .85rem; border-radius: 999px; border: none; cursor: pointer; white-space: nowrap; box-shadow: 0 2px 8px rgba(80,30,120,.25); }
+    #listen-btn:hover { background: hsl(272,65%,33%); }
+
+    /* sentence highlighting */
+    .sentence { transition: background .15s, border-radius .15s; }
+    .sentence.active { background: #fde047; border-radius: 3px; padding: 0 2px; margin: 0 -2px; font-weight: 700; text-decoration: underline; text-decoration-color: #ca8a04; text-underline-offset: 3px; }
 
     /* story text */
     .story { padding: 2rem; }
     .story p { font-family: 'Playfair Display', serif; font-size: 1.1rem; line-height: 1.9; color: hsl(270,45%,14%); margin-bottom: 1.4rem; }
     .illus { margin: 1.5rem 0; border-radius: 1rem; overflow: hidden; box-shadow: 0 2px 12px rgba(80,30,120,.12); }
     .illus img { width: 100%; display: block; }
+
+    /* player bar */
+    #player-bar { display: none; position: fixed; bottom: 0; left: 0; right: 0; z-index: 20; justify-content: center; pointer-events: none; }
+    #player-inner { pointer-events: auto; width: 100%; max-width: 680px; margin: 0 1rem 1rem; background: hsl(272,65%,40%); border-radius: 1.25rem; box-shadow: 0 8px 32px rgba(80,30,120,.35); padding: 1rem; display: flex; flex-direction: column; gap: .75rem; }
+
+    /* player row 1 */
+    .player-row1 { display: flex; align-items: center; gap: .75rem; }
+    .player-playbtn { width: 3.25rem; height: 3.25rem; border-radius: .875rem; background: rgba(255,255,255,.2); border: none; cursor: pointer; display: flex; align-items: center; justify-content: center; font-size: 1.4rem; color: #fff; flex-shrink: 0; }
+    .player-playbtn:hover { background: rgba(255,255,255,.3); }
+    .player-info { flex: 1; min-width: 0; }
+    .player-info p { color: #fff; font-weight: 700; font-size: .95rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .player-info small { color: rgba(255,255,255,.7); font-size: .8rem; }
+    .player-stopbtn, .player-closebtn { width: 2.4rem; height: 2.4rem; border-radius: .625rem; background: rgba(255,255,255,.12); border: none; cursor: pointer; color: #fff; font-size: 1rem; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+    .player-stopbtn:hover, .player-closebtn:hover { background: rgba(255,255,255,.22); }
+
+    /* player row 2 */
+    .player-row2 { display: flex; align-items: center; gap: .5rem; padding-top: .5rem; border-top: 1px solid rgba(255,255,255,.2); }
+    .player-voice { flex: 1; min-width: 0; background: rgba(255,255,255,.12); border: none; border-radius: .625rem; padding: .45rem .75rem; color: #fff; font-family: 'Nunito', sans-serif; font-size: .8rem; font-weight: 600; appearance: none; cursor: pointer; }
+    .player-voice option { color: #000; background: #fff; }
+    .speed-group { display: flex; gap: 2px; background: rgba(255,255,255,.12); border-radius: .625rem; padding: 3px; flex-shrink: 0; }
+    .speed-btn { background: transparent; border: none; color: rgba(255,255,255,.7); font-family: 'Nunito', sans-serif; font-weight: 700; font-size: .75rem; padding: .3rem .5rem; border-radius: .45rem; cursor: pointer; }
+    .speed-btn.active { background: #fff; color: hsl(272,65%,40%); }
 
     /* sticky CTA */
     .cta-bar { position: fixed; bottom: 0; left: 0; right: 0; background: #fff; border-top: 1px solid hsl(270,30%,90%); padding: 1rem; z-index: 10; display: flex; align-items: center; justify-content: space-between; gap: 1rem; flex-wrap: wrap; box-shadow: 0 -4px 16px rgba(80,30,120,.08); }
@@ -594,8 +646,8 @@ router.get("/share/:id", async (req: any, res): Promise<void> => {
     <div class="card">
       ${coverHtml}
       <div class="meta">
-        <span>For <strong>${(story.childName as string ?? "").replace(/</g, "&lt;")}</strong>, Age ${story.childAge}</span>
-        <span>${createdDate}</span>
+        <span>For <strong>${(story.childName as string ?? "").replace(/</g, "&lt;")}</strong>, Age ${story.childAge} &middot; ${createdDate}</span>
+        <button id="listen-btn">🎧 Listen</button>
       </div>
       <div class="story">
         ${paragraphsHtml}
@@ -603,13 +655,191 @@ router.get("/share/:id", async (req: any, res): Promise<void> => {
     </div>
   </div>
 
-  <div class="cta-bar">
+  <!-- Read-along player bar -->
+  <div id="player-bar">
+    <div id="player-inner">
+      <div class="player-row1">
+        <button class="player-playbtn" id="play-btn" aria-label="Play">▶</button>
+        <div class="player-info">
+          <p>Read Along</p>
+          <small id="player-status">Tap ▶ to begin</small>
+        </div>
+        <button class="player-stopbtn" id="stop-btn" aria-label="Stop">⏹</button>
+        <button class="player-closebtn" id="close-btn" aria-label="Close">✕</button>
+      </div>
+      <div class="player-row2">
+        <select class="player-voice" id="voice-select" aria-label="Voice"></select>
+        <div class="speed-group">
+          <button class="speed-btn" data-speed="0.75">0.75×</button>
+          <button class="speed-btn active" data-speed="1">1×</button>
+          <button class="speed-btn" data-speed="1.25">1.25×</button>
+          <button class="speed-btn" data-speed="1.5">1.5×</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="cta-bar" id="cta-bar">
     <div class="cta-text">
       <p>Create a personalized story for your child</p>
       <small>$1 per story &middot; or $3.33/month unlimited</small>
     </div>
     <a class="cta-btn" href="${appUrl}">✨ Create your story</a>
   </div>
+
+  <script>
+  (function () {
+    if (!window.speechSynthesis) return;
+
+    var sentences = Array.from(document.querySelectorAll('.sentence'));
+    if (!sentences.length) return;
+
+    var listenBtn  = document.getElementById('listen-btn');
+    var playerBar  = document.getElementById('player-bar');
+    var playBtn    = document.getElementById('play-btn');
+    var stopBtn    = document.getElementById('stop-btn');
+    var closeBtn   = document.getElementById('close-btn');
+    var statusEl   = document.getElementById('player-status');
+    var voiceSel   = document.getElementById('voice-select');
+    var ctaBar     = document.getElementById('cta-bar');
+    var page       = document.querySelector('.page');
+
+    var currentIdx  = 0;
+    var isPlaying   = false;
+    var stopped     = true;
+    var currentRate = 1;
+    var currentVoiceName = '';
+
+    /* ── show the listen button ── */
+    listenBtn.style.display = 'flex';
+
+    /* ── open / close ── */
+    listenBtn.addEventListener('click', function () {
+      listenBtn.style.display = 'none';
+      playerBar.style.display = 'flex';
+      ctaBar.style.display = 'none';
+      page.style.paddingBottom = '9rem';
+      startFrom(0);
+    });
+
+    closeBtn.addEventListener('click', function () {
+      doStop();
+      playerBar.style.display = 'none';
+      listenBtn.style.display = 'flex';
+      ctaBar.style.display = 'flex';
+      page.style.paddingBottom = '8rem';
+    });
+
+    /* ── play / pause ── */
+    playBtn.addEventListener('click', function () {
+      if (isPlaying) {
+        window.speechSynthesis.pause();
+        isPlaying = false;
+        playBtn.textContent = '▶';
+        statusEl.textContent = 'Paused';
+      } else if (window.speechSynthesis.paused) {
+        window.speechSynthesis.resume();
+        isPlaying = true;
+        playBtn.textContent = '⏸';
+        statusEl.textContent = 'Reading…';
+      } else {
+        startFrom(currentIdx);
+      }
+    });
+
+    stopBtn.addEventListener('click', doStop);
+
+    function doStop() {
+      stopped = true;
+      window.speechSynthesis.cancel();
+      isPlaying = false;
+      playBtn.textContent = '▶';
+      statusEl.textContent = 'Tap ▶ to begin';
+      clearActive();
+      currentIdx = 0;
+    }
+
+    function clearActive() {
+      sentences.forEach(function (s) { s.classList.remove('active'); });
+    }
+
+    function startFrom(idx) {
+      window.speechSynthesis.cancel();
+      stopped = false;
+      currentIdx = idx;
+      isPlaying = true;
+      playBtn.textContent = '⏸';
+      statusEl.textContent = 'Reading…';
+
+      var voices = window.speechSynthesis.getVoices();
+      var voice = currentVoiceName ? voices.find(function (v) { return v.name === currentVoiceName; }) || null : null;
+
+      sentences.slice(idx).forEach(function (span, relIdx) {
+        var absIdx = idx + relIdx;
+        var text = span.textContent || '';
+        if (!text.trim()) return;
+
+        var utt = new SpeechSynthesisUtterance(text);
+        utt.rate = currentRate;
+        utt.lang = 'en-US';
+        if (voice) { utt.voice = voice; utt.lang = voice.lang; }
+
+        utt.onstart = function () {
+          if (stopped) return;
+          currentIdx = absIdx;
+          clearActive();
+          span.classList.add('active');
+          span.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        };
+
+        if (absIdx === sentences.length - 1) {
+          utt.onend = function () {
+            if (stopped) return;
+            stopped = true;
+            isPlaying = false;
+            playBtn.textContent = '▶';
+            statusEl.textContent = 'Finished ✓';
+            clearActive();
+            currentIdx = 0;
+          };
+        }
+
+        utt.onerror = function () {};
+        window.speechSynthesis.speak(utt);
+      });
+    }
+
+    /* ── speed ── */
+    document.querySelectorAll('.speed-btn').forEach(function (btn) {
+      btn.addEventListener('click', function () {
+        document.querySelectorAll('.speed-btn').forEach(function (b) { b.classList.remove('active'); });
+        btn.classList.add('active');
+        currentRate = parseFloat(btn.getAttribute('data-speed'));
+        if (isPlaying) startFrom(currentIdx);
+      });
+    });
+
+    /* ── voices ── */
+    function loadVoices() {
+      var voices = window.speechSynthesis.getVoices().filter(function (v) { return v.lang.startsWith('en'); });
+      if (!voices.length) return;
+      voiceSel.innerHTML = voices.map(function (v) {
+        return '<option value="' + v.name.replace(/"/g, '&quot;') + '">' +
+          v.name.replace(/\\s*\\([^)]*\\)/g, '').replace(/google|online|natural|english/gi, '').trim() +
+          '</option>';
+      }).join('');
+      if (!currentVoiceName) currentVoiceName = voices[0].name;
+    }
+
+    window.speechSynthesis.addEventListener('voiceschanged', loadVoices);
+    loadVoices();
+
+    voiceSel.addEventListener('change', function () {
+      currentVoiceName = voiceSel.value;
+      if (isPlaying) startFrom(currentIdx);
+    });
+  })();
+  </script>
 </body>
 </html>`;
 
