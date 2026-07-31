@@ -55,6 +55,11 @@ export async function sendOwnerAlert(params: {
     console.warn("OWNER_EMAIL not set — skipping owner alert");
     return;
   }
+  // Guard against placeholder values that aren't real email addresses
+  if (!ownerEmail.includes("@")) {
+    console.error(`OWNER_EMAIL ("${ownerEmail}") is not a valid email address — owner alert skipped. Update the OWNER_EMAIL secret to a real address.`);
+    return;
+  }
 
   const html = `
 <!DOCTYPE html>
