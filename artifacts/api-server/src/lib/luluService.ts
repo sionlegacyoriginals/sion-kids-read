@@ -12,7 +12,7 @@
 
 import { db } from "@workspace/db";
 import { sql } from "drizzle-orm";
-import { ObjectStorageService } from "./objectStorage";
+import { storeTempPdf, deleteTempPdf } from "./tempPdfStore";
 import { generateStoryPdfs } from "./pdfService";
 
 const LULU_API_BASE = "https://api.lulu.com";
@@ -153,26 +153,11 @@ export async function triggerLuluOrder(orderId: number): Promise<void> {
     coverImageUrl,
   });
 
-  // 3. Upload PDFs to object storage
-  const objectStorage = new ObjectStorageService();
-
-  async function uploadPdf(buffer: Buffer): Promise<string> {
-    const presignedUrl = await objectStorage.getObjectEntityUploadURL();
-    const objectPath = objectStorage.normalizeObjectEntityPath(presignedUrl);
-    const resp = await fetch(presignedUrl, {
-      method: "PUT",
-      // @ts-ignore Node Buffer accepted as BodyInit
-      body: buffer,
-      headers: { "Content-Type": "application/pdf" },
-    });
-    if (!resp.ok) throw new Error(`PDF upload failed: ${resp.status}`);
-    return `https://${domain}/api/storage${objectPath}`;
-  }
-
-  const [interiorUrl, coverUrl] = await Promise.all([
-    uploadPdf(interiorPdfBuffer),
-    uploadPdf(coverPdfBuffer),
-  ]);
+  // 3. Host PDFs temporarily from this server so Lulu can fetch them
+  const interiorId = storeTempPdf(interiorPdfBuffer);
+  const coverPdfId  = storeTempPdf(coverPdfBuffer);
+  const interiorUrl = `https://${domain}/api/print-files/${interiorId}`;
+  const coverUrl    = `https://${domain}/api/print-files/${coverPdfId}`;
 
   // 4. Submit to Lulu
   const shippingAddress =
@@ -200,5 +185,8 @@ export async function triggerLuluOrder(orderId: number): Promise<void> {
     WHERE id = ${orderId}
   `);
 
+  // NOTE: do NOT delete tempPdf entries here — Lulu fetches the PDFs
+  // asynchronously after the print job is created. The route handler deletes
+  // on first fetch; TTL cleanup handles anything Lulu never fetches.
   console.log(`Order ${orderId} submitted to Lulu as job ${luluJob.id}`);
 }

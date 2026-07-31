@@ -217,4 +217,16 @@ router.get('/storage/objects/*path', async (req: Request, res: Response) => {
   }
 });
 
+// ── GET /api/print-files/:id — temporary PDF hosting for Lulu fetches ─────────
+import { getTempPdf, deleteTempPdf } from '../lib/tempPdfStore';
+
+router.get('/print-files/:id', (req: Request, res: Response) => {
+  const entry = getTempPdf(req.params.id);
+  if (!entry) return res.status(404).json({ error: 'Not found or expired' });
+  deleteTempPdf(req.params.id); // single-use: clean up immediately after Lulu fetches
+  res.setHeader('Content-Type', entry.contentType);
+  res.setHeader('Content-Length', entry.buffer.length);
+  res.send(entry.buffer);
+});
+
 export default router;
