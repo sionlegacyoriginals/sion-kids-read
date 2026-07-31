@@ -2,10 +2,25 @@
  * PDF generation for Lulu print fulfillment.
  * Produces a 6"×9" interior and a wraparound cover.
  * Uses pdfkit (CommonJS — esbuild handles the interop).
+ *
+ * IMPORTANT: Always use embedded TTF fonts (not built-in PDF font names like
+ * "Helvetica"). Lulu requires all fonts to be embedded in the PDF file.
+ * Built-in PDF fonts are referenced by name only and will cause REJECTED status.
  */
 
 // @ts-ignore pdfkit ships CJS; esbuild bundles it fine
 import PDFDocument from "pdfkit";
+import path from "node:path";
+import { fileURLToPath } from "node:url";
+
+// Resolve fonts directory — works in both dev (dist/) and prod (dist/)
+// because the build script copies fonts/ → dist/fonts/
+const FONTS_DIR = path.resolve(
+  typeof __dirname !== "undefined" ? __dirname : path.dirname(fileURLToPath(import.meta.url)),
+  "fonts"
+);
+const FONT_REGULAR = path.join(FONTS_DIR, "DejaVuSans.ttf");
+const FONT_BOLD    = path.join(FONTS_DIR, "DejaVuSans-Bold.ttf");
 
 const PT_PER_INCH = 72;
 const PAGE_W = 6 * PT_PER_INCH;   // 432 pt
@@ -39,7 +54,7 @@ async function buildInteriorPdf(params: {
 
   // --- Half-title page ---
   doc.addPage();
-  doc.font("Helvetica-Bold").fontSize(26).fillColor("#1c2a3a").text(
+  doc.font(FONT_BOLD).fontSize(26).fillColor("#1c2a3a").text(
     params.title,
     MARGIN,
     PAGE_H / 2 - 40,
@@ -49,12 +64,12 @@ async function buildInteriorPdf(params: {
   // --- Title page ---
   doc.addPage();
   doc
-    .font("Helvetica-Bold")
+    .font(FONT_BOLD)
     .fontSize(28)
     .fillColor("#1c2a3a")
     .text(params.title, MARGIN, PAGE_H / 3, { width: contentW, align: "center" });
   doc
-    .font("Helvetica")
+    .font(FONT_REGULAR)
     .fontSize(13)
     .fillColor("#526070")
     .text(`A story written for ${params.childName}`, {
@@ -68,7 +83,7 @@ async function buildInteriorPdf(params: {
   // --- Story content ---
   doc.addPage();
   let y = MARGIN;
-  doc.font("Helvetica").fontSize(11).fillColor("#1c2a3a");
+  doc.font(FONT_REGULAR).fontSize(11).fillColor("#1c2a3a");
 
   for (const para of paragraphs) {
     const needed = doc.heightOfString(para, { width: contentW, lineGap: 3 });
@@ -133,12 +148,12 @@ async function buildCoverPdf(params: {
   doc.fillOpacity(1);
 
   doc
-    .font("Helvetica-Bold")
+    .font(FONT_BOLD)
     .fontSize(20)
     .fillColor("#ffffff")
     .text(params.title, frontX + 24, BLEED + PAGE_H * 0.63, { width: PAGE_W - 48, align: "center" });
   doc
-    .font("Helvetica")
+    .font(FONT_REGULAR)
     .fontSize(11)
     .fillColor("#ffffffcc")
     .text(`A story for ${params.childName}`, { width: PAGE_W - 48, align: "center" });
@@ -148,12 +163,12 @@ async function buildCoverPdf(params: {
 
   // --- Back cover (left panel) ---
   doc
-    .font("Helvetica-Bold")
+    .font(FONT_BOLD)
     .fontSize(16)
     .fillColor("#f5a224")
     .text("Sion Legacy Originals", BLEED + 24, BLEED + 32, { width: PAGE_W - 48 });
   doc
-    .font("Helvetica")
+    .font(FONT_REGULAR)
     .fontSize(9)
     .fillColor("#526070")
     .text("Personalised AI-generated children's stories", BLEED + 24, BLEED + 58, { width: PAGE_W - 48 });

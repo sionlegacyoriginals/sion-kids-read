@@ -129,6 +129,13 @@ async function copyPdfkitData() {
   await mkdir(dest, { recursive: true });
   await cp(src, dest, { recursive: true });
   console.log("✓ Copied pdfkit font data → dist/data");
+
+  // Copy embedded TTF fonts (required so Lulu accepts PDFs with embedded fonts)
+  const fontSrc = path.resolve(artifactDir, "fonts");
+  const fontDest = path.resolve(artifactDir, "dist/fonts");
+  await mkdir(fontDest, { recursive: true });
+  await cp(fontSrc, fontDest, { recursive: true });
+  console.log("✓ Copied embedded fonts → dist/fonts");
 }
 
 buildAll().catch((err) => {
