@@ -125,13 +125,15 @@ const SPEEDS: Speed[] = [0.75, 1, 1.25, 1.5];
 type PitchPreset = "normal" | "deeper" | "higher";
 const PITCH_MAP: Record<PitchPreset, number> = { normal: 1, deeper: 0.6, higher: 1.4 };
 
+// ms per character at rate=1 — calibrated to ~150 words/min (~5 chars/word)
+const MS_PER_CHAR_BASE = 80;
+
 export function useReadAlong(paragraphs: string[]) {
   const [visible, setVisible] = useState(false);
   const [isPlaying, setIsPlaying] = useState(false);
   const [speed, setSpeed] = useState<Speed>(1);
   const [pitch, setPitch] = useState<PitchPreset>("normal");
   const [activeCharIndex, setActiveCharIndex] = useState<number | null>(null);
-  const [boundarySupported, setBoundarySupported] = useState(true);
   const [voices, setVoices] = useState<SpeechSynthesisVoice[]>([]);
   const [selectedVoice, setSelectedVoice] = useState<SpeechSynthesisVoice | null>(null);
 
@@ -142,10 +144,49 @@ export function useReadAlong(paragraphs: string[]) {
   pitchRef.current = pitch;
   const voiceRef = useRef<SpeechSynthesisVoice | null>(selectedVoice);
   voiceRef.current = selectedVoice;
+  const rafRef = useRef<number | null>(null);
+  const speechStartMsRef = useRef(0);
+  const usingBoundaryRef = useRef(false);
 
   const { fullText, paragraphData } = buildReadAlongData(paragraphs);
   const fullTextRef = useRef(fullText);
   fullTextRef.current = fullText;
+  const paragraphDataRef = useRef(paragraphData);
+  paragraphDataRef.current = paragraphData;
+
+  // All word tokens in order — used by the timer fallback
+  const allTokensRef = useRef<ReadAlongToken[]>([]);
+  allTokensRef.current = paragraphData.flatMap((p) => p.tokens.filter((t) => t.isWord));
+
+  const stopTimer = useCallback(() => {
+    if (rafRef.current !== null) {
+      cancelAnimationFrame(rafRef.current);
+      rafRef.current = null;
+    }
+  }, []);
+
+  // Timer-based word advancement (fallback when onboundary doesn't fire)
+  const startTimer = useCallback((fromChar: number, rate: number) => {
+    stopTimer();
+    const msPerChar = MS_PER_CHAR_BASE / rate;
+    speechStartMsRef.current = performance.now();
+
+    function tick() {
+      const elapsed = performance.now() - speechStartMsRef.current;
+      const estimatedChar = fromChar + elapsed / msPerChar;
+      const tokens = allTokensRef.current;
+
+      // Find the last word token whose start is <= estimatedChar
+      let active: ReadAlongToken | null = null;
+      for (const t of tokens) {
+        if (t.start <= estimatedChar) active = t;
+        else break;
+      }
+      if (active) setActiveCharIndex(active.start);
+      rafRef.current = requestAnimationFrame(tick);
+    }
+    rafRef.current = requestAnimationFrame(tick);
+  }, [stopTimer]);
 
   // Load voices (async on Chrome)
   useEffect(() => {
@@ -164,6 +205,7 @@ export function useReadAlong(paragraphs: string[]) {
   const startSpeaking = useCallback(
     (fromChar: number, rate: number, pitchPreset: PitchPreset, voice: SpeechSynthesisVoice | null) => {
       window.speechSynthesis.cancel();
+      stopTimer();
       const text = fullTextRef.current.slice(fromChar);
       if (!text.trim()) return;
 
@@ -182,22 +224,37 @@ export function useReadAlong(paragraphs: string[]) {
         utt.lang = "en-US";
       }
 
-      let fired = false;
+      usingBoundaryRef.current = false;
+
       utt.onboundary = (e) => {
         if (e.name !== "word") return;
-        fired = true;
+        // Boundary events work — use them and stop the timer fallback
+        if (!usingBoundaryRef.current) {
+          usingBoundaryRef.current = true;
+          stopTimer();
+        }
         setActiveCharIndex(fromChar + e.charIndex);
       };
+
       utt.onstart = () => {
         setIsPlaying(true);
-        setTimeout(() => { if (!fired) setBoundarySupported(false); }, 700);
+        // Start timer immediately; if boundary events fire we'll cancel it
+        startTimer(fromChar, rate);
+        // After 600ms with no boundary event, keep the timer running
+        setTimeout(() => {
+          if (!usingBoundaryRef.current) {
+            // Timer stays active — boundary events not supported
+          }
+        }, 600);
       };
       utt.onend = () => {
+        stopTimer();
         setIsPlaying(false);
         setActiveCharIndex(null);
         resumeCharRef.current = 0;
       };
       utt.onerror = () => {
+        stopTimer();
         setIsPlaying(false);
         setActiveCharIndex(null);
       };
@@ -222,10 +279,11 @@ export function useReadAlong(paragraphs: string[]) {
 
   const stop = useCallback(() => {
     window.speechSynthesis.cancel();
+    stopTimer();
     setIsPlaying(false);
     setActiveCharIndex(null);
     resumeCharRef.current = 0;
-  }, []);
+  }, [stopTimer]);
 
   const changeSpeed = useCallback((s: Speed) => {
     setSpeed(s);
@@ -245,7 +303,7 @@ export function useReadAlong(paragraphs: string[]) {
   const open = useCallback(() => setVisible(true), []);
   const close = useCallback(() => { stop(); setVisible(false); }, [stop]);
 
-  useEffect(() => () => { window.speechSynthesis.cancel(); }, []);
+  useEffect(() => () => { window.speechSynthesis.cancel(); stopTimer(); }, [stopTimer]);
 
   return {
     visible, open, close,
@@ -254,7 +312,6 @@ export function useReadAlong(paragraphs: string[]) {
     pitch, changePitch,
     voices, selectedVoice, changeVoice,
     activeCharIndex,
-    boundarySupported,
     paragraphData,
   };
 }
@@ -274,7 +331,6 @@ interface PlayerBarProps {
   voices: SpeechSynthesisVoice[];
   selectedVoice: SpeechSynthesisVoice | null;
   changeVoice: (v: SpeechSynthesisVoice) => void;
-  boundarySupported: boolean;
 }
 
 export function ReadAlongBar({

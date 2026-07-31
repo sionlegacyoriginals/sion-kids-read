@@ -1,6 +1,6 @@
 import { randomUUID } from "crypto";
 import { Router, type IRouter } from "express";
-import { and, desc, eq, isNull, sql } from "drizzle-orm";
+import { and, desc, eq, isNull, isNotNull, sql } from "drizzle-orm";
 import { db, storiesTable } from "@workspace/db";
 import {
   CreateStoryBody,
@@ -242,6 +242,34 @@ async function checkStoryAccess(userId: string): Promise<{ allowed: boolean; rea
     reason: "Purchase a story or subscribe to generate stories",
   };
 }
+
+// ── GET /stories/trash ────────────────────────────────────────────────────────
+router.get("/stories/trash", requireAuth, async (req: any, res): Promise<void> => {
+  await ensureUser(req.userId);
+  const stories = await db
+    .select()
+    .from(storiesTable)
+    .where(and(eq(storiesTable.userId, req.userId), isNotNull(storiesTable.deletedAt)))
+    .orderBy(desc(storiesTable.deletedAt));
+  res.json(ListStoriesResponse.parse(stories.map(serializeStory)));
+});
+
+// ── POST /stories/:id/restore ─────────────────────────────────────────────────
+router.post("/stories/:id/restore", requireAuth, async (req: any, res): Promise<void> => {
+  const params = DeleteStoryParams.safeParse(req.params);
+  if (!params.success) { res.status(400).json({ error: params.error.message }); return; }
+
+  const [existing] = await db.select().from(storiesTable).where(eq(storiesTable.id, params.data.id));
+  if (!existing) { res.status(404).json({ error: "Story not found" }); return; }
+  if (existing.userId && existing.userId !== req.userId) { res.status(403).json({ error: "Forbidden" }); return; }
+
+  await db.update(storiesTable)
+    .set({ deletedAt: null })
+    .where(eq(storiesTable.id, params.data.id));
+
+  const [restored] = await db.select().from(storiesTable).where(eq(storiesTable.id, params.data.id));
+  res.json(serializeStory(restored));
+});
 
 // ── GET /stories ──────────────────────────────────────────────────────────────
 router.get("/stories", requireAuth, async (req: any, res): Promise<void> => {

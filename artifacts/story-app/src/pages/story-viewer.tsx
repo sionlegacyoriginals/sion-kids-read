@@ -12,10 +12,11 @@ import {
 import { useQueryClient } from "@tanstack/react-query";
 import { format } from "date-fns";
 import {
-  Printer, BookHeart, Package, ArrowLeft
+  Printer, BookHeart, Package, ArrowLeft, Trash2
 } from "lucide-react";
 import { MagicLoader } from "@/components/magic-loader";
 import { OrderDialog } from "@/components/order-dialog";
+import { DeleteConfirmDialog } from "@/components/delete-confirm-dialog";
 import {
   useReadAlong,
   ReadAloudButton,
@@ -71,8 +72,10 @@ export default function StoryViewer() {
     if (autoOrder && story && !isLoading) setShowOrderDialog(true);
   }, [autoOrder, story, isLoading]);
 
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+
   const handleDelete = useCallback(() => {
-    if (!id || !confirm("Are you sure you want to delete this story?")) return;
+    if (!id) return;
     deleteStory.mutate({ id }, {
       onSuccess: () => {
         queryClient.invalidateQueries({ queryKey: getGetRecentStoriesQueryKey() });
@@ -115,6 +118,14 @@ export default function StoryViewer() {
       {showOrderDialog && id && (
         <OrderDialog storyId={id} onClose={() => setShowOrderDialog(false)} />
       )}
+      {showDeleteConfirm && story && (
+        <DeleteConfirmDialog
+          storyTitle={story.title}
+          isDeleting={deleteStory.isPending}
+          onConfirm={handleDelete}
+          onCancel={() => setShowDeleteConfirm(false)}
+        />
+      )}
 
       {readAlong.visible && (
         <ReadAlongBar
@@ -130,7 +141,6 @@ export default function StoryViewer() {
           voices={readAlong.voices}
           selectedVoice={readAlong.selectedVoice}
           changeVoice={readAlong.changeVoice}
-          boundarySupported={readAlong.boundarySupported}
         />
       )}
 
@@ -143,6 +153,13 @@ export default function StoryViewer() {
           {!readAlong.visible && (
             <ReadAloudButton onClick={readAlong.open} />
           )}
+          <button
+            onClick={() => setShowDeleteConfirm(true)}
+            className="inline-flex items-center gap-2 px-4 py-2 rounded-xl border border-border text-sm font-semibold text-muted-foreground hover:text-destructive hover:border-destructive/40 transition-all"
+            title="Delete story"
+          >
+            <Trash2 className="w-4 h-4" />
+          </button>
           <button
             onClick={() => window.print()}
             className="inline-flex items-center gap-2 px-4 py-2 rounded-xl border border-border text-sm font-semibold text-muted-foreground hover:text-foreground hover:border-foreground/30 transition-all"
