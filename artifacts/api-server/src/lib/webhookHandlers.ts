@@ -90,6 +90,34 @@ export class WebhookHandlers {
           WHERE id = ${orderId}
         `);
 
+        // Fetch order details for confirmation email
+        const orderRow = await db.execute(sql`
+          SELECT po.customer_email, po.customer_name, po.shipping_address,
+                 s.title, s.child_name
+          FROM print_orders po
+          JOIN stories s ON s.id = po.story_id
+          WHERE po.id = ${orderId}
+        `);
+        const order = orderRow.rows[0];
+
+        // Send confirmation email immediately — customer needs to know we got their order
+        if (order) {
+          const { sendPrintOrderConfirmation } = await import("./mailerService");
+          const addr = typeof order.shipping_address === "string"
+            ? JSON.parse(order.shipping_address as string)
+            : order.shipping_address;
+          sendPrintOrderConfirmation({
+            customerEmail: order.customer_email as string,
+            customerName: order.customer_name as string,
+            storyTitle: order.title as string,
+            childName: order.child_name as string,
+            shippingAddress: addr,
+            orderId,
+          }).catch((err: Error) => {
+            console.error(`Confirmation email failed for order ${orderId}:`, err.message);
+          });
+        }
+
         // Trigger Lulu fulfillment if credentials are configured
         const luluKey = process.env.LULU_CLIENT_KEY;
         const luluSecret = process.env.LULU_CLIENT_SECRET;
