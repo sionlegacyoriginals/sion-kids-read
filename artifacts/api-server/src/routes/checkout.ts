@@ -288,7 +288,7 @@ router.post("/checkout/print", requireAuth, async (req: any, res) => {
       payment_method_types: ["card"],
       line_items: [{ price: printPrice.id, quantity: 1 }],
       mode: "payment",
-      success_url: `${baseUrl()}${basePath()}/checkout/success?session_id={CHECKOUT_SESSION_ID}`,
+      success_url: `${baseUrl()}${basePath()}/checkout/success?session_id={CHECKOUT_SESSION_ID}&type=print`,
       cancel_url: `${baseUrl()}${basePath()}/stories/${storyId}`,
       metadata: {
         clerkUserId: req.userId,
@@ -318,6 +318,31 @@ router.get("/checkout/orders", requireAuth, async (req: any, res) => {
       ORDER  BY po.created_at DESC
     `);
     res.json({ orders: result.rows });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ── POST /api/checkout/orders/:id/retrigger-lulu ─────────────────────────────
+// Manually re-sends a stuck "paid" order to Lulu (owner only)
+router.post("/checkout/orders/:id/retrigger-lulu", requireAuth, async (req: any, res) => {
+  try {
+    const orderId = parseInt(req.params.id, 10);
+    if (isNaN(orderId)) return res.status(400).json({ error: "Invalid order id" });
+
+    const orderRow = await db.execute(
+      sql`SELECT id, status, user_id FROM print_orders WHERE id = ${orderId}`,
+    );
+    const order = orderRow.rows[0];
+    if (!order) return res.status(404).json({ error: "Order not found" });
+    if (order.user_id !== req.userId) return res.status(403).json({ error: "Forbidden" });
+    if (order.status !== "paid") {
+      return res.status(400).json({ error: `Order is '${order.status}', must be 'paid' to re-trigger` });
+    }
+
+    const { triggerLuluOrder } = await import("../lib/luluService");
+    await triggerLuluOrder(orderId);
+    res.json({ ok: true, message: `Order ${orderId} submitted to Lulu` });
   } catch (err: any) {
     res.status(500).json({ error: err.message });
   }

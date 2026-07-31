@@ -136,8 +136,12 @@ export async function triggerLuluOrder(orderId: number): Promise<void> {
 
   // Resolve public cover image URL for PDF generation
   const domain = process.env.REPLIT_DOMAINS?.split(",")[0];
-  const coverImageUrl = order.cover_image_url
-    ? `https://${domain}/api/storage${order.cover_image_url}`
+  // ref-photos are served at /api/ref-photos/:id, NOT /api/storage/ref-photos/:id
+  const rawCoverPath = order.cover_image_url as string | null;
+  const coverImageUrl = rawCoverPath
+    ? rawCoverPath.startsWith("/ref-photos/")
+      ? `https://${domain}/api${rawCoverPath}`
+      : `https://${domain}/api/storage${rawCoverPath}`
     : null;
 
   // 2. Generate PDFs
@@ -178,7 +182,7 @@ export async function triggerLuluOrder(orderId: number): Promise<void> {
 
   const luluJob = await createLuluPrintJob({
     externalId: `order_${orderId}`,
-    contactEmail: process.env.LULU_CONTACT_EMAIL ?? (order.customer_email as string),
+    contactEmail: order.customer_email as string,  // Lulu uses this for shipping notifications → must be the customer's email
     title: order.title as string,
     coverPdfUrl: coverUrl,
     interiorPdfUrl: interiorUrl,

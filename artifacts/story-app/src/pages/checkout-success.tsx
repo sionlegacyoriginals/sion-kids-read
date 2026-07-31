@@ -5,10 +5,7 @@ export default function CheckoutSuccess() {
   const search = useSearch();
   const params = new URLSearchParams(search);
   const sessionId = params.get("session_id");
-
-  // Heuristic: Stripe subscription sessions start with cs_ and contain "sub"
-  // The real distinction would require a backend lookup, but this is good enough for UX
-  const isPrint = false; // Will be improved when we add order lookup
+  const isPrint = params.get("type") === "print";
 
   return (
     <div className="max-w-lg mx-auto py-20 px-4 text-center animate-in fade-in">
