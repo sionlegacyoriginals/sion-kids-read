@@ -285,7 +285,6 @@ async function buildCoverPdf(params: {
   childName: string;
   pageCount: number;
   coverImageBuffer: Buffer | null;
-  blurb: string;
 }): Promise<Buffer> {
   // Spine width: ~0.00254" per page for 60# uncoated paper
   const spineW = Math.max(6, params.pageCount * 0.00254 * PT_PER_INCH);
@@ -305,7 +304,6 @@ async function buildCoverPdf(params: {
   doc.addPage({ size: [docW, docH] });
 
   // ── Back cover (left panel) ──────────────────────────────────────────────
-  // Deep purple background matching the front cover art palette
   const backX = BLEED;
   const BACK_BG = "#2d1b5e";
   const GOLD    = "#f5a224";
@@ -316,43 +314,25 @@ async function buildCoverPdf(params: {
   // Gold top accent bar
   doc.rect(backX, BLEED, PAGE_W, 4).fill(GOLD);
 
-  // Brand name
+  // Brand name + short tagline only (no blurb — customers already know what the book is)
   doc
-    .font(FONT_BOLD).fontSize(13).fillColor(GOLD)
-    .text("Sion Legacy Originals", backX + 24, BLEED + 20, { width: TEXT_W });
+    .font(FONT_BOLD).fontSize(16).fillColor(GOLD)
+    .text("Sion Legacy Originals", backX + 24, BLEED + 28, { width: TEXT_W });
   doc
-    .font(FONT_REGULAR).fontSize(8).fillColor("#c4b5e8")
-    .text("Personalised AI-generated children's stories", backX + 24, BLEED + 40, { width: TEXT_W });
+    .font(FONT_REGULAR).fontSize(12).fillColor("#c4b5e8")
+    .text(`A personalised story made just for ${params.childName} ✨`, backX + 24, BLEED + 56, {
+      width: TEXT_W,
+      lineGap: 4,
+    });
 
   // Decorative divider
-  doc.rect(backX + 24, BLEED + 60, 40, 1.5).fill(GOLD);
+  doc.rect(backX + 24, BLEED + 96, 60, 1.5).fill(GOLD);
 
-  // Story blurb — truncate to ~180 words so it fits
-  const words = params.blurb.split(/\s+/);
-  const clipped = words.slice(0, 180).join(" ") + (words.length > 180 ? "…" : "");
-  // tagY is where the "A story for …" line goes — stop the blurb before that
-  const blurbMaxH = (BLEED + PAGE_H - 110) - (BLEED + 82) - 20; // ~436 pt
   doc
-    .font(FONT_REGULAR).fontSize(11).fillColor("#e8e0f5")
-    .text(clipped, backX + 24, BLEED + 82, {
-      width: TEXT_W,
-      height: blurbMaxH,
-      ellipsis: true,
-      align: "left",
-      lineGap: 3,
-    });
+    .font(FONT_REGULAR).fontSize(9).fillColor("#9b8ec4")
+    .text("sionlegacyoriginals.com", backX + 24, BLEED + 108, { width: TEXT_W });
 
-  // "A story written for [name]" tag above barcode area
-  const tagY = BLEED + PAGE_H - 110;
-  doc.rect(backX + 24, tagY, TEXT_W, 1).fill("#4a3080");
-  doc
-    .font(FONT_REGULAR).fontSize(10).fillColor("#c4b5e8")
-    .text(`A story written especially for ${params.childName}`, backX + 24, tagY + 10, {
-      width: TEXT_W,
-      align: "left",
-    });
-
-  // White barcode placeholder box (Lulu can add real ISBN/barcode here)
+  // White barcode placeholder box
   const bcW = 100; const bcH = 60;
   const bcX = backX + PAGE_W - 24 - bcW;
   const bcY = BLEED + PAGE_H - 80;
@@ -576,16 +556,11 @@ export async function generateStoryPdfs(params: {
   // Count pages from interior doc for spine calculation (rough estimate)
   const pageCount = Math.max(MIN_INTERIOR_PAGES, 24);
 
-  // Use the first 2–3 paragraphs as the back-cover blurb
-  const paragraphs = params.content.split("\n").filter(Boolean);
-  const blurb = paragraphs.slice(0, 3).join(" ");
-
   const coverPdfBuffer = await buildCoverPdf({
     title: params.title,
     childName: params.childName,
     pageCount,
     coverImageBuffer,
-    blurb,
   });
 
   return { interiorPdfBuffer, coverPdfBuffer };

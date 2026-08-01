@@ -1,2 +1,3 @@
 - [Dev vs prod DB separation](dev-prod-db.md) — executeSql in workspace queries dev DB; production deployment has its own separate DB; verify production state with environment: "production" parameter.
 - [reference_photos table schema](reference-photos-schema.md) — actual column name is data_url (not data); table was created in an earlier session with this name.
+- [PDFKit PNG embedding issue in CJS scripts](pdfkit-image-format.md) — PDFKit silently drops PNG images in plain CJS scripts; convert to JPEG first with ImageMagick before calling doc.image().
