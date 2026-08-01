@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect, useCallback } from "react";
-import { Eraser, Pen, ChevronLeft, ChevronRight, PenLine, Trash2 } from "lucide-react";
+import { Eraser, Pen, ChevronLeft, ChevronRight, PenLine, Trash2, GripHorizontal } from "lucide-react";
 
 // ─── helpers ────────────────────────────────────────────────────────────────
 
@@ -197,6 +197,60 @@ export function PracticeSection({ content, childName, audioBarVisible }: Practic
   const [current, setCurrent] = useState(0);
   const [mode, setMode] = useState<DrawMode>("draw");
 
+  // Draggable toolbar position — null = default centered-bottom
+  const [toolbarPos, setToolbarPos] = useState<{ x: number; y: number } | null>(null);
+  const dragRef = useRef<{
+    pointerId: number;
+    startClientX: number;
+    startClientY: number;
+    startToolbarX: number;
+    startToolbarY: number;
+    moved: boolean;
+  } | null>(null);
+  const toolbarRef = useRef<HTMLDivElement>(null);
+
+  function onGripPointerDown(e: React.PointerEvent<HTMLElement>) {
+    e.preventDefault();
+    e.stopPropagation();
+    (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
+
+    const toolbar = toolbarRef.current;
+    if (!toolbar) return;
+    const rect = toolbar.getBoundingClientRect();
+    // Current center of the toolbar in viewport coords
+    const currentX = toolbarPos?.x ?? rect.left + rect.width / 2;
+    const currentY = toolbarPos?.y ?? rect.top + rect.height / 2;
+
+    dragRef.current = {
+      pointerId: e.pointerId,
+      startClientX: e.clientX,
+      startClientY: e.clientY,
+      startToolbarX: currentX,
+      startToolbarY: currentY,
+      moved: false,
+    };
+  }
+
+  function onGripPointerMove(e: React.PointerEvent<HTMLElement>) {
+    if (!dragRef.current || dragRef.current.pointerId !== e.pointerId) return;
+    const dx = e.clientX - dragRef.current.startClientX;
+    const dy = e.clientY - dragRef.current.startClientY;
+    if (!dragRef.current.moved && Math.hypot(dx, dy) < 4) return;
+    dragRef.current.moved = true;
+
+    const toolbar = toolbarRef.current;
+    const tw = toolbar ? toolbar.offsetWidth / 2 : 80;
+    const th = toolbar ? toolbar.offsetHeight / 2 : 22;
+
+    const newX = Math.max(tw, Math.min(window.innerWidth - tw, dragRef.current.startToolbarX + dx));
+    const newY = Math.max(th, Math.min(window.innerHeight - th, dragRef.current.startToolbarY + dy));
+    setToolbarPos({ x: newX, y: newY });
+  }
+
+  function onGripPointerUp() {
+    dragRef.current = null;
+  }
+
   // Each zone registers its clear function here
   const clearFns = useRef<Record<string, () => void>>({});
 
@@ -236,15 +290,39 @@ export function PracticeSection({ content, childName, audioBarVisible }: Practic
         </p>
       </div>
 
-      {/* Floating pen / eraser toolbar — sits above the audio bar when it's open */}
+      {/* Floating pen / eraser toolbar — draggable, sits above audio bar by default */}
       <div
-        className="fixed left-1/2 -translate-x-1/2 z-[60] flex items-center gap-2 px-3 py-2 rounded-2xl bg-white/90 backdrop-blur-md border border-[#e8dfd5] shadow-xl transition-all duration-300"
-        style={{
-          bottom: audioBarVisible
-            ? "calc(env(safe-area-inset-bottom, 0px) + 96px)"
-            : "calc(env(safe-area-inset-bottom, 0px) + 20px)",
-        }}
+        ref={toolbarRef}
+        className="fixed z-[60] flex items-center gap-1 px-2 py-2 rounded-2xl bg-white/90 backdrop-blur-md border border-[#e8dfd5] shadow-xl"
+        style={
+          toolbarPos
+            ? {
+                left: toolbarPos.x,
+                top: toolbarPos.y,
+                transform: "translate(-50%, -50%)",
+                transition: "none",
+              }
+            : {
+                left: "50%",
+                transform: "translateX(-50%)",
+                bottom: audioBarVisible
+                  ? "calc(env(safe-area-inset-bottom, 0px) + 96px)"
+                  : "calc(env(safe-area-inset-bottom, 0px) + 20px)",
+                transition: "bottom 0.3s",
+              }
+        }
       >
+        {/* Drag grip */}
+        <span
+          className="cursor-grab active:cursor-grabbing touch-none px-1 text-[#c0b8b0] flex items-center"
+          onPointerDown={onGripPointerDown}
+          onPointerMove={onGripPointerMove}
+          onPointerUp={onGripPointerUp}
+          onPointerCancel={onGripPointerUp}
+        >
+          <GripHorizontal className="w-4 h-4" />
+        </span>
+        <div className="w-px h-5 bg-[#e0d8d0]" />
         <button
           onClick={() => setMode("draw")}
           className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-sm font-semibold border transition-all ${
