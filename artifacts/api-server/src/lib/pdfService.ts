@@ -113,9 +113,10 @@ function addPracticeSection(doc: any, content: string, childName: string): numbe
       .text("READ IT", MARGIN, y, { width: CW, characterSpacing: 1 });
     y += 13;
 
-    const printH = doc.heightOfString(sentence, { width: CW, fontSize: 13, lineGap: 3 });
-    doc.font(FONT_REGULAR).fontSize(13).fillColor("#1c2a3a")
-      .text(sentence, MARGIN, y, { width: CW, lineGap: 3 });
+    // Set font BEFORE measuring — heightOfString uses the active font
+    doc.font(FONT_REGULAR).fontSize(13);
+    const printH = doc.heightOfString(sentence, { width: CW, lineGap: 3 });
+    doc.fillColor("#1c2a3a").text(sentence, MARGIN, y, { width: CW, lineGap: 3 });
     y += printH + 14;
 
     // divider
@@ -127,10 +128,10 @@ function addPracticeSection(doc: any, content: string, childName: string): numbe
       .text("TRACE IT", MARGIN, y, { width: CW, characterSpacing: 1 });
     y += 13;
 
-    // Light-gray cursive — child traces directly over this
-    const traceH = doc.heightOfString(sentence, { width: CW, fontSize: 22, lineGap: 6 });
-    doc.font(FONT_CURSIVE).fontSize(22).fillColor("#cfc5b5")
-      .text(sentence, MARGIN, y, { width: CW, lineGap: 6 });
+    // Set font BEFORE measuring
+    doc.font(FONT_CURSIVE).fontSize(22);
+    const traceH = doc.heightOfString(sentence, { width: CW, lineGap: 6 });
+    doc.fillColor("#cfc5b5").text(sentence, MARGIN, y, { width: CW, lineGap: 6 });
     y += traceH + 18;
 
     // divider
