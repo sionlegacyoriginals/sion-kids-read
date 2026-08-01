@@ -23,6 +23,7 @@ import GiftCards from "@/pages/gift-cards";
 import NotFound from "@/pages/not-found";
 import StudentLogin from "@/pages/student-login";
 import ClassroomHome from "@/pages/classroom-home";
+import ClassroomSetup from "@/pages/classroom-setup";
 import { StudentAuthProvider } from "@/lib/studentAuth";
 
 // ── Clerk config ──────────────────────────────────────────────────────────────
@@ -222,6 +223,7 @@ function ClerkProviderWithRoutes() {
             <Route path="/account" component={() => <ProtectedRoute component={Account} />} />
             <Route path="/student-login" component={StudentLogin} />
             <Route path="/classroom" component={ClassroomHome} />
+            <Route path="/classroom-setup" component={() => <ProtectedRoute component={ClassroomSetup} />} />
             <Route
               path="/checkout/success"
               component={() => (
