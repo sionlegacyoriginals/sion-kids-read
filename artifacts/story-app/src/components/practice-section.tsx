@@ -238,8 +238,12 @@ export function PracticeSection({ content, childName, audioBarVisible }: Practic
 
       {/* Floating pen / eraser toolbar — sits above the audio bar when it's open */}
       <div
-        className="fixed left-1/2 -translate-x-1/2 z-40 flex items-center gap-2 px-3 py-2 rounded-2xl bg-white/90 backdrop-blur-md border border-[#e8dfd5] shadow-xl transition-all duration-300"
-        style={{ bottom: audioBarVisible ? "88px" : "20px" }}
+        className="fixed left-1/2 -translate-x-1/2 z-[60] flex items-center gap-2 px-3 py-2 rounded-2xl bg-white/90 backdrop-blur-md border border-[#e8dfd5] shadow-xl transition-all duration-300"
+        style={{
+          bottom: audioBarVisible
+            ? "calc(env(safe-area-inset-bottom, 0px) + 96px)"
+            : "calc(env(safe-area-inset-bottom, 0px) + 20px)",
+        }}
       >
         <button
           onClick={() => setMode("draw")}
