@@ -24,6 +24,7 @@ import {
   ReadAlongBar,
   ReadAlongParagraph,
 } from "@/components/read-along-player";
+import { PracticeSection } from "@/components/practice-section";
 
 /** Convert a stored objectPath to a serving URL */
 function toImageUrl(objectPath: string | null | undefined): string | null {
@@ -350,6 +351,11 @@ export default function StoryViewer() {
             ))}
           </div>
         </div>
+
+        {/* Practice writing section */}
+        {story.content && (
+          <PracticeSection content={story.content} childName={story.childName} />
+        )}
 
         {/* Bottom CTA */}
         <div className="no-print border-t border-border/50 p-8 flex flex-col sm:flex-row items-center justify-between gap-4 bg-muted/20">
