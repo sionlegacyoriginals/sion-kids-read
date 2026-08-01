@@ -235,31 +235,32 @@ export function PracticeSection({ content, childName }: PracticeSectionProps) {
         </p>
       </div>
 
-      {/* Pen / Eraser toolbar */}
-      <div className="px-8 md:px-16 pb-4 flex items-center gap-2">
+      {/* Floating pen / eraser toolbar — fixed to viewport bottom while in this section */}
+      <div className="fixed bottom-5 left-1/2 -translate-x-1/2 z-50 flex items-center gap-2 px-3 py-2 rounded-2xl bg-white/90 backdrop-blur-md border border-[#e8dfd5] shadow-xl">
         <button
           onClick={() => setMode("draw")}
-          className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-semibold border transition-all ${
+          className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-sm font-semibold border transition-all ${
             mode === "draw"
               ? "bg-violet-600 text-white border-violet-600 shadow-sm"
-              : "bg-white text-muted-foreground border-border hover:text-foreground"
+              : "bg-transparent text-muted-foreground border-transparent hover:text-foreground"
           }`}
         >
           <Pen className="w-3.5 h-3.5" /> Pen
         </button>
         <button
           onClick={() => setMode("erase")}
-          className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-semibold border transition-all ${
+          className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-sm font-semibold border transition-all ${
             mode === "erase"
               ? "bg-orange-500 text-white border-orange-500 shadow-sm"
-              : "bg-white text-muted-foreground border-border hover:text-foreground"
+              : "bg-transparent text-muted-foreground border-transparent hover:text-foreground"
           }`}
         >
           <Eraser className="w-3.5 h-3.5" /> Eraser
         </button>
+        <div className="w-px h-5 bg-[#e0d8d0] mx-1" />
         <button
           onClick={clearAll}
-          className="ml-auto inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-semibold border border-border bg-white text-muted-foreground hover:text-foreground transition-all"
+          className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-sm font-semibold border border-transparent text-muted-foreground hover:text-foreground transition-all"
         >
           <Trash2 className="w-3.5 h-3.5" /> Clear all
         </button>
