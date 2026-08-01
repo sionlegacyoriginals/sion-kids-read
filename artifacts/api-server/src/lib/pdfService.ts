@@ -330,10 +330,14 @@ async function buildCoverPdf(params: {
   // Story blurb — truncate to ~180 words so it fits
   const words = params.blurb.split(/\s+/);
   const clipped = words.slice(0, 180).join(" ") + (words.length > 180 ? "…" : "");
+  // tagY is where the "A story for …" line goes — stop the blurb before that
+  const blurbMaxH = (BLEED + PAGE_H - 110) - (BLEED + 82) - 20; // ~436 pt
   doc
     .font(FONT_REGULAR).fontSize(11).fillColor("#e8e0f5")
     .text(clipped, backX + 24, BLEED + 82, {
       width: TEXT_W,
+      height: blurbMaxH,
+      ellipsis: true,
       align: "left",
       lineGap: 3,
     });
