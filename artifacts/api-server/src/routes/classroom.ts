@@ -3,6 +3,7 @@ import { randomUUID } from "crypto";
 import { db } from "@workspace/db";
 import { sql } from "drizzle-orm";
 import { requireAuth, requireStudentAuth, signStudentToken } from "../lib/auth";
+import { openai } from "@workspace/integrations-openai-ai-server";
 
 const router = Router();
 
@@ -167,23 +168,24 @@ router.post("/classroom/classes", requireAuth, async (req: any, res) => {
   }
 });
 
-// ── Teacher: Save weekly announcement ────────────────────────────────────────
+// ── Teacher: Save weekly announcement + point config ──────────────────────────
 router.put("/classroom/classes/:classId/announcement", requireAuth, async (req: any, res) => {
   try {
     const { classId } = req.params;
-    const { message, valueOfWeek, sightWords, dueDate } = req.body;
+    const { message, valueOfWeek, sightWords, dueDate, pointValuePerSightWord, pointsForPublished } = req.body;
 
-    // Verify teacher owns this class
     const check = await db.execute(sql`SELECT id FROM classes WHERE id = ${Number(classId)} AND teacher_id = ${req.userId}`);
     if (!check.rows.length) return res.status(403).json({ error: "Not your class." });
 
     await db.execute(sql`
       UPDATE classes SET
-        announcement_message     = ${message ?? null},
-        value_of_week            = ${valueOfWeek ?? null},
-        sight_words              = ${sightWords ?? null},
-        assignment_due_date      = ${dueDate ?? null},
-        announcement_updated_at  = NOW()
+        announcement_message        = ${message ?? null},
+        value_of_week               = ${valueOfWeek ?? null},
+        sight_words                 = ${sightWords ?? null},
+        assignment_due_date         = ${dueDate ?? null},
+        announcement_updated_at     = NOW(),
+        point_value_per_sight_word  = ${pointValuePerSightWord ?? 1},
+        points_for_published        = ${pointsForPublished ?? 5}
       WHERE id = ${Number(classId)}
     `);
     res.json({ ok: true });
@@ -416,14 +418,154 @@ router.get("/classroom/me", requireStudentAuth, async (req: any, res) => {
   }
 });
 
+// ── Student: Submit a story for teacher approval ──────────────────────────────
+router.post("/classroom/student-stories", requireStudentAuth, async (req: any, res) => {
+  try {
+    const { prompt } = req.body;
+    if (!prompt?.trim()) return res.status(400).json({ error: "Please describe what your story is about." });
+
+    const p = req.studentPayload;
+
+    // Get class info (sight words, value, teacher)
+    const clsRes = await db.execute(sql`
+      SELECT sight_words, value_of_week, teacher_id FROM classes WHERE id = ${p.classId}
+    `);
+    const cls = clsRes.rows[0] as any;
+    const sightWords: string[] = cls?.sight_words
+      ? cls.sight_words.split(",").map((w: string) => w.trim()).filter(Boolean)
+      : [];
+    const valueOfWeek: string = cls?.value_of_week ?? "";
+
+    // Build prompt
+    const sightWordLine = sightWords.length
+      ? `\nYou MUST use each of these sight words naturally in a sentence: ${sightWords.join(", ")}.`
+      : "";
+    const valueLine = valueOfWeek
+      ? `\nThe story should show or teach the value of "${valueOfWeek}".`
+      : "";
+
+    const systemPrompt = `You are a warm, encouraging children's story author writing for elementary school students. Write a short story (3–4 paragraphs) appropriate for young readers. Use simple, clear language. Start with a title on its own line in the format: TITLE: [story title]`;
+    const userPrompt = `A student named ${p.firstName} wants to write this story: "${prompt.trim()}"${sightWordLine}${valueLine}\n\nWrite a short, engaging story that fulfills this request.`;
+
+    const completion = await openai.chat.completions.create({
+      model: "gpt-4o-mini",
+      messages: [
+        { role: "system", content: systemPrompt },
+        { role: "user", content: userPrompt },
+      ],
+      max_tokens: 600,
+    });
+
+    const raw = completion.choices[0]?.message?.content ?? "";
+    const titleMatch = raw.match(/^TITLE:\s*(.+)/m);
+    const title = titleMatch?.[1]?.trim() ?? `${p.firstName}'s Story`;
+    const content = raw.replace(/^TITLE:\s*.+\n?/m, "").trim();
+
+    // Save to stories table, linked to teacher's account, marked pending
+    const saved = await db.execute(sql`
+      INSERT INTO stories (user_id, child_name, child_age, child_gender, theme, title, content,
+        submitted_by_student_id, story_status, created_at, updated_at)
+      VALUES (
+        ${cls.teacher_id}, ${p.firstName}, 8, 'neutral',
+        ${valueOfWeek || 'general'}, ${title}, ${content},
+        ${p.studentId}, 'pending', NOW(), NOW()
+      )
+      RETURNING id, title, content
+    `);
+
+    res.json({ story: saved.rows[0] });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ── Teacher: List pending student stories ─────────────────────────────────────
+router.get("/classroom/pending-stories", requireAuth, async (req: any, res) => {
+  try {
+    const result = await db.execute(sql`
+      SELECT s.id, s.title, s.content, s.created_at,
+             u.first_name AS student_name, u.avatar AS student_avatar,
+             u.id AS student_id, c.class_name, c.id AS class_id,
+             c.sight_words, c.point_value_per_sight_word, c.points_for_published
+      FROM stories s
+      JOIN users u ON u.id = s.submitted_by_student_id
+      JOIN classes c ON c.id = u.class_id
+      WHERE s.user_id = ${req.userId}
+        AND s.story_status = 'pending'
+        AND s.deleted_at IS NULL
+      ORDER BY s.created_at ASC
+    `);
+    res.json({ stories: result.rows });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ── Teacher: Approve a student story + award points ───────────────────────────
+router.post("/classroom/pending-stories/:storyId/approve", requireAuth, async (req: any, res) => {
+  try {
+    const storyId = parseInt(req.params.storyId, 10);
+
+    // Verify teacher owns the story
+    const storyRes = await db.execute(sql`
+      SELECT s.id, s.content, s.submitted_by_student_id, c.sight_words,
+             c.point_value_per_sight_word, c.points_for_published
+      FROM stories s
+      JOIN users u ON u.id = s.submitted_by_student_id
+      JOIN classes c ON c.id = u.class_id
+      WHERE s.id = ${storyId} AND s.user_id = ${req.userId} AND s.story_status = 'pending'
+    `);
+    if (!storyRes.rows.length) return res.status(404).json({ error: "Story not found." });
+
+    const story = storyRes.rows[0] as any;
+
+    // Count sight words in story content
+    const sightWords: string[] = story.sight_words
+      ? story.sight_words.split(",").map((w: string) => w.trim().toLowerCase()).filter(Boolean)
+      : [];
+    const contentLower = (story.content ?? "").toLowerCase();
+    const matchedWords = sightWords.filter(w => contentLower.includes(w));
+    const pointsEarned =
+      (matchedWords.length * (story.point_value_per_sight_word ?? 1)) +
+      (story.points_for_published ?? 5);
+
+    // Publish story + award points in parallel
+    await Promise.all([
+      db.execute(sql`UPDATE stories SET story_status = 'published', updated_at = NOW() WHERE id = ${storyId}`),
+      db.execute(sql`UPDATE users SET points = points + ${pointsEarned} WHERE id = ${story.submitted_by_student_id}`),
+    ]);
+
+    res.json({ ok: true, pointsAwarded: pointsEarned, sightWordsFound: matchedWords });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ── Teacher: Reject a student story ──────────────────────────────────────────
+router.post("/classroom/pending-stories/:storyId/reject", requireAuth, async (req: any, res) => {
+  try {
+    const storyId = parseInt(req.params.storyId, 10);
+    await db.execute(sql`
+      UPDATE stories SET story_status = 'rejected', updated_at = NOW()
+      WHERE id = ${storyId} AND user_id = ${req.userId}
+    `);
+    res.json({ ok: true });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // ── Student: Fetch teacher's stories ─────────────────────────────────────────
 router.get("/classroom/stories", requireStudentAuth, async (req: any, res) => {
   try {
     const { teacherId } = req.studentPayload;
     const result = await db.execute(sql`
-      SELECT id, title, child_name, cover_image_url, created_at
+      SELECT id, title, child_name, cover_image_url, created_at,
+             submitted_by_student_id, story_status
       FROM stories
-      WHERE user_id = ${teacherId} AND deleted_at IS NULL
+      WHERE user_id = ${teacherId}
+        AND deleted_at IS NULL
+        AND (story_status = 'teacher' OR story_status = 'published')
       ORDER BY created_at DESC
     `);
     res.json({ stories: result.rows });

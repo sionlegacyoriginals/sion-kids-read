@@ -132,6 +132,10 @@ async function runAppMigrations() {
   await db.execute(sql`ALTER TABLE classes ADD COLUMN IF NOT EXISTS assignment_due_date DATE`);
   await db.execute(sql`ALTER TABLE classes ADD COLUMN IF NOT EXISTS announcement_updated_at TIMESTAMPTZ`);
   await db.execute(sql`ALTER TABLE users ADD COLUMN IF NOT EXISTS points INTEGER NOT NULL DEFAULT 0`);
+  await db.execute(sql`ALTER TABLE stories ADD COLUMN IF NOT EXISTS submitted_by_student_id TEXT`);
+  await db.execute(sql`ALTER TABLE stories ADD COLUMN IF NOT EXISTS story_status TEXT NOT NULL DEFAULT 'teacher'`);
+  await db.execute(sql`ALTER TABLE classes ADD COLUMN IF NOT EXISTS point_value_per_sight_word INTEGER NOT NULL DEFAULT 1`);
+  await db.execute(sql`ALTER TABLE classes ADD COLUMN IF NOT EXISTS points_for_published INTEGER NOT NULL DEFAULT 5`);
   await db.execute(sql`
     CREATE TABLE IF NOT EXISTS school_access_codes (
       id          SERIAL      PRIMARY KEY,

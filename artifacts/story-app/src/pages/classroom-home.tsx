@@ -1,6 +1,6 @@
 import { useLocation } from "wouter";
 import { useEffect, useState } from "react";
-import { Loader2, BookOpen, Star, Calendar } from "lucide-react";
+import { Loader2, BookOpen, Star, Calendar, PenLine, Send, X, CheckCircle, Clock, XCircle } from "lucide-react";
 import { useStudentAuth } from "@/lib/studentAuth";
 
 const basePath = import.meta.env.BASE_URL.replace(/\/$/, "");
@@ -54,6 +54,77 @@ function StoryReader({ storyId, onBack }: { storyId: number; onBack: () => void 
   );
 }
 
+// ── Write a Story form ────────────────────────────────────────────────────────
+function WriteStoryForm({ studentFetch, sightWords, onSubmitted }: {
+  studentFetch: any; sightWords: string[]; onSubmitted: () => void;
+}) {
+  const [prompt, setPrompt] = useState("");
+  const [submitting, setSubmitting] = useState(false);
+  const [done, setDone] = useState(false);
+  const [error, setError] = useState("");
+
+  async function submit() {
+    if (!prompt.trim()) return;
+    setSubmitting(true); setError("");
+    try {
+      const r = await studentFetch(`${basePath}/api/classroom/student-stories`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ prompt: prompt.trim() }),
+      });
+      const d = await r.json();
+      if (!r.ok) throw new Error(d.error ?? "Failed");
+      setDone(true);
+      setTimeout(() => { onSubmitted(); }, 1500);
+    } catch (e: any) { setError(e.message); }
+    finally { setSubmitting(false); }
+  }
+
+  if (done) return (
+    <div className="bg-green-50 border border-green-200 rounded-2xl p-5 flex items-center gap-3">
+      <CheckCircle className="w-6 h-6 text-green-500 shrink-0" />
+      <div>
+        <p className="font-bold text-green-800">Story submitted!</p>
+        <p className="text-green-700 text-sm">Your teacher will review it soon.</p>
+      </div>
+    </div>
+  );
+
+  return (
+    <div className="bg-primary/5 border-2 border-primary/20 rounded-2xl p-5 space-y-4">
+      <h3 className="font-serif font-bold text-lg text-foreground flex items-center gap-2">
+        <PenLine className="w-5 h-5 text-primary" /> Write a Story
+      </h3>
+      {sightWords.length > 0 && (
+        <div>
+          <p className="text-xs font-bold text-muted-foreground uppercase tracking-wide mb-2">Include these sight words:</p>
+          <div className="flex flex-wrap gap-1.5">
+            {sightWords.map(w => (
+              <span key={w} className="px-2.5 py-1 bg-primary text-white text-xs font-bold rounded-lg">{w}</span>
+            ))}
+          </div>
+        </div>
+      )}
+      <textarea
+        rows={3}
+        placeholder="What is your story about? (e.g. 'A brave dog who helps find a lost kitten')"
+        value={prompt}
+        onChange={e => { setPrompt(e.target.value); setError(""); }}
+        className="w-full px-4 py-3 rounded-xl border border-border bg-background text-foreground text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 resize-none"
+      />
+      {error && <p className="text-destructive text-xs">{error}</p>}
+      <button
+        onClick={submit}
+        disabled={submitting || !prompt.trim()}
+        className="flex items-center gap-2 px-6 py-2.5 bg-primary text-white font-bold rounded-full hover:bg-primary/90 transition-all disabled:opacity-50"
+      >
+        {submitting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
+        {submitting ? "Writing your story…" : "Submit story"}
+      </button>
+    </div>
+  );
+}
+
 // ── Classroom home ─────────────────────────────────────────────────────────────
 export default function ClassroomHome() {
   const { student, studentFetch, signOutStudent } = useStudentAuth();
@@ -62,6 +133,7 @@ export default function ClassroomHome() {
   const [loading, setLoading] = useState(true);
   const [selectedStory, setSelectedStory] = useState<number | null>(null);
   const [announcement, setAnnouncement] = useState<any>(null);
+  const [showWriteForm, setShowWriteForm] = useState(false);
 
   // Redirect if not logged in as student
   useEffect(() => {
@@ -163,6 +235,29 @@ export default function ClassroomHome() {
             )}
           </div>
         )}
+
+        {/* Write a Story */}
+        {announcement?.sightWords || announcement?.valueOfWeek ? (
+          showWriteForm ? (
+            <div className="mb-8">
+              <button onClick={() => setShowWriteForm(false)} className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground mb-3 transition-colors">
+                <X className="w-3 h-3" /> Cancel
+              </button>
+              <WriteStoryForm
+                studentFetch={studentFetch}
+                sightWords={announcement?.sightWords?.split(",").map((w: string) => w.trim()).filter(Boolean) ?? []}
+                onSubmitted={() => { setShowWriteForm(false); }}
+              />
+            </div>
+          ) : (
+            <button
+              onClick={() => setShowWriteForm(true)}
+              className="mb-8 w-full flex items-center justify-center gap-2 py-4 border-2 border-dashed border-primary/40 text-primary font-bold rounded-2xl hover:bg-primary/5 hover:border-primary transition-all"
+            >
+              <PenLine className="w-5 h-5" /> Write a story for this week
+            </button>
+          )
+        ) : null}
 
         <div className="mb-6">
           <h2 className="font-serif font-bold text-lg text-foreground">Class Stories</h2>

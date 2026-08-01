@@ -28,7 +28,7 @@ function ClassPanel({ cls }: { cls: any }) {
   const [resetPins, setResetPins] = useState<Record<string, string>>({});
 
   const [showAnnouncement, setShowAnnouncement] = useState(false);
-  const [ann, setAnn] = useState({ message: "", valueOfWeek: "", sightWords: "", dueDate: "" });
+  const [ann, setAnn] = useState({ message: "", valueOfWeek: "", sightWords: "", dueDate: "", pointValuePerSightWord: "1", pointsForPublished: "5" });
   const [annSaved, setAnnSaved] = useState(false);
 
   const { data, isLoading, refetch } = useQuery({
@@ -43,10 +43,12 @@ function ClassPanel({ cls }: { cls: any }) {
   const clsData = data?.class;
   useState(() => {
     if (clsData) setAnn({
-      message:     clsData.announcement_message  ?? "",
-      valueOfWeek: clsData.value_of_week         ?? "",
-      sightWords:  clsData.sight_words           ?? "",
-      dueDate:     clsData.assignment_due_date   ? clsData.assignment_due_date.split("T")[0] : "",
+      message:                clsData.announcement_message         ?? "",
+      valueOfWeek:            clsData.value_of_week               ?? "",
+      sightWords:             clsData.sight_words                 ?? "",
+      dueDate:                clsData.assignment_due_date          ? clsData.assignment_due_date.split("T")[0] : "",
+      pointValuePerSightWord: String(clsData.point_value_per_sight_word ?? 1),
+      pointsForPublished:     String(clsData.points_for_published ?? 5),
     });
   });
 
@@ -55,13 +57,37 @@ function ClassPanel({ cls }: { cls: any }) {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
-        message:     ann.message     || null,
-        valueOfWeek: ann.valueOfWeek || null,
-        sightWords:  ann.sightWords  || null,
-        dueDate:     ann.dueDate     || null,
+        message:               ann.message     || null,
+        valueOfWeek:           ann.valueOfWeek || null,
+        sightWords:            ann.sightWords  || null,
+        dueDate:               ann.dueDate     || null,
+        pointValuePerSightWord: Number(ann.pointValuePerSightWord) || 1,
+        pointsForPublished:     Number(ann.pointsForPublished)     || 5,
       }),
     }),
     onSuccess: () => { setAnnSaved(true); setTimeout(() => setAnnSaved(false), 2000); refetch(); },
+  });
+
+  const pendingStories = useQuery({
+    queryKey: ["classroom-pending", cls.id],
+    queryFn: () => apiFetch("/api/classroom/pending-stories"),
+    enabled: open,
+    select: (d: any) => (d.stories ?? []).filter((s: any) => {
+      // only show pending stories for this class
+      return s.class_id === cls.id;
+    }),
+  });
+
+  const approveStory = useMutation({
+    mutationFn: (storyId: number) =>
+      apiFetch(`/api/classroom/pending-stories/${storyId}/approve`, { method: "POST" }),
+    onSuccess: () => { pendingStories.refetch(); qc.invalidateQueries({ queryKey: ["classroom-class", cls.id] }); },
+  });
+
+  const rejectStory = useMutation({
+    mutationFn: (storyId: number) =>
+      apiFetch(`/api/classroom/pending-stories/${storyId}/reject`, { method: "POST" }),
+    onSuccess: () => pendingStories.refetch(),
   });
 
   const addStudent = useMutation({
@@ -176,6 +202,27 @@ function ClassPanel({ cls }: { cls: any }) {
                     className="w-full px-3 py-2.5 rounded-xl border border-border bg-background text-foreground text-sm focus:outline-none focus:ring-2 focus:ring-primary/30"
                   />
                 </div>
+                {/* Point config */}
+                <div className="grid grid-cols-2 gap-3 border-t border-border/40 pt-3">
+                  <div>
+                    <label className="text-xs font-bold text-muted-foreground uppercase tracking-wide block mb-1">⭐ Points per sight word</label>
+                    <input
+                      type="number" min="0" max="100"
+                      value={ann.pointValuePerSightWord}
+                      onChange={e => setAnn(a => ({ ...a, pointValuePerSightWord: e.target.value }))}
+                      className="w-full px-3 py-2 rounded-xl border border-border bg-background text-foreground text-sm focus:outline-none focus:ring-2 focus:ring-primary/30"
+                    />
+                  </div>
+                  <div>
+                    <label className="text-xs font-bold text-muted-foreground uppercase tracking-wide block mb-1">🏆 Bonus for getting published</label>
+                    <input
+                      type="number" min="0" max="100"
+                      value={ann.pointsForPublished}
+                      onChange={e => setAnn(a => ({ ...a, pointsForPublished: e.target.value }))}
+                      className="w-full px-3 py-2 rounded-xl border border-border bg-background text-foreground text-sm focus:outline-none focus:ring-2 focus:ring-primary/30"
+                    />
+                  </div>
+                </div>
                 <div className="flex items-center gap-2 pt-1">
                   <button
                     onClick={() => saveAnnouncement.mutate()}
@@ -186,7 +233,7 @@ function ClassPanel({ cls }: { cls: any }) {
                     {annSaved ? "Saved!" : "Save & Post"}
                   </button>
                   <button
-                    onClick={() => setAnn({ message: "", valueOfWeek: "", sightWords: "", dueDate: "" })}
+                    onClick={() => setAnn({ message: "", valueOfWeek: "", sightWords: "", dueDate: "", pointValuePerSightWord: "1", pointsForPublished: "5" })}
                     className="flex items-center gap-1.5 px-3 py-2 border border-border text-muted-foreground text-sm rounded-xl hover:bg-muted/50 transition-all"
                   >
                     <X className="w-4 h-4" /> Clear
@@ -196,6 +243,47 @@ function ClassPanel({ cls }: { cls: any }) {
               </div>
             )}
           </div>
+
+          {/* Pending student stories */}
+          {pendingStories.data && pendingStories.data.length > 0 && (
+            <div className="border border-amber-200 rounded-xl overflow-hidden">
+              <div className="flex items-center gap-2 px-4 py-3 bg-amber-50">
+                <span className="text-base">📥</span>
+                <span className="font-bold text-sm text-amber-800 flex-1">
+                  Stories to Review ({pendingStories.data.length})
+                </span>
+              </div>
+              <div className="divide-y divide-border/40">
+                {pendingStories.data.map((s: any) => (
+                  <div key={s.id} className="px-4 py-3 bg-card space-y-2">
+                    <div className="flex items-center gap-2">
+                      <span className="text-lg">{s.student_avatar}</span>
+                      <span className="font-semibold text-sm text-foreground">{s.student_name}</span>
+                      <span className="ml-auto text-xs text-muted-foreground">{new Date(s.created_at).toLocaleDateString()}</span>
+                    </div>
+                    <p className="font-serif font-bold text-sm text-foreground">{s.title}</p>
+                    <p className="text-xs text-muted-foreground leading-relaxed line-clamp-3">{s.content}</p>
+                    <div className="flex gap-2 pt-1">
+                      <button
+                        onClick={() => approveStory.mutate(s.id)}
+                        disabled={approveStory.isPending}
+                        className="flex items-center gap-1.5 px-3 py-1.5 bg-green-600 text-white text-xs font-bold rounded-lg hover:bg-green-700 transition-all disabled:opacity-50"
+                      >
+                        {approveStory.isPending ? <Loader2 className="w-3 h-3 animate-spin" /> : "✓"} Approve & award points
+                      </button>
+                      <button
+                        onClick={() => rejectStory.mutate(s.id)}
+                        disabled={rejectStory.isPending}
+                        className="flex items-center gap-1.5 px-3 py-1.5 border border-red-200 text-red-600 text-xs font-bold rounded-lg hover:bg-red-50 transition-all disabled:opacity-50"
+                      >
+                        ✕ Return
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
 
           {/* Add student */}
           <div className="flex gap-2">
