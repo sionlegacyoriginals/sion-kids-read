@@ -38,68 +38,130 @@ function bufferFromDoc(doc: any): Promise<Buffer> {
   });
 }
 
+function addPageNumber(doc: any, pageNum: number) {
+  doc
+    .font(FONT_REGULAR)
+    .fontSize(9)
+    .fillColor("#9ca3af")
+    .text(String(pageNum), 0, PAGE_H - MARGIN + 12, { width: PAGE_W, align: "center" });
+}
+
+function addDecorativeDot(doc: any) {
+  const cx = PAGE_W / 2;
+  doc.circle(cx, MARGIN / 2, 2).fill("#d4b896");
+}
+
 async function buildInteriorPdf(params: {
   title: string;
   content: string;
   childName: string;
+  illustrationBuffers?: (Buffer | null)[];
 }): Promise<Buffer> {
   const doc = new PDFDocument({
     size: [PAGE_W, PAGE_H],
-    margins: { top: MARGIN, bottom: MARGIN, left: MARGIN, right: MARGIN },
+    margins: { top: 0, bottom: 0, left: 0, right: 0 },
     autoFirstPage: false,
   });
 
   const contentW = PAGE_W - MARGIN * 2;
   const paragraphs = params.content.split("\n").filter(Boolean);
+  const illus = params.illustrationBuffers ?? [];
 
-  // --- Half-title page ---
-  doc.addPage();
-  doc.font(FONT_BOLD).fontSize(26).fillColor("#1c2a3a").text(
-    params.title,
-    MARGIN,
-    PAGE_H / 2 - 40,
-    { width: contentW, align: "center" },
-  );
+  // Illustrations appear after paragraph index 1 and 3 (same as the reader)
+  const ILLUS_AFTER: Record<number, Buffer | null> = {};
+  if (illus[0]) ILLUS_AFTER[1] = illus[0];
+  if (illus[1]) ILLUS_AFTER[3] = illus[1];
 
-  // --- Title page ---
-  doc.addPage();
-  doc
-    .font(FONT_BOLD)
-    .fontSize(28)
-    .fillColor("#1c2a3a")
-    .text(params.title, MARGIN, PAGE_H / 3, { width: contentW, align: "center" });
-  doc
-    .font(FONT_REGULAR)
-    .fontSize(13)
-    .fillColor("#526070")
-    .text(`A story written for ${params.childName}`, {
-      width: contentW,
-      align: "center",
+  let storyPageNum = 0;
+
+  // ── Half-title page ──────────────────────────────────────────────────────
+  doc.addPage({ size: [PAGE_W, PAGE_H] });
+  doc.rect(0, 0, PAGE_W, PAGE_H).fill("#fdf9f4");
+  addDecorativeDot(doc);
+  doc.font(FONT_BOLD).fontSize(22).fillColor("#1c2a3a")
+    .text(params.title, MARGIN, PAGE_H / 2 - 30, { width: contentW, align: "center" });
+
+  // ── Title page ───────────────────────────────────────────────────────────
+  doc.addPage({ size: [PAGE_W, PAGE_H] });
+  doc.rect(0, 0, PAGE_W, PAGE_H).fill("#fdf9f4");
+  // Decorative top bar
+  doc.rect(MARGIN, MARGIN * 0.6, contentW, 2).fill("#d4b896");
+  doc.font(FONT_BOLD).fontSize(28).fillColor("#1c2a3a")
+    .text(params.title, MARGIN, PAGE_H * 0.35, { width: contentW, align: "center" });
+  doc.font(FONT_REGULAR).fontSize(12).fillColor("#7c6a5a")
+    .text(`A personalised story for ${params.childName}`, MARGIN, doc.y + 14, {
+      width: contentW, align: "center",
+    });
+  doc.rect(MARGIN, PAGE_H - MARGIN * 0.8, contentW, 2).fill("#d4b896");
+  doc.font(FONT_REGULAR).fontSize(9).fillColor("#b0a090")
+    .text("Sion Legacy Originals", MARGIN, PAGE_H - MARGIN * 0.7, {
+      width: contentW, align: "center",
     });
 
-  // --- Blank verso ---
-  doc.addPage();
+  // ── Blank verso (copyright page) ────────────────────────────────────────
+  doc.addPage({ size: [PAGE_W, PAGE_H] });
+  doc.rect(0, 0, PAGE_W, PAGE_H).fill("#fdf9f4");
+  doc.font(FONT_REGULAR).fontSize(8).fillColor("#b0a090")
+    .text(
+      `This story was created especially for ${params.childName}.\n` +
+      `© Sion Legacy Originals. All rights reserved.\n` +
+      `Personalised AI-generated children's stories.\n` +
+      `sionlegacyoriginals.com`,
+      MARGIN, PAGE_H - MARGIN * 2.5,
+      { width: contentW, align: "left", lineGap: 4 },
+    );
 
-  // --- Story content ---
-  doc.addPage();
-  let y = MARGIN;
-  doc.font(FONT_REGULAR).fontSize(11).fillColor("#1c2a3a");
+  // ── Story content — one paragraph per page ───────────────────────────────
+  for (let i = 0; i < paragraphs.length; i++) {
+    storyPageNum++;
+    doc.addPage({ size: [PAGE_W, PAGE_H] });
+    doc.rect(0, 0, PAGE_W, PAGE_H).fill("#fdf9f4");
+    addDecorativeDot(doc);
 
-  for (const para of paragraphs) {
-    const needed = doc.heightOfString(para, { width: contentW, lineGap: 3 });
-    if (y + needed > PAGE_H - MARGIN) {
-      doc.addPage();
-      y = MARGIN;
+    // Large, comfortable children's-book font size
+    const fontSize = 15;
+    const lineGap  = 7;
+    const textH    = doc.heightOfString(paragraphs[i], {
+      width: contentW, lineGap, fontSize,
+    });
+    // Vertically centre the paragraph on the page
+    const textY = Math.max(MARGIN * 1.4, (PAGE_H - textH) / 2);
+
+    doc.font(FONT_REGULAR).fontSize(fontSize).fillColor("#1c2a3a")
+      .text(paragraphs[i], MARGIN, textY, {
+        width: contentW, align: "justify", lineGap,
+      });
+
+    addPageNumber(doc, storyPageNum);
+
+    // Full-page illustration after this paragraph (if one exists)
+    const illustBuf = ILLUS_AFTER[i];
+    if (illustBuf) {
+      doc.addPage({ size: [PAGE_W, PAGE_H] });
+      doc.rect(0, 0, PAGE_W, PAGE_H).fill("#1c2a3a"); // dark bg in case image has transparency
+      doc.image(illustBuf, 0, 0, { width: PAGE_W, height: PAGE_H, cover: [PAGE_W, PAGE_H] });
     }
-    doc.text(para, MARGIN, y, { width: contentW, align: "justify", lineGap: 3 });
-    y = doc.y + 16;
   }
 
-  // Pad to minimum page count (must be even)
-  const current: number = (doc as any)._pageCount ?? 4;
+  // ── "The End" page ───────────────────────────────────────────────────────
+  doc.addPage({ size: [PAGE_W, PAGE_H] });
+  doc.rect(0, 0, PAGE_W, PAGE_H).fill("#fdf9f4");
+  doc.rect(MARGIN, PAGE_H / 2 - 2, contentW, 1.5).fill("#d4b896");
+  doc.font(FONT_BOLD).fontSize(20).fillColor("#1c2a3a")
+    .text("~ The End ~", MARGIN, PAGE_H / 2 - 40, { width: contentW, align: "center" });
+  doc.font(FONT_REGULAR).fontSize(11).fillColor("#7c6a5a")
+    .text(`Made with love for ${params.childName}`, MARGIN, PAGE_H / 2 + 14, {
+      width: contentW, align: "center",
+    });
+
+  // ── Pad to Lulu minimum (must be even) ──────────────────────────────────
+  const current: number = (doc as any)._pageCount ?? 8;
   let toAdd = Math.max(0, MIN_INTERIOR_PAGES - current);
   if ((current + toAdd) % 2 !== 0) toAdd += 1;
-  for (let i = 0; i < toAdd; i++) doc.addPage();
+  for (let i = 0; i < toAdd; i++) {
+    doc.addPage({ size: [PAGE_W, PAGE_H] });
+    doc.rect(0, 0, PAGE_W, PAGE_H).fill("#fdf9f4");
+  }
 
   return bufferFromDoc(doc);
 }
@@ -232,25 +294,34 @@ async function buildCoverPdf(params: {
   return bufferFromDoc(doc);
 }
 
+async function fetchImageBuffer(url: string): Promise<Buffer | null> {
+  try {
+    const resp = await fetch(url, { signal: AbortSignal.timeout(15_000) });
+    if (resp.ok) return Buffer.from(await resp.arrayBuffer());
+  } catch {
+    // Proceed without image
+  }
+  return null;
+}
+
 export async function generateStoryPdfs(params: {
   title: string;
   content: string;
   childName: string;
   childAge: number;
   coverImageUrl: string | null;
+  illustrationUrls?: string[];
 }): Promise<{ interiorPdfBuffer: Buffer; coverPdfBuffer: Buffer }> {
-  // Download cover image
-  let coverImageBuffer: Buffer | null = null;
-  if (params.coverImageUrl) {
-    try {
-      const resp = await fetch(params.coverImageUrl, { signal: AbortSignal.timeout(15_000) });
-      if (resp.ok) coverImageBuffer = Buffer.from(await resp.arrayBuffer());
-    } catch {
-      // Proceed without image
-    }
-  }
+  // Download cover + illustrations in parallel
+  const [coverImageBuffer, ...illustrationBuffers] = await Promise.all([
+    params.coverImageUrl ? fetchImageBuffer(params.coverImageUrl) : Promise.resolve(null),
+    ...(params.illustrationUrls ?? []).map(url => fetchImageBuffer(url)),
+  ]);
 
-  const interiorPdfBuffer = await buildInteriorPdf(params);
+  const interiorPdfBuffer = await buildInteriorPdf({
+    ...params,
+    illustrationBuffers,
+  });
 
   // Count pages from interior doc for spine calculation (rough estimate)
   const pageCount = Math.max(MIN_INTERIOR_PAGES, 24);

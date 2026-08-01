@@ -356,7 +356,7 @@ router.get("/admin/send-print-package", async (req: any, res) => {
 
   try {
     const result = await db.execute(sql`
-      SELECT po.*, s.title, s.content, s.cover_image_url, s.child_name, s.child_age
+      SELECT po.*, s.title, s.content, s.cover_image_url, s.illustration_urls, s.child_name, s.child_age
       FROM print_orders po
       JOIN stories s ON s.id = po.story_id
       WHERE po.id = ${orderId}
@@ -365,12 +365,14 @@ router.get("/admin/send-print-package", async (req: any, res) => {
     if (!order) return res.status(404).json({ error: "Order not found" });
 
     const domain = process.env.REPLIT_DOMAINS?.split(",")[0];
-    const rawCoverPath = order.cover_image_url as string | null;
-    const coverImageUrl = rawCoverPath
-      ? rawCoverPath.startsWith("/ref-photos/")
-        ? `https://${domain}/api${rawCoverPath}`
-        : `https://${domain}/api/storage${rawCoverPath}`
-      : null;
+    const toAbsUrl = (p: string | null | undefined) =>
+      p ? (p.startsWith("/ref-photos/") ? `https://${domain}/api${p}` : `https://${domain}/api/storage${p}`) : null;
+
+    const coverImageUrl = toAbsUrl(order.cover_image_url as string | null);
+    const rawIllus = order.illustration_urls as string | null;
+    const illustrationUrls = rawIllus
+      ? (JSON.parse(rawIllus) as string[]).map(p => toAbsUrl(p)!).filter(Boolean)
+      : [];
 
     const { generateStoryPdfs } = await import("../lib/pdfService");
     const { interiorPdfBuffer, coverPdfBuffer } = await generateStoryPdfs({
@@ -379,6 +381,7 @@ router.get("/admin/send-print-package", async (req: any, res) => {
       childName: order.child_name as string,
       childAge: order.child_age as number,
       coverImageUrl,
+      illustrationUrls,
     });
 
     const addr = typeof order.shipping_address === "string"

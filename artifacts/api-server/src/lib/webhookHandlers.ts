@@ -123,12 +123,14 @@ export class WebhookHandlers {
           (async () => {
             try {
               const domain = process.env.REPLIT_DOMAINS?.split(",")[0];
-              const rawCoverPath = order.cover_image_url as string | null;
-              const coverImageUrl = rawCoverPath
-                ? rawCoverPath.startsWith("/ref-photos/")
-                  ? `https://${domain}/api${rawCoverPath}`
-                  : `https://${domain}/api/storage${rawCoverPath}`
-                : null;
+              const toAbsUrl = (p: string | null | undefined) =>
+                p ? (p.startsWith("/ref-photos/") ? `https://${domain}/api${p}` : `https://${domain}/api/storage${p}`) : null;
+
+              const coverImageUrl = toAbsUrl(order.cover_image_url as string | null);
+              const rawIllus = order.illustration_urls as string | null;
+              const illustrationUrls = rawIllus
+                ? (JSON.parse(rawIllus) as string[]).map(p => toAbsUrl(p)!).filter(Boolean)
+                : [];
 
               const { generateStoryPdfs } = await import("./pdfService");
               const { interiorPdfBuffer, coverPdfBuffer } = await generateStoryPdfs({
@@ -137,6 +139,7 @@ export class WebhookHandlers {
                 childName: order.child_name as string,
                 childAge: order.child_age as number,
                 coverImageUrl,
+                illustrationUrls,
               });
 
               await sendOwnerPrintPackage({
