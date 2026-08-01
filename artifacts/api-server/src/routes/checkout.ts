@@ -314,6 +314,7 @@ router.get("/checkout/session/:sessionId", async (req: any, res) => {
     const result = await db.execute(sql`
       SELECT po.id, po.status, po.customer_name, po.customer_email,
              po.shipping_address, po.amount_cents, po.created_at,
+             po.lulu_job_id, po.lulu_last_error,
              s.title AS story_title, s.cover_image_url
       FROM   print_orders po
       LEFT JOIN stories s ON s.id = po.story_id
@@ -374,7 +375,7 @@ router.get("/admin/retrigger-lulu", async (req: any, res) => {
 });
 
 // ── POST /api/checkout/orders/:id/retrigger-lulu ─────────────────────────────
-// Manually re-sends a stuck "paid" order to Lulu (owner only)
+// Manually re-sends a stuck "paid" or "lulu_rejected" order to Lulu (owner only)
 router.post("/checkout/orders/:id/retrigger-lulu", requireAuth, async (req: any, res) => {
   try {
     const orderId = parseInt(req.params.id, 10);
@@ -386,9 +387,20 @@ router.post("/checkout/orders/:id/retrigger-lulu", requireAuth, async (req: any,
     const order = orderRow.rows[0];
     if (!order) return res.status(404).json({ error: "Order not found" });
     if (order.user_id !== req.userId) return res.status(403).json({ error: "Forbidden" });
-    if (order.status !== "paid") {
-      return res.status(400).json({ error: `Order is '${order.status}', must be 'paid' to re-trigger` });
+
+    const retriggerable = ["paid", "lulu_rejected"];
+    if (!retriggerable.includes(order.status as string)) {
+      return res.status(400).json({
+        error: `Order is '${order.status}' — only paid or lulu_rejected orders can be re-triggered`,
+      });
     }
+
+    // Reset to 'paid' so triggerLuluOrder's guard passes, clear previous error
+    await db.execute(sql`
+      UPDATE print_orders
+      SET status = 'paid', lulu_job_id = NULL, lulu_last_error = NULL, updated_at = NOW()
+      WHERE id = ${orderId}
+    `);
 
     const { triggerLuluOrder } = await import("../lib/luluService");
     await triggerLuluOrder(orderId);

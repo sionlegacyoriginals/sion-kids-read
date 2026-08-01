@@ -190,12 +190,13 @@ async function _triggerLuluOrder(orderId: number): Promise<void> {
     shippingAddress,
   });
 
-  // 5. Update order
+  // 5. Update order — clear any previous error, record the new job ID
   await db.execute(sql`
     UPDATE print_orders
-    SET lulu_job_id = ${luluJob.id},
-        status      = 'sent_to_lulu',
-        updated_at  = NOW()
+    SET lulu_job_id      = ${luluJob.id},
+        status           = 'sent_to_lulu',
+        lulu_last_error  = NULL,
+        updated_at       = NOW()
     WHERE id = ${orderId}
   `);
 
@@ -207,13 +208,43 @@ async function _triggerLuluOrder(orderId: number): Promise<void> {
 
 /**
  * Background poller — runs every 30 minutes.
- * Checks all orders stuck in 'sent_to_lulu' and alerts the owner if Lulu
- * has rejected any of them, updating the DB status so it shows in the UI.
+ * 1. Auto-retries `paid` orders that haven't been sent to Lulu within 5 minutes
+ *    (catches webhook race conditions or transient Lulu API failures).
+ * 2. Checks `sent_to_lulu` orders for REJECTED / IN_PRODUCTION / SHIPPED
+ *    status updates from Lulu, alerting the owner on rejections.
  */
 export function startLuluStatusPoller(): void {
   const INTERVAL_MS = 30 * 60 * 1000; // 30 minutes
 
   async function poll() {
+    // ── Auto-retry stuck 'paid' orders ──────────────────────────────────────
+    // If a paid order hasn't moved to sent_to_lulu after 5 minutes, it means
+    // the webhook-triggered submission failed or the server restarted.
+    try {
+      const stuckResult = await db.execute(sql`
+        SELECT id FROM print_orders
+        WHERE status = 'paid'
+          AND updated_at < NOW() - INTERVAL '5 minutes'
+          AND lulu_job_id IS NULL
+      `);
+      for (const row of stuckResult.rows) {
+        const orderId = row.id as number;
+        console.log(`Poller: retrying stuck paid order ${orderId}`);
+        triggerLuluOrder(orderId).catch(async (err: Error) => {
+          console.error(`Poller: retry failed for order ${orderId}:`, err.message);
+          try {
+            await db.execute(sql`
+              UPDATE print_orders
+              SET lulu_last_error = ${err.message}, updated_at = NOW()
+              WHERE id = ${orderId}
+            `);
+          } catch {}
+        });
+      }
+    } catch (err: any) {
+      console.error("Lulu poller stuck-order retry error:", err.message);
+    }
+
     try {
       const result = await db.execute(sql`
         SELECT po.id, po.lulu_job_id, po.customer_name, po.customer_email,

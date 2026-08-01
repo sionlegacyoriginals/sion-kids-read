@@ -21,12 +21,13 @@ async function fetchOrders() {
 
 const ORDER_STATUS_LABELS: Record<string, string> = {
   pending_payment: "Awaiting payment",
-  paid: "Payment received",
+  paid: "Paid – queuing for print",
   sent_to_lulu: "Sent to printer",
   in_production: "In production",
   shipped: "Shipped",
   delivered: "Delivered",
   cancelled: "Cancelled",
+  lulu_rejected: "Printer rejected",
 };
 
 export default function Account() {
@@ -206,7 +207,7 @@ export default function Account() {
                   <p className="text-xs text-muted-foreground">
                     ${((order.amount_cents ?? 0) / 100).toFixed(2)}
                   </p>
-                  {order.status === "paid" && (
+                  {(order.status === "paid" || order.status === "lulu_rejected") && (
                     <button
                       onClick={() => handleRetrigger(order.id)}
                       disabled={retriggerLoading === order.id}
@@ -215,8 +216,15 @@ export default function Account() {
                       {retriggerLoading === order.id
                         ? <Loader2 className="w-3 h-3 animate-spin" />
                         : <Send className="w-3 h-3" />}
-                      Send to printer
+                      {order.status === "lulu_rejected" ? "Retry print" : "Send to printer"}
                     </button>
+                  )}
+                  {order.lulu_last_error && !retriggerMsg[order.id] && (
+                    <p className="text-xs text-destructive mt-1 max-w-[180px] break-words">
+                      {order.lulu_last_error.length > 80
+                        ? order.lulu_last_error.slice(0, 80) + "…"
+                        : order.lulu_last_error}
+                    </p>
                   )}
                   {retriggerMsg[order.id] && (
                     <p className={`text-xs mt-1 ${retriggerMsg[order.id].startsWith("Error") ? "text-destructive" : "text-green-600"}`}>

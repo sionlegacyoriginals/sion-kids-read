@@ -123,8 +123,18 @@ export class WebhookHandlers {
         const luluSecret = process.env.LULU_CLIENT_SECRET;
         if (luluKey && luluSecret) {
           const { triggerLuluOrder } = await import("./luluService");
-          triggerLuluOrder(orderId).catch((err: Error) => {
+          triggerLuluOrder(orderId).catch(async (err: Error) => {
             console.error(`Lulu trigger failed for order ${orderId}:`, err.message);
+            // Persist the error so it surfaces in the dashboard and can be diagnosed
+            try {
+              await db.execute(sql`
+                UPDATE print_orders
+                SET lulu_last_error = ${err.message}, updated_at = NOW()
+                WHERE id = ${orderId}
+              `);
+            } catch (dbErr: any) {
+              console.error(`Failed to store lulu_last_error for order ${orderId}:`, dbErr.message);
+            }
           });
         } else {
           console.log(

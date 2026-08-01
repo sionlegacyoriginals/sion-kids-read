@@ -12,6 +12,8 @@ interface PrintOrder {
   created_at: string;
   story_title: string;
   cover_image_url: string | null;
+  lulu_job_id: string | null;
+  lulu_last_error: string | null;
 }
 
 function formatAddress(addr: any): string {
@@ -203,6 +205,30 @@ export default function CheckoutSuccess() {
           </div>
         </div>
       </div>
+
+      {/* Lulu job ID — shown once the order has been sent to the printer */}
+      {order?.lulu_job_id && (
+        <div className="bg-muted/60 border border-border/60 rounded-xl p-4 mb-4 text-sm text-muted-foreground">
+          <span className="font-semibold text-foreground">Printer reference:</span>{" "}
+          <span className="font-mono">{order.lulu_job_id}</span>
+        </div>
+      )}
+
+      {/* Pending print submission — payment cleared but Lulu not yet contacted */}
+      {order && order.status === "paid" && !order.lulu_job_id && (
+        <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 mb-4 text-sm text-amber-800">
+          <strong>Your payment cleared.</strong> We're queuing your book for printing — this usually completes within a few minutes. If it stays here longer, visit{" "}
+          <a href="/account" className="underline font-semibold">My Account</a> to resend it to the printer manually.
+        </div>
+      )}
+
+      {/* Lulu submission error — visible to customer so they know to visit account page */}
+      {order?.lulu_last_error && (
+        <div className="bg-red-50 border border-red-200 rounded-xl p-4 mb-4 text-sm text-red-800">
+          <strong>Print submission issue:</strong> There was a problem sending your order to the printer. Your payment is safe.{" "}
+          <a href="/account" className="underline font-semibold">Go to My Account</a> to resend it — or we'll retry automatically.
+        </div>
+      )}
 
       {/* Reassurance note */}
       <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 mb-8 text-sm text-amber-800">

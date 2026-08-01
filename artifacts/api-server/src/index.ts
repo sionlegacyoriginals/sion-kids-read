@@ -94,6 +94,11 @@ async function runAppMigrations() {
       created_at            TIMESTAMPTZ NOT NULL DEFAULT NOW()
     )
   `);
+
+  // Lulu submission error tracking — stores last error message for failed/stuck print orders
+  await db.execute(sql`
+    ALTER TABLE print_orders ADD COLUMN IF NOT EXISTS lulu_last_error TEXT
+  `);
 }
 
 // ── Stripe init ──────────────────────────────────────────────────────────────
