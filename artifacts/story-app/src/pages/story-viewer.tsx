@@ -354,7 +354,7 @@ export default function StoryViewer() {
 
         {/* Practice writing section */}
         {story.content && (
-          <PracticeSection content={story.content} childName={story.childName} />
+          <PracticeSection content={story.content} childName={story.childName} audioBarVisible={readAlong.visible} />
         )}
 
         {/* Bottom CTA */}
