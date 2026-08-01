@@ -12,7 +12,7 @@ import {
 import { useQueryClient } from "@tanstack/react-query";
 import { format } from "date-fns";
 import {
-  Printer, BookHeart, Package, ArrowLeft, Trash2, Monitor, X, Volume2
+  Printer, BookHeart, Package, ArrowLeft, Trash2, Monitor, X, Volume2, Download
 } from "lucide-react";
 import { useUser } from "@clerk/react";
 import { MagicLoader } from "@/components/magic-loader";
@@ -243,6 +243,14 @@ export default function StoryViewer() {
           <ArrowLeft className="w-5 h-5" /> Back to Library
         </Link>
         <div className="flex items-center gap-2 flex-wrap">
+          <a
+            href={`/api/stories/${id}/print-pdf`}
+            download
+            className="inline-flex items-center gap-2 px-4 py-2 rounded-xl border border-border text-sm font-semibold text-muted-foreground hover:text-foreground hover:border-foreground/30 transition-all"
+            title="Download PDF for print shop"
+          >
+            <Download className="w-4 h-4" /> Print Shop PDF
+          </a>
           <button
             onClick={() => setSmartboard(true)}
             className="inline-flex items-center gap-2 px-4 py-2 rounded-xl border border-border text-sm font-semibold text-muted-foreground hover:text-primary hover:border-primary/40 transition-all"

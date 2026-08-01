@@ -297,6 +297,135 @@ async function fetchImageBuffer(url: string): Promise<Buffer | null> {
   return null;
 }
 
+/**
+ * Single-file combined PDF for print shops (Staples, FedEx Office, Mixam, etc.)
+ * All pages in reading order: cover → content → "The End"
+ * 6"×9" throughout — upload this one file directly to the print shop.
+ */
+export async function generateCombinedPdf(params: {
+  title: string;
+  content: string;
+  childName: string;
+  childAge: number;
+  coverImageUrl: string | null;
+  illustrationUrls?: string[];
+}): Promise<Buffer> {
+  const [coverImageBuffer, ...illustrationBuffers] = await Promise.all([
+    params.coverImageUrl ? fetchImageBuffer(params.coverImageUrl) : Promise.resolve(null),
+    ...(params.illustrationUrls ?? []).map(url => fetchImageBuffer(url)),
+  ]);
+
+  const doc = new PDFDocument({
+    size: [PAGE_W, PAGE_H],
+    margins: { top: 0, bottom: 0, left: 0, right: 0 },
+    autoFirstPage: false,
+  });
+
+  const contentW = PAGE_W - MARGIN * 2;
+  const paragraphs = params.content.split("\n").filter(Boolean);
+  const illus = illustrationBuffers ?? [];
+
+  const ILLUS_AFTER: Record<number, Buffer | null> = {};
+  if (illus[0]) ILLUS_AFTER[1] = illus[0];
+  if (illus[1]) ILLUS_AFTER[3] = illus[1];
+
+  // ── Page 1: Front cover ────────────────────────────────────────────────────
+  doc.addPage({ size: [PAGE_W, PAGE_H] });
+  if (coverImageBuffer) {
+    doc.image(coverImageBuffer, 0, 0, { width: PAGE_W, height: PAGE_H, cover: [PAGE_W, PAGE_H] });
+  } else {
+    doc.rect(0, 0, PAGE_W, PAGE_H).fill("#2d1b5e");
+  }
+  // Dark overlay at bottom for title legibility
+  doc.rect(0, PAGE_H * 0.55, PAGE_W, PAGE_H * 0.45).fillOpacity(0.65).fill("#000000");
+  doc.fillOpacity(1);
+  doc.font(FONT_BOLD).fontSize(22).fillColor("#ffffff")
+    .text(params.title, MARGIN, PAGE_H * 0.60, { width: contentW, align: "center" });
+  doc.font(FONT_REGULAR).fontSize(12).fillColor("#ffffffcc")
+    .text(`A story for ${params.childName}`, { width: contentW, align: "center" });
+  doc.rect(0, PAGE_H - 5, PAGE_W, 5).fill("#f5a224");
+
+  // ── Page 2: Half-title ─────────────────────────────────────────────────────
+  doc.addPage({ size: [PAGE_W, PAGE_H] });
+  doc.rect(0, 0, PAGE_W, PAGE_H).fill("#fdf9f4");
+  addDecorativeDot(doc);
+  doc.font(FONT_BOLD).fontSize(22).fillColor("#1c2a3a")
+    .text(params.title, MARGIN, PAGE_H / 2 - 30, { width: contentW, align: "center" });
+
+  // ── Page 3: Title page ─────────────────────────────────────────────────────
+  doc.addPage({ size: [PAGE_W, PAGE_H] });
+  doc.rect(0, 0, PAGE_W, PAGE_H).fill("#fdf9f4");
+  doc.rect(MARGIN, MARGIN * 0.6, contentW, 2).fill("#d4b896");
+  doc.font(FONT_BOLD).fontSize(28).fillColor("#1c2a3a")
+    .text(params.title, MARGIN, PAGE_H * 0.35, { width: contentW, align: "center" });
+  doc.font(FONT_REGULAR).fontSize(12).fillColor("#7c6a5a")
+    .text(`A personalised story for ${params.childName}`, MARGIN, doc.y + 14, { width: contentW, align: "center" });
+  doc.rect(MARGIN, PAGE_H - MARGIN * 0.8, contentW, 2).fill("#d4b896");
+  doc.font(FONT_REGULAR).fontSize(9).fillColor("#b0a090")
+    .text("Sion Legacy Originals", MARGIN, PAGE_H - MARGIN * 0.7, { width: contentW, align: "center" });
+
+  // ── Page 4: Copyright ──────────────────────────────────────────────────────
+  doc.addPage({ size: [PAGE_W, PAGE_H] });
+  doc.rect(0, 0, PAGE_W, PAGE_H).fill("#fdf9f4");
+  doc.font(FONT_REGULAR).fontSize(8).fillColor("#b0a090")
+    .text(
+      `This story was created especially for ${params.childName}.\n` +
+      `© Sion Legacy Originals. All rights reserved.\n` +
+      `Personalised AI-generated children's stories.\n` +
+      `sionlegacyoriginals.com`,
+      MARGIN, PAGE_H - MARGIN * 2.5,
+      { width: contentW, align: "left", lineGap: 4 },
+    );
+
+  // ── Story content — one paragraph per page ─────────────────────────────────
+  let storyPageNum = 0;
+  for (let i = 0; i < paragraphs.length; i++) {
+    storyPageNum++;
+    doc.addPage({ size: [PAGE_W, PAGE_H] });
+    doc.rect(0, 0, PAGE_W, PAGE_H).fill("#fdf9f4");
+    addDecorativeDot(doc);
+    const fontSize = 15;
+    const lineGap  = 7;
+    const textH = doc.heightOfString(paragraphs[i], { width: contentW, lineGap, fontSize });
+    const textY = Math.max(MARGIN * 1.4, (PAGE_H - textH) / 2);
+    doc.font(FONT_REGULAR).fontSize(fontSize).fillColor("#1c2a3a")
+      .text(paragraphs[i], MARGIN, textY, { width: contentW, align: "justify", lineGap });
+    addPageNumber(doc, storyPageNum);
+
+    const illustBuf = ILLUS_AFTER[i];
+    if (illustBuf) {
+      doc.addPage({ size: [PAGE_W, PAGE_H] });
+      doc.rect(0, 0, PAGE_W, PAGE_H).fill("#1c2a3a");
+      doc.image(illustBuf, 0, 0, { width: PAGE_W, height: PAGE_H, cover: [PAGE_W, PAGE_H] });
+    }
+  }
+
+  // ── "The End" page ─────────────────────────────────────────────────────────
+  doc.addPage({ size: [PAGE_W, PAGE_H] });
+  doc.rect(0, 0, PAGE_W, PAGE_H).fill("#fdf9f4");
+  doc.rect(MARGIN, PAGE_H / 2 - 2, contentW, 1.5).fill("#d4b896");
+  doc.font(FONT_BOLD).fontSize(20).fillColor("#1c2a3a")
+    .text("~ The End ~", MARGIN, PAGE_H / 2 - 40, { width: contentW, align: "center" });
+  doc.font(FONT_REGULAR).fontSize(11).fillColor("#7c6a5a")
+    .text(`Made with love for ${params.childName}`, MARGIN, PAGE_H / 2 + 14, { width: contentW, align: "center" });
+
+  // ── Back cover page ────────────────────────────────────────────────────────
+  doc.addPage({ size: [PAGE_W, PAGE_H] });
+  doc.rect(0, 0, PAGE_W, PAGE_H).fill("#2d1b5e");
+  doc.rect(0, 0, PAGE_W, 4).fill("#f5a224");
+  doc.font(FONT_BOLD).fontSize(13).fillColor("#f5a224")
+    .text("Sion Legacy Originals", MARGIN, 24, { width: contentW });
+  doc.font(FONT_REGULAR).fontSize(8).fillColor("#c4b5e8")
+    .text("Personalised AI-generated children's stories", MARGIN, 44, { width: contentW });
+  doc.rect(MARGIN, 64, 40, 1.5).fill("#f5a224");
+  const blurbWords = params.content.split(/\s+/).slice(0, 140).join(" ") + "…";
+  doc.font(FONT_REGULAR).fontSize(11).fillColor("#e8e0f5")
+    .text(blurbWords, MARGIN, 86, { width: contentW, align: "left", lineGap: 3 });
+  doc.rect(0, PAGE_H - 4, PAGE_W, 4).fill("#f5a224");
+
+  return bufferFromDoc(doc);
+}
+
 export async function generateStoryPdfs(params: {
   title: string;
   content: string;

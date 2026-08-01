@@ -398,6 +398,50 @@ router.post("/stories", requireAuth, async (req: any, res): Promise<void> => {
   }
 });
 
+// ── GET /stories/:id/print-pdf — download single combined PDF for print shops ──
+router.get("/stories/:id/print-pdf", requireAuth, async (req: any, res): Promise<void> => {
+  const storyId = parseInt(req.params.id, 10);
+  if (isNaN(storyId)) { res.status(400).json({ error: "Invalid story id" }); return; }
+
+  const result = await db.execute(sql`
+    SELECT id, title, content, child_name, child_age, cover_image_url, illustration_urls, user_id
+    FROM stories WHERE id = ${storyId} AND deleted_at IS NULL
+  `);
+  const story = result.rows[0];
+  if (!story) { res.status(404).json({ error: "Story not found" }); return; }
+  if (story.user_id !== req.userId) { res.status(403).json({ error: "Forbidden" }); return; }
+
+  try {
+    const domain = process.env.REPLIT_DOMAINS?.split(",")[0];
+    const toAbsUrl = (p: string | null | undefined) =>
+      p ? (p.startsWith("/ref-photos/") ? `https://${domain}/api${p}` : `https://${domain}/api/storage${p}`) : null;
+
+    const coverImageUrl = toAbsUrl(story.cover_image_url as string | null);
+    const rawIllus = story.illustration_urls as string | null;
+    const illustrationUrls = rawIllus
+      ? (JSON.parse(rawIllus) as string[]).map(p => toAbsUrl(p)!).filter(Boolean)
+      : [];
+
+    const { generateCombinedPdf } = await import("../../lib/pdfService");
+    const pdfBuffer = await generateCombinedPdf({
+      title: story.title as string,
+      content: story.content as string,
+      childName: story.child_name as string,
+      childAge: story.child_age as number,
+      coverImageUrl,
+      illustrationUrls,
+    });
+
+    const safeName = (story.title as string).replace(/[^a-z0-9]+/gi, "-").toLowerCase();
+    res.setHeader("Content-Type", "application/pdf");
+    res.setHeader("Content-Disposition", `attachment; filename="${safeName}-print.pdf"`);
+    res.setHeader("Content-Length", pdfBuffer.length);
+    res.send(pdfBuffer);
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // ── GET /stories/stats ────────────────────────────────────────────────────────
 router.get("/stories/stats", requireAuth, async (req: any, res): Promise<void> => {
   await ensureUser(req.userId);
