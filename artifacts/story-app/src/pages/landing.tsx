@@ -47,12 +47,10 @@ export default function Landing() {
           {/* Student login entry point */}
           <div className="mt-6 flex flex-col items-center gap-2">
             <span className="text-muted-foreground text-sm">Are you a student?</span>
-            <Link href="/student-login">
-              <button className="inline-flex items-center gap-2 px-6 py-3 border-2 border-primary/40 text-primary font-bold rounded-full hover:border-primary hover:bg-primary/5 transition-all text-sm">
-                <GraduationCap className="w-4 h-4" />
-                Enter your class code
-              </button>
-            </Link>
+            <a href="student-login" className="inline-flex items-center gap-2 px-6 py-3 border-2 border-primary/40 text-primary font-bold rounded-full hover:border-primary hover:bg-primary/5 transition-all text-sm">
+              <GraduationCap className="w-4 h-4" />
+              Enter your class code
+            </a>
           </div>
         </div>
       </section>
@@ -141,22 +139,18 @@ export default function Landing() {
                 so students can't change it.
               </p>
             </div>
-            <Link href="/sign-up">
-              <button className="shrink-0 px-8 py-3.5 bg-white text-primary font-bold rounded-full hover:bg-white/90 transition-all shadow-md text-sm whitespace-nowrap">
-                Set up your classroom →
-              </button>
-            </Link>
+            <a href="sign-up" className="shrink-0 px-8 py-3.5 bg-white text-primary font-bold rounded-full hover:bg-white/90 transition-all shadow-md text-sm whitespace-nowrap">
+              Set up your classroom →
+            </a>
           </div>
 
           {/* Student entry point below teacher section */}
           <div className="mt-6 flex flex-col sm:flex-row items-center justify-center gap-3 text-center">
             <span className="text-muted-foreground text-sm">Already have a class code from your teacher?</span>
-            <Link href="/student-login">
-              <button className="inline-flex items-center gap-2 px-6 py-2.5 border-2 border-primary/40 text-primary font-bold rounded-full hover:border-primary hover:bg-primary/5 transition-all text-sm">
-                <GraduationCap className="w-4 h-4" />
-                Student login →
-              </button>
-            </Link>
+            <a href="student-login" className="inline-flex items-center gap-2 px-6 py-2.5 border-2 border-primary/40 text-primary font-bold rounded-full hover:border-primary hover:bg-primary/5 transition-all text-sm">
+              <GraduationCap className="w-4 h-4" />
+              Student login →
+            </a>
           </div>
         </div>
       </section>
