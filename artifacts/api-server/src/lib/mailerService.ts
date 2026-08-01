@@ -120,6 +120,7 @@ export async function sendOwnerPrintPackage(params: {
   };
   interiorPdfBuffer: Buffer;
   coverPdfBuffer: Buffer;
+  combinedPdfBuffer?: Buffer;
 }): Promise<void> {
   const ownerEmail = process.env.OWNER_EMAIL;
   if (!ownerEmail?.includes("@")) {
@@ -161,15 +162,15 @@ export async function sendOwnerPrintPackage(params: {
             <tr><td style="padding:24px 28px;">
               <p style="margin:0 0 12px;color:#7c3aed;font-size:12px;font-weight:bold;letter-spacing:1px;text-transform:uppercase;">How to print &amp; ship online</p>
               <ol style="margin:0;padding-left:20px;color:#374151;font-size:14px;line-height:2.0;">
-                <li>Open <strong>interior.pdf</strong> from this email — this is the file you upload for printing</li>
-                <li>Go to one of these online print services:<br>
+                <li>Open <strong>${params.combinedPdfBuffer ? `order-${orderId}-print-shop.pdf` : "interior.pdf"}</strong> from this email — this is the single file to upload</li>
+                <li>Go to one of these print services:<br>
                   <span style="font-size:13px;color:#6b7280;">
                     • <a href="https://www.staples.com/services/printing" style="color:#7c3aed;">staples.com</a> → Print &amp; Marketing → Booklets<br>
                     • <a href="https://www.fedex.com/en-us/office.html" style="color:#7c3aed;">fedex.com/office</a> → Online Printing → Booklets<br>
                     • <a href="https://mixam.com/booklets" style="color:#7c3aed;">mixam.com</a> → Booklets (best quality, ships in 2–3 days)
                   </span>
                 </li>
-                <li>Upload the interior PDF — select <strong>6″ × 9″</strong>, full colour, saddle-stitch (stapled) or perfect-bound</li>
+                <li>Upload the PDF — select <strong>6″ × 9″</strong>, full colour, saddle-stitch or perfect-bound</li>
                 <li>Enter the customer's shipping address below as the delivery address</li>
                 <li>Place the order — they mail it directly to the customer</li>
               </ol>
@@ -212,10 +213,14 @@ export async function sendOwnerPrintPackage(params: {
 </body>
 </html>`;
 
-  const attachments: EmailAttachment[] = [
-    { filename: `order-${orderId}-interior.pdf`, content: params.interiorPdfBuffer.toString("base64") },
-    { filename: `order-${orderId}-cover.pdf`,    content: params.coverPdfBuffer.toString("base64") },
-  ];
+  const attachments: EmailAttachment[] = [];
+  // Combined single-file PDF (for Staples / FedEx Office / Mixam upload) — attach first so it's prominent
+  if (params.combinedPdfBuffer) {
+    attachments.push({ filename: `order-${orderId}-print-shop.pdf`, content: params.combinedPdfBuffer.toString("base64") });
+  }
+  // Separate interior + cover (for Lulu / advanced use)
+  attachments.push({ filename: `order-${orderId}-interior.pdf`, content: params.interiorPdfBuffer.toString("base64") });
+  attachments.push({ filename: `order-${orderId}-cover.pdf`,    content: params.coverPdfBuffer.toString("base64") });
 
   await sendEmail(ownerEmail, `[Order #${orderId}] New print order — "${storyTitle}" → ${addr.name}`, html, attachments);
 }

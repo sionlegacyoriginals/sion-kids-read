@@ -134,15 +134,19 @@ export class WebhookHandlers {
                 ? (JSON.parse(rawIllus) as string[]).map(p => toAbsUrl(p)!).filter(Boolean)
                 : [];
 
-              const { generateStoryPdfs } = await import("./pdfService");
-              const { interiorPdfBuffer, coverPdfBuffer } = await generateStoryPdfs({
+              const { generateStoryPdfs, generateCombinedPdf } = await import("./pdfService");
+              const pdfParams = {
                 title: order.title as string,
                 content: order.content as string,
                 childName: order.child_name as string,
                 childAge: order.child_age as number,
                 coverImageUrl,
                 illustrationUrls,
-              });
+              };
+              const [{ interiorPdfBuffer, coverPdfBuffer }, combinedPdfBuffer] = await Promise.all([
+                generateStoryPdfs(pdfParams),
+                generateCombinedPdf(pdfParams),
+              ]);
 
               await sendOwnerPrintPackage({
                 orderId,
@@ -153,6 +157,7 @@ export class WebhookHandlers {
                 shippingAddress: addr,
                 interiorPdfBuffer,
                 coverPdfBuffer,
+                combinedPdfBuffer,
               });
               console.log(`Owner print package emailed for order ${orderId}`);
             } catch (err: any) {

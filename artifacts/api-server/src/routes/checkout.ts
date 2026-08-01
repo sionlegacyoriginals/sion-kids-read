@@ -416,15 +416,19 @@ router.get("/admin/send-print-package", async (req: any, res) => {
       ? (JSON.parse(rawIllus) as string[]).map(p => toAbsUrl(p)!).filter(Boolean)
       : [];
 
-    const { generateStoryPdfs } = await import("../lib/pdfService");
-    const { interiorPdfBuffer, coverPdfBuffer } = await generateStoryPdfs({
+    const { generateStoryPdfs, generateCombinedPdf } = await import("../lib/pdfService");
+    const pdfParams = {
       title: order.title as string,
       content: order.content as string,
       childName: order.child_name as string,
       childAge: order.child_age as number,
       coverImageUrl,
       illustrationUrls,
-    });
+    };
+    const [{ interiorPdfBuffer, coverPdfBuffer }, combinedPdfBuffer] = await Promise.all([
+      generateStoryPdfs(pdfParams),
+      generateCombinedPdf(pdfParams),
+    ]);
 
     const addr = typeof order.shipping_address === "string"
       ? JSON.parse(order.shipping_address as string)
@@ -440,6 +444,7 @@ router.get("/admin/send-print-package", async (req: any, res) => {
       shippingAddress: addr,
       interiorPdfBuffer,
       coverPdfBuffer,
+      combinedPdfBuffer,
     });
 
     res.json({ ok: true, message: `Print package emailed to owner for order ${orderId}` });
