@@ -124,6 +124,17 @@ async function runAppMigrations() {
   await db.execute(sql`ALTER TABLE users ADD COLUMN IF NOT EXISTS first_name TEXT`);
   await db.execute(sql`ALTER TABLE users ADD COLUMN IF NOT EXISTS avatar TEXT`);
   await db.execute(sql`ALTER TABLE users ADD COLUMN IF NOT EXISTS pin TEXT`);
+  await db.execute(sql`ALTER TABLE users ADD COLUMN IF NOT EXISTS classroom_enabled BOOLEAN NOT NULL DEFAULT FALSE`);
+  await db.execute(sql`ALTER TABLE users ADD COLUMN IF NOT EXISTS school_code_id INTEGER`);
+  await db.execute(sql`
+    CREATE TABLE IF NOT EXISTS school_access_codes (
+      id          SERIAL      PRIMARY KEY,
+      code        TEXT        NOT NULL UNIQUE,
+      school_name TEXT        NOT NULL,
+      is_active   BOOLEAN     NOT NULL DEFAULT TRUE,
+      created_at  TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    )
+  `);
 }
 
 // ── Stripe init ──────────────────────────────────────────────────────────────

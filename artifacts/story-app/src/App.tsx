@@ -24,6 +24,7 @@ import NotFound from "@/pages/not-found";
 import StudentLogin from "@/pages/student-login";
 import ClassroomHome from "@/pages/classroom-home";
 import ClassroomSetup from "@/pages/classroom-setup";
+import AdminSchoolCodes from "@/pages/admin-school-codes";
 import { StudentAuthProvider } from "@/lib/studentAuth";
 
 // ── Clerk config ──────────────────────────────────────────────────────────────
@@ -224,6 +225,9 @@ function ClerkProviderWithRoutes() {
             <Route path="/student-login" component={StudentLogin} />
             <Route path="/classroom" component={ClassroomHome} />
             <Route path="/classroom-setup" component={() => <ProtectedRoute component={ClassroomSetup} />} />
+            <Route path="/admin/school-codes" component={() => (
+              <Layout><AdminSchoolCodes /></Layout>
+            )} />
             <Route
               path="/checkout/success"
               component={() => (

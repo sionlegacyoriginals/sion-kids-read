@@ -24,11 +24,128 @@ function genPin(): string {
   return String(Math.floor(1000 + Math.random() * 9000));
 }
 
+// ── Teacher: Check classroom access ──────────────────────────────────────────
+router.get("/classroom/access-status", requireAuth, async (req: any, res) => {
+  try {
+    // Access requires classroom_enabled AND the school code still being active
+    const result = await db.execute(sql`
+      SELECT u.classroom_enabled, u.school_code_id, s.is_active AS code_active
+      FROM users u
+      LEFT JOIN school_access_codes s ON s.id = u.school_code_id
+      WHERE u.id = ${req.userId}
+    `);
+    const row = result.rows[0];
+    const enabled = row?.classroom_enabled === true && (row?.school_code_id == null || row?.code_active === true);
+    res.json({ enabled });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ── Teacher: Unlock classroom with a school access code ───────────────────────
+router.post("/classroom/unlock", requireAuth, async (req: any, res) => {
+  try {
+    const { code } = req.body;
+    if (!code?.trim()) return res.status(400).json({ error: "Code is required." });
+
+    const found = await db.execute(sql`
+      SELECT id, school_name, is_active FROM school_access_codes
+      WHERE UPPER(code) = UPPER(${code.trim()})
+    `);
+    if (!found.rows.length) {
+      return res.status(403).json({ error: "That code isn't right. Check with your school administrator." });
+    }
+    const schoolCode = found.rows[0] as any;
+    if (!schoolCode.is_active) {
+      return res.status(403).json({ error: "That access code has been deactivated. Contact Sion Legacy Originals." });
+    }
+
+    await db.execute(sql`
+      UPDATE users SET classroom_enabled = TRUE, school_code_id = ${schoolCode.id}
+      WHERE id = ${req.userId}
+    `);
+    res.json({ enabled: true, schoolName: schoolCode.school_name });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ── Admin: List school access codes ──────────────────────────────────────────
+router.get("/admin/school-codes", async (req: any, res) => {
+  const master = (process.env.MASTER_TEST_CODE ?? "").trim();
+  if (!master || req.query.master !== master) return res.status(403).json({ error: "Forbidden" });
+  try {
+    const result = await db.execute(sql`
+      SELECT s.*, COUNT(u.id)::int AS teacher_count
+      FROM school_access_codes s
+      LEFT JOIN users u ON u.school_code_id = s.id AND u.classroom_enabled = TRUE
+      GROUP BY s.id ORDER BY s.created_at DESC
+    `);
+    res.json({ codes: result.rows });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ── Admin: Create a school access code ───────────────────────────────────────
+router.post("/admin/school-codes", async (req: any, res) => {
+  const master = (process.env.MASTER_TEST_CODE ?? "").trim();
+  if (!master || req.query.master !== master) return res.status(403).json({ error: "Forbidden" });
+  try {
+    const { schoolName, customCode } = req.body;
+    if (!schoolName?.trim()) return res.status(400).json({ error: "School name is required." });
+
+    // Use provided code or generate one
+    let code = customCode?.trim().toUpperCase();
+    if (!code) {
+      const chars = "BCDFGHJKLMNPQRSTVWXYZ23456789";
+      code = Array.from({ length: 8 }, () => chars[Math.floor(Math.random() * chars.length)]).join("");
+    }
+
+    const existing = await db.execute(sql`SELECT id FROM school_access_codes WHERE UPPER(code) = ${code}`);
+    if (existing.rows.length) return res.status(409).json({ error: "That code already exists." });
+
+    const result = await db.execute(sql`
+      INSERT INTO school_access_codes (code, school_name) VALUES (${code}, ${schoolName.trim()})
+      RETURNING *
+    `);
+    res.json({ schoolCode: result.rows[0] });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ── Admin: Revoke / reactivate a school access code ──────────────────────────
+router.patch("/admin/school-codes/:id", async (req: any, res) => {
+  const master = (process.env.MASTER_TEST_CODE ?? "").trim();
+  if (!master || req.query.master !== master) return res.status(403).json({ error: "Forbidden" });
+  try {
+    const { id } = req.params;
+    const { isActive } = req.body;
+    if (typeof isActive !== "boolean") return res.status(400).json({ error: "isActive (boolean) required." });
+
+    const result = await db.execute(sql`
+      UPDATE school_access_codes SET is_active = ${isActive} WHERE id = ${Number(id)}
+      RETURNING *
+    `);
+    if (!result.rows.length) return res.status(404).json({ error: "Code not found." });
+    res.json({ schoolCode: result.rows[0] });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // ── Teacher: Create a class ───────────────────────────────────────────────────
 router.post("/classroom/classes", requireAuth, async (req: any, res) => {
   try {
     const { className } = req.body;
     if (!className?.trim()) return res.status(400).json({ error: "Class name is required" });
+
+    // Check classroom access
+    const access = await db.execute(sql`SELECT classroom_enabled FROM users WHERE id = ${req.userId}`);
+    if (!access.rows[0]?.classroom_enabled) {
+      return res.status(403).json({ error: "Classroom access not enabled. Enter your teacher access code first." });
+    }
 
     // Generate a unique 5-char class code
     let classCode = "";

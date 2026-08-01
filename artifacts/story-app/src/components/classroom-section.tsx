@@ -6,7 +6,7 @@ import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import {
   GraduationCap, Plus, Trash2, RefreshCw, ChevronDown, ChevronUp,
-  Loader2, Eye, EyeOff, Copy, Check,
+  Loader2, Eye, EyeOff, Copy, Check, Lock,
 } from "lucide-react";
 
 // ── API helpers ───────────────────────────────────────────────────────────────
@@ -178,6 +178,59 @@ function ClassPanel({ cls }: { cls: any }) {
   );
 }
 
+// ── Access gate ───────────────────────────────────────────────────────────────
+function ClassroomAccessGate({ onUnlocked }: { onUnlocked: () => void }) {
+  const [code, setCode] = useState("");
+  const [error, setError] = useState("");
+
+  const unlock = useMutation({
+    mutationFn: () =>
+      apiFetch("/api/classroom/unlock", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ code: code.trim() }),
+      }),
+    onSuccess: () => { setError(""); onUnlocked(); },
+    onError: (e: any) => setError(e.message),
+  });
+
+  return (
+    <div className="bg-card border border-border/60 rounded-2xl p-8 flex flex-col items-center text-center gap-5">
+      <div className="w-14 h-14 rounded-2xl bg-primary/10 flex items-center justify-center">
+        <Lock className="w-7 h-7 text-primary" />
+      </div>
+      <div>
+        <h2 className="font-serif font-bold text-xl text-foreground mb-1">Classroom Access Required</h2>
+        <p className="text-muted-foreground text-sm max-w-sm">
+          The classroom feature is for approved teachers. Enter the teacher access code you received to get started.
+        </p>
+      </div>
+      <div className="w-full max-w-xs space-y-3">
+        <input
+          type="text"
+          placeholder="Enter your teacher access code"
+          value={code}
+          onChange={e => { setCode(e.target.value); setError(""); }}
+          onKeyDown={e => e.key === "Enter" && code.trim() && unlock.mutate()}
+          className="w-full px-4 py-3 rounded-xl border border-border bg-background text-foreground text-sm text-center tracking-widest uppercase focus:outline-none focus:ring-2 focus:ring-primary/30"
+          autoComplete="off"
+        />
+        {error && <p className="text-destructive text-xs">{error}</p>}
+        <button
+          onClick={() => unlock.mutate()}
+          disabled={unlock.isPending || !code.trim()}
+          className="w-full py-3 bg-primary text-white font-bold rounded-xl hover:bg-primary/90 transition-all disabled:opacity-50 flex items-center justify-center gap-2"
+        >
+          {unlock.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : "Unlock Classroom"}
+        </button>
+      </div>
+      <p className="text-xs text-muted-foreground">
+        Don't have a code? Contact <strong>Sion Legacy Originals</strong> to request teacher access.
+      </p>
+    </div>
+  );
+}
+
 // ── Main classroom section ────────────────────────────────────────────────────
 export function ClassroomSection() {
   const qc = useQueryClient();
@@ -185,9 +238,15 @@ export function ClassroomSection() {
   const [showCreate, setShowCreate] = useState(false);
   const [createError, setCreateError] = useState("");
 
+  const { data: accessData, isLoading: accessLoading, refetch: refetchAccess } = useQuery({
+    queryKey: ["classroom-access"],
+    queryFn: () => apiFetch("/api/classroom/access-status"),
+  });
+
   const { data, isLoading } = useQuery({
     queryKey: ["classroom-classes"],
     queryFn: () => apiFetch("/api/classroom/classes"),
+    enabled: accessData?.enabled === true,
   });
 
   const classes: any[] = data?.classes ?? [];
@@ -205,6 +264,18 @@ export function ClassroomSection() {
     },
     onError: (e: any) => setCreateError(e.message),
   });
+
+  if (accessLoading) {
+    return (
+      <div className="bg-card border border-border/60 rounded-2xl p-8 flex items-center justify-center gap-2 text-muted-foreground">
+        <Loader2 className="w-5 h-5 animate-spin" /> Checking access…
+      </div>
+    );
+  }
+
+  if (!accessData?.enabled) {
+    return <ClassroomAccessGate onUnlocked={() => { refetchAccess(); qc.invalidateQueries({ queryKey: ["classroom-classes"] }); }} />;
+  }
 
   return (
     <div className="bg-card border border-border/60 rounded-2xl p-6 space-y-4">
