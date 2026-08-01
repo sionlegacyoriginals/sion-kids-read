@@ -90,10 +90,12 @@ export class WebhookHandlers {
           WHERE id = ${orderId}
         `);
 
-        // Fetch order details for confirmation email
+        // Fetch order details for confirmation email + PDF generation
         const orderRow = await db.execute(sql`
           SELECT po.customer_email, po.customer_name, po.shipping_address,
-                 s.title, s.child_name
+                 po.amount_cents,
+                 s.title, s.child_name, s.child_age, s.content,
+                 s.cover_image_url, s.illustration_urls
           FROM print_orders po
           JOIN stories s ON s.id = po.story_id
           WHERE po.id = ${orderId}
