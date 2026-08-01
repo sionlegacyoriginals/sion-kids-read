@@ -22,11 +22,19 @@ const EMPTY_SHIPPING: ShippingForm = {
 export function OrderDialog({
   storyId,
   onClose,
+  defaultEmail = "",
+  defaultName = "",
 }: {
   storyId: number;
   onClose: () => void;
+  defaultEmail?: string;
+  defaultName?: string;
 }) {
-  const [form, setForm] = useState<ShippingForm>(EMPTY_SHIPPING);
+  const [form, setForm] = useState<ShippingForm>({
+    ...EMPTY_SHIPPING,
+    customerEmail: defaultEmail,
+    customerName: defaultName,
+  });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 

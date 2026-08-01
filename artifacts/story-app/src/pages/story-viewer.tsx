@@ -14,6 +14,7 @@ import { format } from "date-fns";
 import {
   Printer, BookHeart, Package, ArrowLeft, Trash2
 } from "lucide-react";
+import { useUser } from "@clerk/react";
 import { MagicLoader } from "@/components/magic-loader";
 import { OrderDialog } from "@/components/order-dialog";
 import { DeleteConfirmDialog } from "@/components/delete-confirm-dialog";
@@ -62,6 +63,10 @@ export default function StoryViewer() {
 
   const deleteStory = useDeleteStory();
   const regenerateStory = useRegenerateStory();
+
+  const { user } = useUser();
+  const clerkEmail = user?.primaryEmailAddress?.emailAddress ?? "";
+  const clerkName = user?.fullName ?? "";
 
   const search = useSearch();
   const autoOrder = new URLSearchParams(search).get("order") === "1";
@@ -116,7 +121,12 @@ export default function StoryViewer() {
   return (
     <div className={`max-w-3xl mx-auto pb-16 animate-in fade-in duration-500 ${readAlong.visible ? "pb-32" : ""}`}>
       {showOrderDialog && id && (
-        <OrderDialog storyId={id} onClose={() => setShowOrderDialog(false)} />
+        <OrderDialog
+          storyId={id}
+          onClose={() => setShowOrderDialog(false)}
+          defaultEmail={clerkEmail}
+          defaultName={clerkName}
+        />
       )}
       {showDeleteConfirm && story && (
         <DeleteConfirmDialog
