@@ -59,6 +59,100 @@ async function sendEmail(
   console.log(`Email sent to ${to} — id: ${data.id}`);
 }
 
+export async function sendParentStoryPublished(params: {
+  parentEmail: string;
+  parentName: string;
+  studentName: string;
+  studentAvatar: string;
+  storyTitle: string;
+  storyContent: string;
+  pointsAwarded: number;
+  classPortalUrl: string;
+}): Promise<void> {
+  const { parentEmail, parentName, studentName, studentAvatar, storyTitle, storyContent, pointsAwarded, classPortalUrl } = params;
+  const preview = storyContent.slice(0, 300) + (storyContent.length > 300 ? "…" : "");
+  const html = `
+<!DOCTYPE html><html><head><meta charset="utf-8"></head>
+<body style="margin:0;padding:0;background:#fdf9f6;font-family:'Georgia',serif;">
+  <table width="100%" cellpadding="0" cellspacing="0" style="background:#fdf9f6;padding:40px 0;">
+    <tr><td align="center">
+      <table width="560" cellpadding="0" cellspacing="0" style="background:#ffffff;border-radius:16px;overflow:hidden;box-shadow:0 2px 12px rgba(0,0,0,0.08);">
+        <tr><td style="background:#7c3aed;padding:28px 40px;text-align:center;">
+          <p style="margin:0;color:#e9d5ff;font-size:12px;letter-spacing:1px;text-transform:uppercase;">Sion Legacy Originals — Classroom</p>
+          <h1 style="margin:8px 0 0;color:#ffffff;font-size:24px;font-weight:normal;">${studentAvatar} ${studentName} wrote a story!</h1>
+        </td></tr>
+        <tr><td style="padding:32px 40px;">
+          <p style="margin:0 0 16px;color:#374151;font-size:16px;line-height:1.6;">Hi ${parentName.split(" ")[0]},</p>
+          <p style="margin:0 0 24px;color:#374151;font-size:16px;line-height:1.6;">
+            Great news — <strong>${studentName}</strong>'s story has been approved by their teacher and is now published to the class library!
+          </p>
+          <table width="100%" cellpadding="0" cellspacing="0" style="background:#f5f3ff;border-radius:12px;margin-bottom:24px;">
+            <tr><td style="padding:24px 28px;">
+              <p style="margin:0 0 8px;color:#7c3aed;font-size:13px;font-weight:bold;letter-spacing:1px;text-transform:uppercase;">📖 ${storyTitle}</p>
+              <p style="margin:0;color:#374151;font-size:14px;line-height:1.8;">${preview}</p>
+            </td></tr>
+          </table>
+          ${pointsAwarded > 0 ? `<table width="100%" cellpadding="0" cellspacing="0" style="background:#fefce8;border:1px solid #fde68a;border-radius:10px;margin-bottom:24px;"><tr><td style="padding:16px 20px;"><p style="margin:0;color:#92400e;font-size:15px;">⭐ <strong>${studentName} earned ${pointsAwarded} point${pointsAwarded !== 1 ? "s" : ""}</strong> for this story!</p></td></tr></table>` : ""}
+          <table width="100%" cellpadding="0" cellspacing="0"><tr><td align="center" style="padding:8px 0 24px;">
+            <a href="${classPortalUrl}" style="display:inline-block;background:#7c3aed;color:#ffffff;font-size:15px;font-weight:bold;text-decoration:none;border-radius:50px;padding:14px 36px;">Read the full story →</a>
+          </td></tr></table>
+          <p style="margin:0;color:#374151;font-size:15px;">— The Sion Legacy Originals team</p>
+        </td></tr>
+        <tr><td style="background:#f9fafb;padding:16px 40px;text-align:center;border-top:1px solid #e5e7eb;">
+          <p style="margin:0;color:#9ca3af;font-size:12px;">View your parent dashboard at <a href="${classPortalUrl}" style="color:#7c3aed;">sionlegacyoriginals.com/parent</a></p>
+        </td></tr>
+      </table>
+    </td></tr>
+  </table>
+</body></html>`;
+  await sendEmail(parentEmail, `📖 ${studentName} just published a story!`, html);
+}
+
+export async function sendParentAnnouncement(params: {
+  parentEmail: string;
+  parentName: string;
+  studentName: string;
+  className: string;
+  message?: string;
+  valueOfWeek?: string;
+  sightWords?: string[];
+  dueDate?: string;
+  classPortalUrl: string;
+}): Promise<void> {
+  const { parentEmail, parentName, studentName, className, message, valueOfWeek, sightWords, dueDate, classPortalUrl } = params;
+  const dueDateStr = dueDate ? new Date(dueDate).toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric" }) : null;
+  const sightWordPills = (sightWords ?? []).map(w => `<span style="display:inline-block;background:#7c3aed;color:#ffffff;font-size:12px;font-weight:bold;border-radius:6px;padding:3px 10px;margin:2px 3px;">${w}</span>`).join("");
+  const html = `
+<!DOCTYPE html><html><head><meta charset="utf-8"></head>
+<body style="margin:0;padding:0;background:#fdf9f6;font-family:'Georgia',serif;">
+  <table width="100%" cellpadding="0" cellspacing="0" style="background:#fdf9f6;padding:40px 0;">
+    <tr><td align="center">
+      <table width="560" cellpadding="0" cellspacing="0" style="background:#ffffff;border-radius:16px;overflow:hidden;box-shadow:0 2px 12px rgba(0,0,0,0.08);">
+        <tr><td style="background:#f5a224;padding:28px 40px;text-align:center;">
+          <p style="margin:0;color:#fffbeb;font-size:12px;letter-spacing:1px;text-transform:uppercase;">📣 ${className} — Weekly Update</p>
+          <h1 style="margin:8px 0 0;color:#ffffff;font-size:24px;font-weight:normal;">This Week's Classroom News</h1>
+        </td></tr>
+        <tr><td style="padding:32px 40px;">
+          <p style="margin:0 0 20px;color:#374151;font-size:16px;line-height:1.6;">Hi ${parentName.split(" ")[0]}, here's what's happening in <strong>${studentName}</strong>'s class this week:</p>
+          ${message ? `<table width="100%" cellpadding="0" cellspacing="0" style="background:#f9fafb;border-radius:10px;margin-bottom:20px;"><tr><td style="padding:18px 22px;"><p style="margin:0;color:#374151;font-size:15px;line-height:1.7;">${message}</p></td></tr></table>` : ""}
+          ${valueOfWeek ? `<table width="100%" cellpadding="0" cellspacing="0" style="background:#fefce8;border:1px solid #fde68a;border-radius:10px;margin-bottom:20px;"><tr><td style="padding:16px 22px;"><p style="margin:0;color:#92400e;font-size:14px;"><strong>✨ Value of the Week:</strong> ${valueOfWeek}</p></td></tr></table>` : ""}
+          ${sightWords?.length ? `<table width="100%" cellpadding="0" cellspacing="0" style="background:#f5f3ff;border-radius:10px;margin-bottom:20px;"><tr><td style="padding:16px 22px;"><p style="margin:0 0 10px;color:#7c3aed;font-size:13px;font-weight:bold;letter-spacing:1px;text-transform:uppercase;">🔤 Sight Words</p><div>${sightWordPills}</div></td></tr></table>` : ""}
+          ${dueDateStr ? `<p style="margin:0 0 24px;color:#6b7280;font-size:14px;">📅 <strong>Due:</strong> ${dueDateStr}</p>` : ""}
+          <table width="100%" cellpadding="0" cellspacing="0"><tr><td align="center" style="padding:8px 0 24px;">
+            <a href="${classPortalUrl}" style="display:inline-block;background:#f5a224;color:#ffffff;font-size:15px;font-weight:bold;text-decoration:none;border-radius:50px;padding:14px 36px;">View Parent Dashboard →</a>
+          </td></tr></table>
+          <p style="margin:0;color:#374151;font-size:15px;">— The Sion Legacy Originals team</p>
+        </td></tr>
+        <tr><td style="background:#f9fafb;padding:16px 40px;text-align:center;border-top:1px solid #e5e7eb;">
+          <p style="margin:0;color:#9ca3af;font-size:12px;">Manage your parent account at <a href="${classPortalUrl}" style="color:#7c3aed;">sionlegacyoriginals.com/parent</a></p>
+        </td></tr>
+      </table>
+    </td></tr>
+  </table>
+</body></html>`;
+  await sendEmail(parentEmail, `📣 Weekly update for ${studentName}'s class`, html);
+}
+
 export async function sendOwnerAlert(params: {
   subject: string;
   body: string;

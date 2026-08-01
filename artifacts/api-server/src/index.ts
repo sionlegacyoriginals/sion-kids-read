@@ -136,6 +136,17 @@ async function runAppMigrations() {
   await db.execute(sql`ALTER TABLE stories ADD COLUMN IF NOT EXISTS story_status TEXT NOT NULL DEFAULT 'teacher'`);
   await db.execute(sql`ALTER TABLE classes ADD COLUMN IF NOT EXISTS point_value_per_sight_word INTEGER NOT NULL DEFAULT 1`);
   await db.execute(sql`ALTER TABLE classes ADD COLUMN IF NOT EXISTS points_for_published INTEGER NOT NULL DEFAULT 5`);
+  await db.execute(sql`ALTER TABLE users ADD COLUMN IF NOT EXISTS full_name TEXT`);
+  await db.execute(sql`
+    CREATE TABLE IF NOT EXISTS parent_links (
+      id            SERIAL PRIMARY KEY,
+      parent_user_id TEXT NOT NULL,
+      student_id     TEXT NOT NULL,
+      class_id       INTEGER NOT NULL,
+      created_at     TIMESTAMPTZ DEFAULT NOW(),
+      UNIQUE(parent_user_id, student_id)
+    )
+  `);
   await db.execute(sql`
     CREATE TABLE IF NOT EXISTS school_access_codes (
       id          SERIAL      PRIMARY KEY,

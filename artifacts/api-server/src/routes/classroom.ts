@@ -4,6 +4,7 @@ import { db } from "@workspace/db";
 import { sql } from "drizzle-orm";
 import { requireAuth, requireStudentAuth, signStudentToken } from "../lib/auth";
 import { openai } from "@workspace/integrations-openai-ai-server";
+import { sendParentStoryPublished, sendParentAnnouncement } from "../lib/mailerService";
 
 const router = Router();
 
@@ -188,6 +189,36 @@ router.put("/classroom/classes/:classId/announcement", requireAuth, async (req: 
         points_for_published        = ${pointsForPublished ?? 5}
       WHERE id = ${Number(classId)}
     `);
+    // Email all linked parents in this class (fire-and-forget)
+    const portalUrl = `${process.env.APP_URL ?? "https://sionlegacyoriginals.com"}/parent`;
+    const sightWordList = (sightWords ?? "").split(",").map((w: string) => w.trim()).filter(Boolean);
+    db.execute(sql`
+      SELECT DISTINCT pl.parent_user_id, u.email AS parent_email, u.full_name AS parent_name,
+             s.first_name AS student_name, c.class_name
+      FROM parent_links pl
+      JOIN users u ON u.id = pl.parent_user_id
+      JOIN users s ON s.id = pl.student_id
+      JOIN classes c ON c.id = pl.class_id
+      WHERE pl.class_id = ${Number(classId)}
+        AND u.email IS NOT NULL
+    `).then(parents => {
+      for (const p of parents.rows as any[]) {
+        if (p.parent_email) {
+          sendParentAnnouncement({
+            parentEmail: p.parent_email,
+            parentName:  p.parent_name ?? p.parent_email,
+            studentName: p.student_name,
+            className:   p.class_name,
+            message:     message ?? undefined,
+            valueOfWeek: valueOfWeek ?? undefined,
+            sightWords:  sightWordList.length ? sightWordList : undefined,
+            dueDate:     dueDate ?? undefined,
+            classPortalUrl: portalUrl,
+          }).catch(() => {});
+        }
+      }
+    }).catch(() => {});
+
     res.json({ ok: true });
   } catch (err: any) {
     res.status(500).json({ error: err.message });
@@ -506,10 +537,11 @@ router.post("/classroom/pending-stories/:storyId/approve", requireAuth, async (r
   try {
     const storyId = parseInt(req.params.storyId, 10);
 
-    // Verify teacher owns the story
     const storyRes = await db.execute(sql`
-      SELECT s.id, s.content, s.submitted_by_student_id, c.sight_words,
-             c.point_value_per_sight_word, c.points_for_published
+      SELECT s.id, s.title, s.content, s.submitted_by_student_id,
+             u.first_name AS student_name, u.avatar AS student_avatar,
+             c.sight_words, c.point_value_per_sight_word, c.points_for_published,
+             c.class_name
       FROM stories s
       JOIN users u ON u.id = s.submitted_by_student_id
       JOIN classes c ON c.id = u.class_id
@@ -519,7 +551,6 @@ router.post("/classroom/pending-stories/:storyId/approve", requireAuth, async (r
 
     const story = storyRes.rows[0] as any;
 
-    // Count sight words in story content
     const sightWords: string[] = story.sight_words
       ? story.sight_words.split(",").map((w: string) => w.trim().toLowerCase()).filter(Boolean)
       : [];
@@ -529,11 +560,34 @@ router.post("/classroom/pending-stories/:storyId/approve", requireAuth, async (r
       (matchedWords.length * (story.point_value_per_sight_word ?? 1)) +
       (story.points_for_published ?? 5);
 
-    // Publish story + award points in parallel
     await Promise.all([
       db.execute(sql`UPDATE stories SET story_status = 'published', updated_at = NOW() WHERE id = ${storyId}`),
       db.execute(sql`UPDATE users SET points = points + ${pointsEarned} WHERE id = ${story.submitted_by_student_id}`),
     ]);
+
+    // Email linked parents (fire-and-forget)
+    const portalUrl = `${process.env.APP_URL ?? "https://sionlegacyoriginals.com"}/parent`;
+    db.execute(sql`
+      SELECT pl.parent_user_id, u.email AS parent_email, u.full_name AS parent_name
+      FROM parent_links pl
+      JOIN users u ON u.id = pl.parent_user_id
+      WHERE pl.student_id = ${story.submitted_by_student_id}
+    `).then(parents => {
+      for (const p of parents.rows as any[]) {
+        if (p.parent_email) {
+          sendParentStoryPublished({
+            parentEmail: p.parent_email,
+            parentName: p.parent_name ?? "Parent",
+            studentName: story.student_name,
+            studentAvatar: story.student_avatar ?? "🌟",
+            storyTitle: story.title,
+            storyContent: story.content,
+            pointsAwarded: pointsEarned,
+            classPortalUrl: portalUrl,
+          }).catch(() => {});
+        }
+      }
+    }).catch(() => {});
 
     res.json({ ok: true, pointsAwarded: pointsEarned, sightWordsFound: matchedWords });
   } catch (err: any) {
@@ -586,6 +640,126 @@ router.get("/classroom/stories/:id", requireStudentAuth, async (req: any, res) =
     `);
     if (!result.rows.length) return res.status(404).json({ error: "Story not found" });
     res.json({ story: result.rows[0] });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ── Parent: Look up students by class code ────────────────────────────────────
+router.get("/classroom/parent/class-students", requireAuth, async (req: any, res) => {
+  try {
+    const code = (req.query.code as string ?? "").toUpperCase().trim();
+    if (!code) return res.status(400).json({ error: "code is required" });
+
+    const cls = await db.execute(sql`
+      SELECT id FROM classes WHERE UPPER(class_code) = ${code} AND is_active = TRUE
+    `);
+    if (!cls.rows.length) return res.status(404).json({ error: "Class not found. Check the code with the teacher." });
+
+    const classId = (cls.rows[0] as any).id;
+    const students = await db.execute(sql`
+      SELECT id, first_name, avatar FROM users
+      WHERE class_id = ${classId} AND is_student = TRUE
+      ORDER BY first_name ASC
+    `);
+    res.json({ classId, students: students.rows });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ── Parent: Link to a child ───────────────────────────────────────────────────
+router.post("/classroom/parent/link", requireAuth, async (req: any, res) => {
+  try {
+    const { classCode, studentId } = req.body;
+    if (!classCode || !studentId) return res.status(400).json({ error: "classCode and studentId required" });
+
+    // Verify the student belongs to the class with that code
+    const check = await db.execute(sql`
+      SELECT u.id, u.class_id FROM users u
+      JOIN classes c ON c.id = u.class_id
+      WHERE u.id = ${studentId} AND u.is_student = TRUE
+        AND UPPER(c.class_code) = ${classCode.toUpperCase().trim()}
+    `);
+    if (!check.rows.length) return res.status(404).json({ error: "Student not found in that class." });
+
+    const classId = (check.rows[0] as any).class_id;
+
+    // Store parent's email/name from Clerk token (if available via session)
+    await db.execute(sql`
+      INSERT INTO parent_links (parent_user_id, student_id, class_id)
+      VALUES (${req.userId}, ${studentId}, ${classId})
+      ON CONFLICT (parent_user_id, student_id) DO NOTHING
+    `);
+
+    res.json({ ok: true });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ── Parent: Dashboard (all linked children) ───────────────────────────────────
+router.get("/classroom/parent/dashboard", requireAuth, async (req: any, res) => {
+  try {
+    // All students this parent is linked to
+    const links = await db.execute(sql`
+      SELECT pl.student_id, pl.class_id,
+             s.first_name, s.avatar, s.points,
+             c.class_name, c.teacher_id,
+             c.announcement_message, c.value_of_week, c.sight_words,
+             c.assignment_due_date, c.announcement_updated_at
+      FROM parent_links pl
+      JOIN users s ON s.id = pl.student_id
+      JOIN classes c ON c.id = pl.class_id
+      WHERE pl.parent_user_id = ${req.userId}
+      ORDER BY s.first_name ASC
+    `);
+
+    const children = await Promise.all((links.rows as any[]).map(async (child) => {
+      // Child's own stories (all statuses except rejected)
+      const myStoriesRes = await db.execute(sql`
+        SELECT id, title, content, story_status, created_at
+        FROM stories
+        WHERE submitted_by_student_id = ${child.student_id}
+          AND story_status IN ('pending', 'published')
+          AND deleted_at IS NULL
+        ORDER BY created_at DESC
+      `);
+
+      // All published stories in this class (teacher + student)
+      const classStoriesRes = await db.execute(sql`
+        SELECT s.id, s.title, s.content, s.cover_image_url,
+               s.submitted_by_student_id,
+               u.first_name AS student_name, u.avatar AS student_avatar,
+               s.child_name
+        FROM stories s
+        LEFT JOIN users u ON u.id = s.submitted_by_student_id
+        WHERE s.user_id = ${child.teacher_id}
+          AND (s.story_status = 'teacher' OR s.story_status = 'published')
+          AND s.deleted_at IS NULL
+        ORDER BY s.created_at DESC
+        LIMIT 30
+      `);
+
+      return {
+        id: child.student_id,
+        first_name: child.first_name,
+        avatar: child.avatar,
+        points: child.points,
+        class_name: child.class_name,
+        announcement: {
+          announcement_message: child.announcement_message,
+          value_of_week: child.value_of_week,
+          sight_words: child.sight_words,
+          assignment_due_date: child.assignment_due_date,
+          announcement_updated_at: child.announcement_updated_at,
+        },
+        my_stories: myStoriesRes.rows,
+        class_stories: classStoriesRes.rows,
+      };
+    }));
+
+    res.json({ children });
   } catch (err: any) {
     res.status(500).json({ error: err.message });
   }
