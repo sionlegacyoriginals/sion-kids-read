@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect } from "react";
+import { useState, useCallback, useEffect, useRef } from "react";
 import { useRoute, useLocation, useSearch, Link } from "wouter";
 import { 
   useGetStory, 
@@ -112,6 +112,32 @@ export default function StoryViewer() {
   const paragraphs = story ? story.content.split('\n').filter(Boolean) : [];
   const readAlong = useReadAlong(paragraphs);
 
+  // Refs for paragraph elements — used for auto-scroll
+  const paraRefs = useRef<(HTMLDivElement | null)[]>([]);
+  const sbParaRefs = useRef<(HTMLDivElement | null)[]>([]);
+  const lastScrolledPara = useRef(-1);
+
+  // Auto-scroll to the active paragraph whenever the highlight advances
+  useEffect(() => {
+    if (!readAlong.activeRange || !readAlong.isPlaying) return;
+    const [rangeStart] = readAlong.activeRange;
+    const idx = readAlong.paragraphData.findIndex((pd) => {
+      if (!pd.tokens.length) return false;
+      const firstStart = pd.tokens[0].start;
+      const lastToken = pd.tokens[pd.tokens.length - 1];
+      return rangeStart >= firstStart && rangeStart <= lastToken.start + lastToken.text.length + 50;
+    });
+    if (idx < 0 || idx === lastScrolledPara.current) return;
+    lastScrolledPara.current = idx;
+    paraRefs.current[idx]?.scrollIntoView({ behavior: "smooth", block: "center" });
+    sbParaRefs.current[idx]?.scrollIntoView({ behavior: "smooth", block: "center" });
+  }, [readAlong.activeRange, readAlong.isPlaying, readAlong.paragraphData]);
+
+  // Reset tracked paragraph when playback stops
+  useEffect(() => {
+    if (!readAlong.isPlaying) lastScrolledPara.current = -1;
+  }, [readAlong.isPlaying]);
+
   if (isLoading || !story) {
     return <div className="py-20 flex justify-center"><div className="animate-pulse w-12 h-12 bg-primary/20 rounded-full" /></div>;
   }
@@ -180,7 +206,7 @@ export default function StoryViewer() {
         <div className="flex-1 overflow-y-auto px-8 md:px-24 lg:px-40 py-10">
           <div className="max-w-4xl mx-auto space-y-10">
             {readAlong.paragraphData.map((pd, i) => (
-              <div key={i}>
+              <div key={i} ref={(el) => { sbParaRefs.current[i] = el; }}>
                 <p className="text-white/90 text-2xl md:text-3xl lg:text-4xl font-serif leading-relaxed tracking-wide">
                   <ReadAlongParagraph tokens={pd.tokens} activeRange={readAlong.activeRange} />
                 </p>
@@ -333,7 +359,7 @@ export default function StoryViewer() {
         <div className="p-8 md:p-16">
           <div className="prose prose-lg md:prose-xl max-w-none prose-p:font-serif prose-p:leading-[1.9] prose-p:text-foreground/90 prose-p:mb-6 story-content">
             {readAlong.paragraphData.map((pd, i) => (
-              <div key={i}>
+              <div key={i} ref={(el) => { paraRefs.current[i] = el; }}>
                 <ReadAlongParagraph
                   tokens={pd.tokens}
                   activeRange={readAlong.activeRange}
