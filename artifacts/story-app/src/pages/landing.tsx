@@ -147,6 +147,17 @@ export default function Landing() {
               </button>
             </Link>
           </div>
+
+          {/* Student entry point below teacher section */}
+          <div className="mt-6 flex flex-col sm:flex-row items-center justify-center gap-3 text-center">
+            <span className="text-muted-foreground text-sm">Already have a class code from your teacher?</span>
+            <Link href="/student-login">
+              <button className="inline-flex items-center gap-2 px-6 py-2.5 border-2 border-primary/40 text-primary font-bold rounded-full hover:border-primary hover:bg-primary/5 transition-all text-sm">
+                <GraduationCap className="w-4 h-4" />
+                Student login →
+              </button>
+            </Link>
+          </div>
         </div>
       </section>
 

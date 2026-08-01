@@ -142,6 +142,11 @@ export function Layout({ children }: { children: React.ReactNode }) {
             </Show>
 
             <Show when="signed-out">
+              <Link href="/student-login">
+                <button className="hidden sm:inline-flex items-center gap-1.5 px-3 py-1.5 text-sm font-semibold text-primary border border-primary/30 rounded-full hover:bg-primary/5 transition-all">
+                  <GraduationCap className="w-3.5 h-3.5" /> Student login
+                </button>
+              </Link>
               <Link href="/sign-in">
                 <button className="px-4 py-1.5 text-sm font-semibold text-muted-foreground hover:text-foreground transition-colors">
                   Sign in
