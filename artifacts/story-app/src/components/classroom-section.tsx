@@ -6,7 +6,7 @@ import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import {
   GraduationCap, Plus, Trash2, RefreshCw, ChevronDown, ChevronUp,
-  Loader2, Eye, EyeOff, Copy, Check, Lock, Megaphone, Save, X,
+  Loader2, Eye, EyeOff, Copy, Check, Lock, Megaphone, Save, X, History,
 } from "lucide-react";
 
 // ── API helpers ───────────────────────────────────────────────────────────────
@@ -66,6 +66,14 @@ function ClassPanel({ cls }: { cls: any }) {
       }),
     }),
     onSuccess: () => { setAnnSaved(true); setTimeout(() => setAnnSaved(false), 2000); refetch(); },
+  });
+
+  const [showHistory, setShowHistory] = useState(false);
+  const annHistory = useQuery({
+    queryKey: ["announcement-history", cls.id],
+    queryFn: () => apiFetch(`/api/classroom/classes/${cls.id}/announcement-history`),
+    enabled: open && showHistory,
+    select: (d: any) => d.history ?? [],
   });
 
   const pendingStories = useQuery({
@@ -240,6 +248,55 @@ function ClassPanel({ cls }: { cls: any }) {
                   </button>
                   <span className="text-xs text-muted-foreground ml-auto">Students see this when they log in</span>
                 </div>
+              </div>
+            )}
+          </div>
+
+          {/* Past announcements history */}
+          <div className="border border-border/60 rounded-xl overflow-hidden">
+            <button
+              onClick={() => setShowHistory(v => !v)}
+              className="w-full flex items-center gap-2 px-4 py-3 bg-muted/20 hover:bg-muted/40 transition-colors text-left"
+            >
+              <History className="w-4 h-4 text-muted-foreground shrink-0" />
+              <span className="font-semibold text-sm text-foreground flex-1">Past Weekly Announcements</span>
+              {showHistory ? <ChevronUp className="w-4 h-4 text-muted-foreground" /> : <ChevronDown className="w-4 h-4 text-muted-foreground" />}
+            </button>
+            {showHistory && (
+              <div className="divide-y divide-border/40">
+                {annHistory.isLoading && (
+                  <div className="flex items-center gap-2 px-4 py-3 text-muted-foreground text-sm">
+                    <Loader2 className="w-4 h-4 animate-spin" /> Loading…
+                  </div>
+                )}
+                {!annHistory.isLoading && (annHistory.data ?? []).length === 0 && (
+                  <p className="px-4 py-3 text-sm text-muted-foreground">No history yet — each time you save an announcement it's archived here.</p>
+                )}
+                {(annHistory.data ?? []).map((h: any) => {
+                  const words = h.sight_words ? h.sight_words.split(",").map((w: string) => w.trim()).filter(Boolean) : [];
+                  const postedDate = new Date(h.posted_at).toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric", year: "numeric" });
+                  return (
+                    <div key={h.id} className="px-4 py-3 bg-card space-y-1.5">
+                      <div className="flex items-center gap-2">
+                        <span className="text-xs font-bold text-muted-foreground">{postedDate}</span>
+                        {h.assignment_due_date && (
+                          <span className="text-xs text-primary font-semibold bg-primary/10 px-2 py-0.5 rounded-full">
+                            Due {new Date(h.assignment_due_date).toLocaleDateString("en-US", { month: "short", day: "numeric" })}
+                          </span>
+                        )}
+                      </div>
+                      {h.value_of_week && <p className="text-xs font-semibold text-foreground">✨ {h.value_of_week}</p>}
+                      {words.length > 0 && (
+                        <div className="flex flex-wrap gap-1">
+                          {words.map((w: string) => (
+                            <span key={w} className="px-2 py-0.5 bg-primary/10 text-primary text-xs font-bold rounded-md">{w}</span>
+                          ))}
+                        </div>
+                      )}
+                      {h.message && <p className="text-xs text-muted-foreground leading-relaxed line-clamp-2">{h.message}</p>}
+                    </div>
+                  );
+                })}
               </div>
             )}
           </div>

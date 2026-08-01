@@ -189,6 +189,17 @@ router.put("/classroom/classes/:classId/announcement", requireAuth, async (req: 
         points_for_published        = ${pointsForPublished ?? 5}
       WHERE id = ${Number(classId)}
     `);
+
+    // Archive this announcement to history
+    await db.execute(sql`
+      INSERT INTO announcement_history
+        (class_id, message, value_of_week, sight_words, assignment_due_date,
+         point_value_per_sight_word, points_for_published)
+      VALUES
+        (${Number(classId)}, ${message ?? null}, ${valueOfWeek ?? null},
+         ${sightWords ?? null}, ${dueDate ?? null},
+         ${pointValuePerSightWord ?? 1}, ${pointsForPublished ?? 5})
+    `);
     // Email all linked parents in this class (fire-and-forget)
     const portalUrl = `${process.env.APP_URL ?? "https://sionlegacyoriginals.com"}/parent`;
     const sightWordList = (sightWords ?? "").split(",").map((w: string) => w.trim()).filter(Boolean);
@@ -220,6 +231,27 @@ router.put("/classroom/classes/:classId/announcement", requireAuth, async (req: 
     }).catch(() => {});
 
     res.json({ ok: true });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ── Teacher: Announcement history ────────────────────────────────────────────
+router.get("/classroom/classes/:classId/announcement-history", requireAuth, async (req: any, res) => {
+  try {
+    const { classId } = req.params;
+    const check = await db.execute(sql`SELECT id FROM classes WHERE id = ${Number(classId)} AND teacher_id = ${req.userId}`);
+    if (!check.rows.length) return res.status(403).json({ error: "Not your class." });
+
+    const result = await db.execute(sql`
+      SELECT id, message, value_of_week, sight_words, assignment_due_date,
+             point_value_per_sight_word, points_for_published, posted_at
+      FROM announcement_history
+      WHERE class_id = ${Number(classId)}
+      ORDER BY posted_at DESC
+      LIMIT 52
+    `);
+    res.json({ history: result.rows });
   } catch (err: any) {
     res.status(500).json({ error: err.message });
   }

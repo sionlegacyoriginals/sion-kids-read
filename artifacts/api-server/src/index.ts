@@ -138,6 +138,19 @@ async function runAppMigrations() {
   await db.execute(sql`ALTER TABLE classes ADD COLUMN IF NOT EXISTS points_for_published INTEGER NOT NULL DEFAULT 5`);
   await db.execute(sql`ALTER TABLE users ADD COLUMN IF NOT EXISTS full_name TEXT`);
   await db.execute(sql`
+    CREATE TABLE IF NOT EXISTS announcement_history (
+      id                       SERIAL PRIMARY KEY,
+      class_id                 INTEGER NOT NULL,
+      message                  TEXT,
+      value_of_week            TEXT,
+      sight_words              TEXT,
+      assignment_due_date      DATE,
+      point_value_per_sight_word INTEGER NOT NULL DEFAULT 1,
+      points_for_published     INTEGER NOT NULL DEFAULT 5,
+      posted_at                TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    )
+  `);
+  await db.execute(sql`
     CREATE TABLE IF NOT EXISTS parent_links (
       id            SERIAL PRIMARY KEY,
       parent_user_id TEXT NOT NULL,
