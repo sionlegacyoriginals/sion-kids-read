@@ -17,8 +17,8 @@ export default function Landing() {
           </span>
 
           <h1 className="text-5xl md:text-7xl font-serif font-bold text-foreground leading-[1.05] mb-6">
-            Your child is{" "}
-            <span className="text-primary">the main character</span>
+            Your Child Is{" "}
+            <span className="text-primary">The Main Character</span>
           </h1>
 
           <p className="text-xl text-muted-foreground max-w-xl mx-auto mb-10 leading-relaxed">
