@@ -34,6 +34,17 @@ function serializeStory(story: Record<string, unknown>) {
   };
 }
 
+// ─── Content moderation ──────────────────────────────────────────────────────
+// Simple keyword filter — no AI calls, no re-generation loops.
+const FLAGGED_PATTERNS = [
+  /\b(kill(?:ing|ed)?|murder|blood(?:y)?|gore|gory|violen(?:t|ce)|sex(?:ual)?|nud(?:e|ity)|naked|drunk|drug(?:s)?|alcohol|weapon|gun(?:s)?|knife|knives|bomb|terror(?:ist)?|h[a4]te|racist|profan(?:e|ity)|swear|curs(?:e|ing))\b/i,
+];
+
+export function moderateText(text: string): { flagged: boolean } {
+  if (!text) return { flagged: false };
+  return { flagged: FLAGGED_PATTERNS.some(p => p.test(text)) };
+}
+
 function buildStoryPrompt(params: {
   childName: string;
   childAge: number;
@@ -42,6 +53,7 @@ function buildStoryPrompt(params: {
   theme: string;
   customPrompt?: string | null;
   bibleVerse?: string | null;
+  schoolMode?: boolean;
 }): string {
   const pronouns =
     params.childGender === "boy"
@@ -61,7 +73,11 @@ function buildStoryPrompt(params: {
         ? `Weave this Bible verse into the story naturally: "${params.bibleVerse}". Quote it at the moment where it feels most meaningful.`
         : "";
 
-  return `You are a master children's story author. Write a warm, wholesome, age-appropriate children's story for a ${params.childAge}-year-old child named ${params.childName}.
+  const schoolLine = params.schoolMode
+    ? `\nSCHOOL MODE — STRICT CONTENT RULES: This story will be read in a K-5 elementary school classroom. Output MUST be strictly G-rated, secular, educational, and safe for all students. Do not include violence, romance, fear, religion-specific references, or any content a school administrator would flag.`
+    : "";
+
+  return `You are a master children's story author. Write a warm, wholesome, age-appropriate children's story for a ${params.childAge}-year-old child named ${params.childName}.${schoolLine}
 
 Theme/value to reinforce: ${params.theme}
 
@@ -194,6 +210,7 @@ async function generateStory(params: {
   theme: string;
   customPrompt?: string | null;
   bibleVerse?: string | null;
+  schoolMode?: boolean;
 }): Promise<{ title: string; content: string }> {
   const prompt = buildStoryPrompt(params);
   const response = await openai.chat.completions.create({
@@ -309,9 +326,31 @@ router.post("/stories", requireAuth, async (req: any, res): Promise<void> => {
   const { childName, childAge, childGender, milestones, theme, customPrompt, bibleVerse, referenceImagePaths } =
     parsed.data;
 
+  // Step 3: Moderate custom prompt input before sending to AI
+  if (customPrompt && moderateText(customPrompt).flagged) {
+    res.status(422).json({
+      error: "Your story idea contains some words we can't use in a children's story. Try rephrasing it — keep it fun and kid-friendly!",
+      code: "MODERATION_FLAGGED",
+    });
+    return;
+  }
+
+  // Step 2: Fetch school mode setting
+  const userSettingsRow = await db.execute(sql`SELECT school_mode FROM users WHERE id = ${req.userId}`);
+  const schoolMode = (userSettingsRow.rows[0]?.school_mode as boolean) ?? false;
+
   const { title, content } = await generateStory({
-    childName, childAge, childGender, milestones, theme, customPrompt, bibleVerse,
+    childName, childAge, childGender, milestones, theme, customPrompt, bibleVerse, schoolMode,
   });
+
+  // Step 3: Moderate generated output — catch rare AI slippage without re-generating
+  if (moderateText(content).flagged) {
+    res.status(422).json({
+      error: "The story generated some unexpected content. Please try again with a different theme or description.",
+      code: "MODERATION_FLAGGED",
+    });
+    return;
+  }
 
   // Insert story immediately so we can respond before the 60-second proxy timeout.
   // Images are generated in the background and written back once ready.

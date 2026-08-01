@@ -42,6 +42,48 @@ router.get("/users/me", requireAuth, async (req: any, res) => {
   }
 });
 
+// ── GET /api/users/school-mode ───────────────────────────────────────────────
+router.get("/users/school-mode", requireAuth, async (req: any, res) => {
+  try {
+    await ensureUser(req.userId);
+    const row = await db.execute(sql`SELECT school_mode FROM users WHERE id = ${req.userId}`);
+    res.json({ schoolMode: row.rows[0]?.school_mode ?? false });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ── POST /api/users/school-mode ──────────────────────────────────────────────
+// Body: { enable: true, pin: "1234" }  — sets PIN and enables school mode
+//       { enable: false, pin: "1234" } — verifies PIN and disables school mode
+router.post("/users/school-mode", requireAuth, async (req: any, res) => {
+  try {
+    const { enable, pin } = req.body;
+    if (typeof pin !== "string" || !/^\d{4}$/.test(pin)) {
+      return res.status(400).json({ error: "PIN must be exactly 4 digits" });
+    }
+    if (enable) {
+      await db.execute(sql`
+        UPDATE users SET school_mode = TRUE, school_mode_pin = ${pin}, updated_at = NOW()
+        WHERE id = ${req.userId}
+      `);
+      return res.json({ ok: true, schoolMode: true });
+    } else {
+      const row = await db.execute(sql`SELECT school_mode_pin FROM users WHERE id = ${req.userId}`);
+      const storedPin = row.rows[0]?.school_mode_pin as string | null;
+      if (!storedPin || storedPin !== pin) {
+        return res.status(403).json({ error: "Incorrect PIN" });
+      }
+      await db.execute(sql`
+        UPDATE users SET school_mode = FALSE, updated_at = NOW() WHERE id = ${req.userId}
+      `);
+      return res.json({ ok: true, schoolMode: false });
+    }
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // ── POST /api/checkout/subscription ─────────────────────────────────────────
 // period: "monthly" (default) | "6months" | "yearly"
 // Amounts: $8.88/mo, $44.44/6mo, $77.77/yr

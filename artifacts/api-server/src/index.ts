@@ -99,6 +99,14 @@ async function runAppMigrations() {
   await db.execute(sql`
     ALTER TABLE print_orders ADD COLUMN IF NOT EXISTS lulu_last_error TEXT
   `);
+
+  // School Mode — parental/teacher control for classroom-safe content generation
+  await db.execute(sql`
+    ALTER TABLE users ADD COLUMN IF NOT EXISTS school_mode BOOLEAN NOT NULL DEFAULT FALSE
+  `);
+  await db.execute(sql`
+    ALTER TABLE users ADD COLUMN IF NOT EXISTS school_mode_pin TEXT
+  `);
 }
 
 // ── Stripe init ──────────────────────────────────────────────────────────────

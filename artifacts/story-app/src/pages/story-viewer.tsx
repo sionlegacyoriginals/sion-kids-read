@@ -12,7 +12,7 @@ import {
 import { useQueryClient } from "@tanstack/react-query";
 import { format } from "date-fns";
 import {
-  Printer, BookHeart, Package, ArrowLeft, Trash2
+  Printer, BookHeart, Package, ArrowLeft, Trash2, Monitor, X, Volume2
 } from "lucide-react";
 import { useUser } from "@clerk/react";
 import { MagicLoader } from "@/components/magic-loader";
@@ -71,11 +71,19 @@ export default function StoryViewer() {
   const search = useSearch();
   const autoOrder = new URLSearchParams(search).get("order") === "1";
   const [showOrderDialog, setShowOrderDialog] = useState(false);
+  const [smartboard, setSmartboard] = useState(false);
 
   // Auto-open order dialog when arriving from book-bundle checkout
   useEffect(() => {
     if (autoOrder && story && !isLoading) setShowOrderDialog(true);
   }, [autoOrder, story, isLoading]);
+
+  // Escape key exits smartboard
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => { if (e.key === "Escape") setSmartboard(false); };
+    window.addEventListener("keydown", handler);
+    return () => window.removeEventListener("keydown", handler);
+  }, []);
 
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
 
@@ -117,6 +125,81 @@ export default function StoryViewer() {
   const ILLUS_AFTER: Record<number, string> = {};
   if (illustrations[0]) ILLUS_AFTER[1] = illustrations[0];
   if (illustrations[1]) ILLUS_AFTER[3] = illustrations[1];
+
+  // ── Smartboard full-screen overlay ────────────────────────────────────────
+  if (smartboard) {
+    return (
+      <div className="fixed inset-0 z-50 bg-[#0f0f1a] flex flex-col overflow-hidden">
+        {/* Top bar */}
+        <div className="flex items-center justify-between px-8 py-4 border-b border-white/10 flex-shrink-0">
+          <div className="flex items-center gap-3">
+            <Monitor className="w-5 h-5 text-purple-400" />
+            <span className="text-white font-bold text-lg tracking-tight">{story.title}</span>
+            <span className="text-white/40 text-sm">· For {story.childName}</span>
+          </div>
+          <div className="flex items-center gap-3">
+            {!readAlong.visible && (
+              <button
+                onClick={readAlong.open}
+                className="flex items-center gap-2 px-4 py-2 rounded-full bg-purple-600 text-white text-sm font-semibold hover:bg-purple-500 transition-all"
+              >
+                <Volume2 className="w-4 h-4" /> Read Aloud
+              </button>
+            )}
+            <button
+              onClick={() => setSmartboard(false)}
+              className="flex items-center gap-2 px-4 py-2 rounded-full border border-white/20 text-white/70 text-sm font-semibold hover:bg-white/10 transition-all"
+            >
+              <X className="w-4 h-4" /> Exit
+            </button>
+          </div>
+        </div>
+
+        {/* Read-along bar */}
+        {readAlong.visible && (
+          <div className="flex-shrink-0">
+            <ReadAlongBar
+              childName={story.childName}
+              isPlaying={readAlong.isPlaying}
+              togglePlay={readAlong.togglePlay}
+              stop={readAlong.stop}
+              close={readAlong.close}
+              speed={readAlong.speed}
+              changeSpeed={readAlong.changeSpeed}
+              pitch={readAlong.pitch}
+              changePitch={readAlong.changePitch}
+              voices={readAlong.voices}
+              selectedVoice={readAlong.selectedVoice}
+              changeVoice={readAlong.changeVoice}
+            />
+          </div>
+        )}
+
+        {/* Story content — large text, scrollable */}
+        <div className="flex-1 overflow-y-auto px-8 md:px-24 lg:px-40 py-10">
+          <div className="max-w-4xl mx-auto space-y-10">
+            {readAlong.paragraphData.map((pd, i) => (
+              <div key={i}>
+                <p className="text-white/90 text-2xl md:text-3xl lg:text-4xl font-serif leading-relaxed tracking-wide">
+                  <ReadAlongParagraph tokens={pd.tokens} activeRange={readAlong.activeRange} />
+                </p>
+                {ILLUS_AFTER[i] && (
+                  <div className="mt-8 rounded-2xl overflow-hidden max-w-xl mx-auto shadow-2xl">
+                    <img src={ILLUS_AFTER[i]} alt={`Illustration ${i + 1}`} className="w-full object-cover" />
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* Footer hint */}
+        <div className="flex-shrink-0 text-center py-3 text-white/20 text-xs border-t border-white/5">
+          Press <kbd className="px-1.5 py-0.5 rounded bg-white/10 text-white/40 font-mono text-xs">Esc</kbd> to exit smartboard mode
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className={`max-w-3xl mx-auto pb-16 animate-in fade-in duration-500 ${readAlong.visible ? "pb-32" : ""}`}>
@@ -160,6 +243,13 @@ export default function StoryViewer() {
           <ArrowLeft className="w-5 h-5" /> Back to Library
         </Link>
         <div className="flex items-center gap-2 flex-wrap">
+          <button
+            onClick={() => setSmartboard(true)}
+            className="inline-flex items-center gap-2 px-4 py-2 rounded-xl border border-border text-sm font-semibold text-muted-foreground hover:text-primary hover:border-primary/40 transition-all"
+            title="Smartboard view"
+          >
+            <Monitor className="w-4 h-4" /> Smartboard
+          </button>
           {!readAlong.visible && (
             <ReadAloudButton onClick={readAlong.open} />
           )}

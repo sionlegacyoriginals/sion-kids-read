@@ -4,7 +4,7 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link } from "wouter";
 import {
   User, CreditCard, Printer, CheckCircle2, XCircle,
-  Loader2, LogOut, Package, Send
+  Loader2, LogOut, Package, Send, GraduationCap, Lock, Unlock
 } from "lucide-react";
 
 async function fetchUserMe() {
@@ -38,6 +38,45 @@ export default function Account() {
   const [portalError, setPortalError] = useState<string | null>(null);
   const [retriggerLoading, setRetriggerLoading] = useState<number | null>(null);
   const [retriggerMsg, setRetriggerMsg] = useState<Record<number, string>>({});
+
+  // ── School Mode ──────────────────────────────────────────────────────────
+  const [pinDialog, setPinDialog] = useState<"enable" | "disable" | null>(null);
+  const [pinInput, setPinInput] = useState("");
+  const [pinConfirm, setPinConfirm] = useState("");
+  const [pinError, setPinError] = useState("");
+  const [schoolModeLoading, setSchoolModeLoading] = useState(false);
+
+  const { data: schoolModeData, refetch: refetchSchoolMode } = useQuery({
+    queryKey: ["school-mode"],
+    queryFn: async () => {
+      const r = await fetch("/api/users/school-mode", { credentials: "include" });
+      return r.json() as Promise<{ schoolMode: boolean }>;
+    },
+  });
+  const schoolModeOn = schoolModeData?.schoolMode ?? false;
+
+  const openPinDialog = (action: "enable" | "disable") => {
+    setPinInput(""); setPinConfirm(""); setPinError("");
+    setPinDialog(action);
+  };
+
+  const submitSchoolMode = async () => {
+    if (!/^\d{4}$/.test(pinInput)) { setPinError("PIN must be exactly 4 digits."); return; }
+    if (pinDialog === "enable" && pinInput !== pinConfirm) { setPinError("PINs don't match."); return; }
+    setSchoolModeLoading(true); setPinError("");
+    try {
+      const r = await fetch("/api/users/school-mode", {
+        method: "POST", credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ enable: pinDialog === "enable", pin: pinInput }),
+      });
+      const data = await r.json();
+      if (!r.ok) { setPinError(data.error ?? "Something went wrong."); return; }
+      await refetchSchoolMode();
+      setPinDialog(null);
+    } catch { setPinError("Network error. Please try again."); }
+    finally { setSchoolModeLoading(false); }
+  };
 
   const handleRetrigger = async (orderId: number) => {
     setRetriggerLoading(orderId);
@@ -157,6 +196,99 @@ export default function Account() {
                 Subscribe — $3.33/mo
               </button>
             </Link>
+          </div>
+        )}
+      </div>
+
+      {/* School Mode card */}
+      <div className="bg-card border border-border/60 rounded-2xl p-6">
+        <div className="flex items-center gap-3 mb-4">
+          <GraduationCap className="w-5 h-5 text-primary" />
+          <h2 className="font-bold text-lg text-foreground">School Mode</h2>
+          <span className={`ml-auto text-xs font-bold px-2.5 py-1 rounded-full ${schoolModeOn ? "bg-green-100 text-green-700" : "bg-muted text-muted-foreground"}`}>
+            {schoolModeOn ? "ON" : "OFF"}
+          </span>
+        </div>
+        <p className="text-sm text-muted-foreground mb-4">
+          When enabled, all stories are generated with strict G-rated, classroom-safe content rules and a 4-digit PIN is required to turn it off.
+        </p>
+        <button
+          onClick={() => openPinDialog(schoolModeOn ? "disable" : "enable")}
+          className={`flex items-center gap-2 px-5 py-2.5 rounded-full font-semibold text-sm transition-all ${
+            schoolModeOn
+              ? "bg-muted text-foreground hover:bg-muted/80"
+              : "bg-primary text-white hover:bg-primary/90"
+          }`}
+        >
+          {schoolModeOn ? <Unlock className="w-4 h-4" /> : <Lock className="w-4 h-4" />}
+          {schoolModeOn ? "Turn Off School Mode" : "Turn On School Mode"}
+        </button>
+
+        {/* PIN dialog */}
+        {pinDialog && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
+            <div className="bg-card border border-border rounded-2xl p-8 w-full max-w-sm mx-4 shadow-xl">
+              <div className="flex items-center gap-3 mb-2">
+                <GraduationCap className="w-6 h-6 text-primary" />
+                <h3 className="font-bold text-lg text-foreground">
+                  {pinDialog === "enable" ? "Set School Mode PIN" : "Enter PIN to Disable"}
+                </h3>
+              </div>
+              <p className="text-sm text-muted-foreground mb-6">
+                {pinDialog === "enable"
+                  ? "Choose a 4-digit PIN. You'll need it to turn School Mode off."
+                  : "Enter your 4-digit PIN to turn School Mode off."}
+              </p>
+
+              <div className="space-y-3">
+                <div>
+                  <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wide block mb-1">
+                    {pinDialog === "enable" ? "New PIN" : "PIN"}
+                  </label>
+                  <input
+                    type="password"
+                    inputMode="numeric"
+                    maxLength={4}
+                    value={pinInput}
+                    onChange={e => setPinInput(e.target.value.replace(/\D/g, "").slice(0, 4))}
+                    placeholder="••••"
+                    className="w-full px-4 py-3 rounded-xl border border-border bg-background text-foreground text-center text-2xl tracking-[0.5em] font-mono focus:outline-none focus:ring-2 focus:ring-primary/40"
+                  />
+                </div>
+                {pinDialog === "enable" && (
+                  <div>
+                    <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wide block mb-1">Confirm PIN</label>
+                    <input
+                      type="password"
+                      inputMode="numeric"
+                      maxLength={4}
+                      value={pinConfirm}
+                      onChange={e => setPinConfirm(e.target.value.replace(/\D/g, "").slice(0, 4))}
+                      placeholder="••••"
+                      className="w-full px-4 py-3 rounded-xl border border-border bg-background text-foreground text-center text-2xl tracking-[0.5em] font-mono focus:outline-none focus:ring-2 focus:ring-primary/40"
+                    />
+                  </div>
+                )}
+                {pinError && <p className="text-destructive text-sm">{pinError}</p>}
+              </div>
+
+              <div className="flex gap-3 mt-6">
+                <button
+                  onClick={() => setPinDialog(null)}
+                  className="flex-1 px-4 py-2.5 rounded-full border border-border text-foreground font-semibold text-sm hover:bg-muted transition-all"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={submitSchoolMode}
+                  disabled={schoolModeLoading || pinInput.length < 4}
+                  className="flex-1 px-4 py-2.5 rounded-full bg-primary text-white font-bold text-sm hover:bg-primary/90 transition-all disabled:opacity-60 flex items-center justify-center gap-2"
+                >
+                  {schoolModeLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : null}
+                  {pinDialog === "enable" ? "Enable" : "Disable"}
+                </button>
+              </div>
+            </div>
           </div>
         )}
       </div>
