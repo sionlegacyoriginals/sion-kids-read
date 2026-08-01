@@ -236,28 +236,26 @@ export default function ClassroomHome() {
           </div>
         )}
 
-        {/* Write a Story */}
-        {announcement?.sightWords || announcement?.valueOfWeek ? (
-          showWriteForm ? (
-            <div className="mb-8">
-              <button onClick={() => setShowWriteForm(false)} className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground mb-3 transition-colors">
-                <X className="w-3 h-3" /> Cancel
-              </button>
-              <WriteStoryForm
-                studentFetch={studentFetch}
-                sightWords={announcement?.sightWords?.split(",").map((w: string) => w.trim()).filter(Boolean) ?? []}
-                onSubmitted={() => { setShowWriteForm(false); }}
-              />
-            </div>
-          ) : (
-            <button
-              onClick={() => setShowWriteForm(true)}
-              className="mb-8 w-full flex items-center justify-center gap-2 py-4 border-2 border-dashed border-primary/40 text-primary font-bold rounded-2xl hover:bg-primary/5 hover:border-primary transition-all"
-            >
-              <PenLine className="w-5 h-5" /> Write a story for this week
+        {/* Write a Story — always visible */}
+        {showWriteForm ? (
+          <div className="mb-8">
+            <button onClick={() => setShowWriteForm(false)} className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground mb-3 transition-colors">
+              <X className="w-3 h-3" /> Cancel
             </button>
-          )
-        ) : null}
+            <WriteStoryForm
+              studentFetch={studentFetch}
+              sightWords={announcement?.sightWords?.split(",").map((w: string) => w.trim()).filter(Boolean) ?? []}
+              onSubmitted={() => { setShowWriteForm(false); }}
+            />
+          </div>
+        ) : (
+          <button
+            onClick={() => setShowWriteForm(true)}
+            className="mb-8 w-full flex items-center justify-center gap-2 py-4 border-2 border-dashed border-primary/40 text-primary font-bold rounded-2xl hover:bg-primary/5 hover:border-primary transition-all"
+          >
+            <PenLine className="w-5 h-5" /> Write a story
+          </button>
+        )}
 
         <div className="mb-6">
           <h2 className="font-serif font-bold text-lg text-foreground">Class Stories</h2>
