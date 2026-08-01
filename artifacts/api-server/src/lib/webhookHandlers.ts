@@ -100,12 +100,14 @@ export class WebhookHandlers {
         `);
         const order = orderRow.rows[0];
 
-        // Send confirmation email immediately — customer needs to know we got their order
+        // Send confirmation email + owner print package (with PDFs) in parallel
         if (order) {
-          const { sendPrintOrderConfirmation } = await import("./mailerService");
           const addr = typeof order.shipping_address === "string"
             ? JSON.parse(order.shipping_address as string)
             : order.shipping_address;
+
+          // Customer confirmation
+          const { sendPrintOrderConfirmation, sendOwnerPrintPackage } = await import("./mailerService");
           sendPrintOrderConfirmation({
             customerEmail: order.customer_email as string,
             customerName: order.customer_name as string,
@@ -116,6 +118,42 @@ export class WebhookHandlers {
           }).catch((err: Error) => {
             console.error(`Confirmation email failed for order ${orderId}:`, err.message);
           });
+
+          // Owner print package — generate PDFs and email them so owner can place Lulu order manually
+          (async () => {
+            try {
+              const domain = process.env.REPLIT_DOMAINS?.split(",")[0];
+              const rawCoverPath = order.cover_image_url as string | null;
+              const coverImageUrl = rawCoverPath
+                ? rawCoverPath.startsWith("/ref-photos/")
+                  ? `https://${domain}/api${rawCoverPath}`
+                  : `https://${domain}/api/storage${rawCoverPath}`
+                : null;
+
+              const { generateStoryPdfs } = await import("./pdfService");
+              const { interiorPdfBuffer, coverPdfBuffer } = await generateStoryPdfs({
+                title: order.title as string,
+                content: order.content as string,
+                childName: order.child_name as string,
+                childAge: order.child_age as number,
+                coverImageUrl,
+              });
+
+              await sendOwnerPrintPackage({
+                orderId,
+                customerName: order.customer_name as string,
+                customerEmail: order.customer_email as string,
+                storyTitle: order.title as string,
+                amountCents: order.amount_cents as number,
+                shippingAddress: addr,
+                interiorPdfBuffer,
+                coverPdfBuffer,
+              });
+              console.log(`Owner print package emailed for order ${orderId}`);
+            } catch (err: any) {
+              console.error(`Owner print package failed for order ${orderId}:`, err.message);
+            }
+          })();
         }
 
         // Trigger Lulu fulfillment if credentials are configured

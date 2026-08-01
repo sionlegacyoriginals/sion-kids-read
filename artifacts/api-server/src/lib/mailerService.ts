@@ -7,9 +7,22 @@ import { ReplitConnectors } from "@replit/connectors-sdk";
 
 const FROM = "Sion Legacy Originals <orders@sionlegacyoriginals.com>";
 
-async function sendEmail(to: string, subject: string, html: string): Promise<void> {
+interface EmailAttachment {
+  filename: string;
+  content: string; // base64-encoded
+}
+
+async function sendEmail(
+  to: string,
+  subject: string,
+  html: string,
+  attachments?: EmailAttachment[],
+): Promise<void> {
   // Prefer a directly-set RESEND_API_KEY; fall back to the Replit connector
   const directKey = process.env.RESEND_API_KEY;
+
+  const payload: Record<string, unknown> = { from: FROM, to, subject, html };
+  if (attachments?.length) payload.attachments = attachments;
 
   let response: Response;
   if (directKey) {
@@ -19,7 +32,7 @@ async function sendEmail(to: string, subject: string, html: string): Promise<voi
         "Authorization": `Bearer ${directKey}`,
         "Content-Type": "application/json",
       },
-      body: JSON.stringify({ from: FROM, to, subject, html }),
+      body: JSON.stringify(payload),
     });
   } else {
     try {
@@ -27,7 +40,7 @@ async function sendEmail(to: string, subject: string, html: string): Promise<voi
       response = await connectors.proxy("resend", "/emails", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ from: FROM, to, subject, html }),
+        body: JSON.stringify(payload),
       });
     } catch (err: any) {
       console.warn(`Email skipped (no Resend key configured): ${err.message}`);
@@ -87,6 +100,118 @@ export async function sendOwnerAlert(params: {
 </html>`;
 
   await sendEmail(ownerEmail, `[Sion Legacy] ${params.subject}`, html);
+}
+
+export async function sendOwnerPrintPackage(params: {
+  orderId: number;
+  customerName: string;
+  customerEmail: string;
+  storyTitle: string;
+  amountCents: number;
+  shippingAddress: {
+    name: string;
+    street1: string;
+    street2?: string;
+    city: string;
+    state_code: string;
+    postcode: string;
+    country_code: string;
+    phone_number?: string;
+  };
+  interiorPdfBuffer: Buffer;
+  coverPdfBuffer: Buffer;
+}): Promise<void> {
+  const ownerEmail = process.env.OWNER_EMAIL;
+  if (!ownerEmail?.includes("@")) {
+    console.warn("OWNER_EMAIL not set or invalid — skipping owner print package");
+    return;
+  }
+
+  const { orderId, customerName, customerEmail, storyTitle, amountCents, shippingAddress } = params;
+  const addr = shippingAddress;
+  const addressLines = [
+    addr.name,
+    addr.street1,
+    addr.street2,
+    `${addr.city}, ${addr.state_code} ${addr.postcode}`,
+    addr.country_code === "US" ? "United States" : addr.country_code,
+    addr.phone_number ? `📞 ${addr.phone_number}` : null,
+  ].filter(Boolean).join("<br>");
+
+  const html = `
+<!DOCTYPE html>
+<html>
+<head><meta charset="utf-8"></head>
+<body style="margin:0;padding:0;background:#fdf9f6;font-family:'Georgia',serif;">
+  <table width="100%" cellpadding="0" cellspacing="0" style="background:#fdf9f6;padding:40px 0;">
+    <tr><td align="center">
+      <table width="560" cellpadding="0" cellspacing="0" style="background:#ffffff;border-radius:16px;overflow:hidden;box-shadow:0 2px 12px rgba(0,0,0,0.08);">
+        <tr><td style="background:#7c3aed;padding:28px 40px;text-align:center;">
+          <p style="margin:0;color:#e9d5ff;font-size:12px;letter-spacing:1px;text-transform:uppercase;">Sion Legacy Originals — New Order</p>
+          <h1 style="margin:8px 0 0;color:#ffffff;font-size:24px;font-weight:normal;">📦 Order #${orderId} — Action Needed</h1>
+        </td></tr>
+        <tr><td style="padding:32px 40px;">
+          <p style="margin:0 0 20px;color:#374151;font-size:15px;line-height:1.6;">
+            A customer just paid <strong>$${(amountCents / 100).toFixed(2)}</strong> for a printed storybook.
+            The interior and cover PDFs are attached to this email. Here's what to do:
+          </p>
+
+          <!-- Steps -->
+          <table width="100%" cellpadding="0" cellspacing="0" style="background:#f5f3ff;border-radius:12px;margin-bottom:28px;">
+            <tr><td style="padding:24px 28px;">
+              <p style="margin:0 0 12px;color:#7c3aed;font-size:12px;font-weight:bold;letter-spacing:1px;text-transform:uppercase;">Steps to print</p>
+              <ol style="margin:0;padding-left:20px;color:#374151;font-size:14px;line-height:1.9;">
+                <li>Go to <a href="https://www.lulu.com" style="color:#7c3aed;">lulu.com</a> and log in</li>
+                <li>Create a new 6″×9″ full-colour softcover print job</li>
+                <li>Upload <strong>interior.pdf</strong> as the interior file</li>
+                <li>Upload <strong>cover.pdf</strong> as the cover file</li>
+                <li>Ship to the address below</li>
+                <li>Use order reference: <strong>Order #${orderId}</strong></li>
+              </ol>
+            </td></tr>
+          </table>
+
+          <!-- Order details -->
+          <table width="100%" cellpadding="0" cellspacing="0" style="border:1px solid #e5e7eb;border-radius:12px;margin-bottom:24px;">
+            <tr><td style="padding:20px 24px;">
+              <p style="margin:0 0 12px;color:#6b7280;font-size:12px;font-weight:bold;letter-spacing:1px;text-transform:uppercase;">Order Details</p>
+              <table width="100%" cellpadding="0" cellspacing="4">
+                <tr>
+                  <td style="color:#6b7280;font-size:14px;width:35%;padding-bottom:8px;">Story</td>
+                  <td style="color:#111827;font-size:14px;font-weight:bold;padding-bottom:8px;">${storyTitle}</td>
+                </tr>
+                <tr>
+                  <td style="color:#6b7280;font-size:14px;padding-bottom:8px;">Customer</td>
+                  <td style="color:#111827;font-size:14px;padding-bottom:8px;">${customerName} (${customerEmail})</td>
+                </tr>
+                <tr>
+                  <td style="color:#6b7280;font-size:14px;vertical-align:top;padding-bottom:8px;">Ship to</td>
+                  <td style="color:#111827;font-size:14px;line-height:1.6;padding-bottom:8px;">${addressLines}</td>
+                </tr>
+                <tr>
+                  <td style="color:#6b7280;font-size:14px;">Amount paid</td>
+                  <td style="color:#059669;font-size:14px;font-weight:bold;">$${(amountCents / 100).toFixed(2)}</td>
+                </tr>
+              </table>
+            </td></tr>
+          </table>
+
+          <p style="margin:0;color:#9ca3af;font-size:12px;">
+            Both PDFs are attached. Lulu spec: 6×9 in, full colour, perfect-bound softcover, 60# white paper (pod_package_id: 0600X0900FCSTDPB060UW444MXX).
+          </p>
+        </td></tr>
+      </table>
+    </td></tr>
+  </table>
+</body>
+</html>`;
+
+  const attachments: EmailAttachment[] = [
+    { filename: `order-${orderId}-interior.pdf`, content: params.interiorPdfBuffer.toString("base64") },
+    { filename: `order-${orderId}-cover.pdf`,    content: params.coverPdfBuffer.toString("base64") },
+  ];
+
+  await sendEmail(ownerEmail, `[Order #${orderId}] New print order — "${storyTitle}" → ${addr.name}`, html, attachments);
 }
 
 export async function sendPrintOrderConfirmation(params: {

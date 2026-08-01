@@ -345,6 +345,64 @@ router.get("/checkout/orders", requireAuth, async (req: any, res) => {
   }
 });
 
+// ── GET /api/admin/send-print-package — emails owner the PDFs for any paid order ──
+router.get("/admin/send-print-package", async (req: any, res) => {
+  const secret = req.query.secret as string;
+  const masterCode = process.env.MASTER_TEST_CODE;
+  if (!masterCode || secret !== masterCode) return res.status(403).json({ error: "Forbidden" });
+
+  const orderId = parseInt(req.query.orderId as string, 10);
+  if (isNaN(orderId)) return res.status(400).json({ error: "orderId required" });
+
+  try {
+    const result = await db.execute(sql`
+      SELECT po.*, s.title, s.content, s.cover_image_url, s.child_name, s.child_age
+      FROM print_orders po
+      JOIN stories s ON s.id = po.story_id
+      WHERE po.id = ${orderId}
+    `);
+    const order = result.rows[0];
+    if (!order) return res.status(404).json({ error: "Order not found" });
+
+    const domain = process.env.REPLIT_DOMAINS?.split(",")[0];
+    const rawCoverPath = order.cover_image_url as string | null;
+    const coverImageUrl = rawCoverPath
+      ? rawCoverPath.startsWith("/ref-photos/")
+        ? `https://${domain}/api${rawCoverPath}`
+        : `https://${domain}/api/storage${rawCoverPath}`
+      : null;
+
+    const { generateStoryPdfs } = await import("../lib/pdfService");
+    const { interiorPdfBuffer, coverPdfBuffer } = await generateStoryPdfs({
+      title: order.title as string,
+      content: order.content as string,
+      childName: order.child_name as string,
+      childAge: order.child_age as number,
+      coverImageUrl,
+    });
+
+    const addr = typeof order.shipping_address === "string"
+      ? JSON.parse(order.shipping_address as string)
+      : order.shipping_address;
+
+    const { sendOwnerPrintPackage } = await import("../lib/mailerService");
+    await sendOwnerPrintPackage({
+      orderId,
+      customerName: order.customer_name as string,
+      customerEmail: order.customer_email as string,
+      storyTitle: order.title as string,
+      amountCents: order.amount_cents as number,
+      shippingAddress: addr,
+      interiorPdfBuffer,
+      coverPdfBuffer,
+    });
+
+    res.json({ ok: true, message: `Print package emailed to owner for order ${orderId}` });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // ── GET /api/admin/cancel-order — admin-only, MASTER_TEST_CODE auth ──────────
 router.get("/admin/cancel-order", async (req: any, res) => {
   const secret = req.query.secret as string;

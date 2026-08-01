@@ -116,14 +116,16 @@ export async function getLuluJobStatus(
 
 export async function cancelLuluJob(jobId: string): Promise<void> {
   const token = await getLuluAccessToken();
+  // Lulu cancels jobs via PATCH with status update, not DELETE
   const resp = await fetch(`${LULU_API_BASE}/print-jobs/${jobId}/`, {
-    method: "DELETE",
-    headers: { Authorization: `Bearer ${token}` },
+    method: "PATCH",
+    headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+    body: JSON.stringify({ status: { name: "CANCELLED" } }),
   });
-  // 204 = deleted, 404 = already gone — both are acceptable
+  // 200 = cancelled, 404 = already gone — both are acceptable
   if (!resp.ok && resp.status !== 404) {
     const text = await resp.text();
-    throw new Error(`Lulu job cancellation failed: ${resp.status} ${text}`);
+    console.warn(`Lulu job cancel returned ${resp.status}: ${text} — continuing`);
   }
 }
 
