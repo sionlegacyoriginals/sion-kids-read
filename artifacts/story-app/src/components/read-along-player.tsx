@@ -517,94 +517,90 @@ export function ReadAlongBar({
           </div>
         )}
 
-        {/* ── Main player card ── */}
-        <div className="bg-primary rounded-2xl shadow-2xl shadow-primary/30 p-4 flex flex-col gap-3">
+        {/* ── Main player card — single slim row ── */}
+        <div className="bg-primary rounded-2xl shadow-2xl shadow-primary/30 px-3 py-2 flex flex-col gap-0">
 
-          {/* Drag grip — centered at the top */}
-          <div className="flex justify-center -mt-1 -mb-1">
+          {/* Single row: grip · play · label · settings · stop · close */}
+          <div className="flex items-center gap-2">
+
+            {/* Drag grip */}
             <span
-              className="cursor-grab active:cursor-grabbing touch-none px-3 py-0.5 text-white/30 hover:text-white/60 transition-colors"
+              className="cursor-grab active:cursor-grabbing touch-none text-white/30 hover:text-white/60 transition-colors shrink-0 flex items-center"
               onPointerDown={onGripPointerDown}
               onPointerMove={onGripPointerMove}
               onPointerUp={onGripPointerUp}
               onPointerCancel={onGripPointerUp}
             >
-              <GripHorizontal className="w-5 h-5" />
+              <GripHorizontal className="w-4 h-4" />
             </span>
-          </div>
 
-          {/* Row 1 — playback */}
-          <div className="flex items-center gap-3">
+            {/* Play / Pause */}
             <button
               onClick={togglePlay}
-              className="w-14 h-14 rounded-2xl bg-white/20 hover:bg-white/30 flex items-center justify-center transition-all shrink-0"
+              className="w-9 h-9 rounded-xl bg-white/20 hover:bg-white/30 flex items-center justify-center transition-all shrink-0"
               aria-label={isPlaying ? "Pause" : "Play"}
             >
               {isPlaying
-                ? <Pause className="w-7 h-7 text-white fill-white" />
-                : <Play  className="w-7 h-7 text-white fill-white" />}
+                ? <Pause className="w-4 h-4 text-white fill-white" />
+                : <Play  className="w-4 h-4 text-white fill-white" />}
             </button>
 
-            <div className="flex-1 min-w-0">
-              <p className="text-white font-bold text-base leading-tight truncate">
-                {isPlaying ? `Reading for ${childName}…` : "Read Along"}
-              </p>
-              <p className="text-white/70 text-sm leading-tight mt-0.5">
-                {isPlaying ? "Each sentence lights up as it's read" : "Tap ▶ to begin"}
-              </p>
-            </div>
+            {/* Status label */}
+            <p className="flex-1 min-w-0 text-white font-semibold text-sm leading-none truncate">
+              {isPlaying ? `Reading for ${childName}…` : "Read Along · tap ▶"}
+            </p>
 
+            {/* Settings toggle */}
             <button
               onClick={() => { setShowControls(v => !v); if (showControls) setShowVoices(false); }}
-              className={`w-10 h-10 rounded-xl flex items-center justify-center transition-all shrink-0 ${showControls ? "bg-white/30" : "bg-white/10 hover:bg-white/20"}`}
+              className={`w-8 h-8 rounded-lg flex items-center justify-center transition-all shrink-0 ${showControls ? "bg-white/30" : "bg-white/10 hover:bg-white/20"}`}
               aria-label="Voice &amp; speed settings"
             >
-              <Settings2 className="w-4 h-4 text-white" />
+              <Settings2 className="w-3.5 h-3.5 text-white" />
             </button>
-            <button onClick={stop} className="w-10 h-10 rounded-xl bg-white/10 hover:bg-white/20 flex items-center justify-center transition-all shrink-0" aria-label="Stop">
-              <Square className="w-5 h-5 text-white fill-white" />
+
+            {/* Stop */}
+            <button onClick={stop} className="w-8 h-8 rounded-lg bg-white/10 hover:bg-white/20 flex items-center justify-center transition-all shrink-0" aria-label="Stop">
+              <Square className="w-3.5 h-3.5 text-white fill-white" />
             </button>
-            <button onClick={close} className="w-10 h-10 rounded-xl bg-white/10 hover:bg-white/20 flex items-center justify-center transition-all shrink-0" aria-label="Close player">
-              <ChevronDown className="w-5 h-5 text-white" />
+
+            {/* Close */}
+            <button onClick={close} className="w-8 h-8 rounded-lg bg-white/10 hover:bg-white/20 flex items-center justify-center transition-all shrink-0" aria-label="Close player">
+              <ChevronDown className="w-3.5 h-3.5 text-white" />
             </button>
           </div>
 
-          {/* Row 2 — voice + speed (collapsible) */}
+          {/* Collapsible voice + speed row */}
           {showControls && (
-          <div className="flex items-center gap-2 pt-1 border-t border-white/20">
-            {/* Voice selector */}
-            <button
-              onClick={() => setShowVoices((v) => !v)}
-              className="flex-1 flex items-center gap-2 bg-white/10 hover:bg-white/20 rounded-xl px-3 py-2 transition-all text-left min-w-0"
-            >
-              <span className="text-xl leading-none shrink-0">
-                {pitch === "deeper" ? "👨" : pitch === "higher" ? "🧒" : (selectedVoice ? genderIcon(selectedVoice) : "🎙️")}
-              </span>
-              <div className="flex-1 min-w-0">
-                <p className="text-white/60 text-[10px] font-bold uppercase tracking-wide leading-none mb-0.5">Voice</p>
-                <p className="text-white font-semibold text-sm truncate leading-tight">
+            <div className="flex items-center gap-2 pt-2 mt-1 border-t border-white/20">
+              <button
+                onClick={() => setShowVoices((v) => !v)}
+                className="flex-1 flex items-center gap-1.5 bg-white/10 hover:bg-white/20 rounded-xl px-2.5 py-1.5 transition-all text-left min-w-0"
+              >
+                <span className="text-base leading-none shrink-0">
+                  {pitch === "deeper" ? "👨" : pitch === "higher" ? "🧒" : (selectedVoice ? genderIcon(selectedVoice) : "🎙️")}
+                </span>
+                <p className="text-white font-semibold text-xs truncate leading-tight flex-1 min-w-0">
                   {selectedVoice ? shortName(selectedVoice) : "Choose a voice"}
                   {pitch !== "normal" ? (pitch === "deeper" ? " · Deeper" : " · Higher") : ""}
                 </p>
-              </div>
-              {showVoices ? <ChevronUp className="w-4 h-4 text-white/60 shrink-0" /> : <ChevronDown className="w-4 h-4 text-white/60 shrink-0" />}
-            </button>
+                {showVoices ? <ChevronUp className="w-3.5 h-3.5 text-white/60 shrink-0" /> : <ChevronDown className="w-3.5 h-3.5 text-white/60 shrink-0" />}
+              </button>
 
-            {/* Speed */}
-            <div className="flex items-center gap-0.5 shrink-0 bg-white/10 rounded-xl px-2 py-2">
-              {SPEEDS.map((s) => (
-                <button
-                  key={s}
-                  onClick={() => changeSpeed(s)}
-                  className={`text-xs font-bold px-2 py-1 rounded-lg transition-all ${
-                    speed === s ? "bg-white text-primary" : "text-white/70 hover:text-white"
-                  }`}
-                >
-                  {s}×
-                </button>
-              ))}
+              <div className="flex items-center gap-0.5 shrink-0 bg-white/10 rounded-xl px-1.5 py-1.5">
+                {SPEEDS.map((s) => (
+                  <button
+                    key={s}
+                    onClick={() => changeSpeed(s)}
+                    className={`text-xs font-bold px-1.5 py-0.5 rounded-lg transition-all ${
+                      speed === s ? "bg-white text-primary" : "text-white/70 hover:text-white"
+                    }`}
+                  >
+                    {s}×
+                  </button>
+                ))}
+              </div>
             </div>
-          </div>
           )}
         </div>
       </div>
