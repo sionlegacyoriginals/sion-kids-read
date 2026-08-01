@@ -107,6 +107,23 @@ async function runAppMigrations() {
   await db.execute(sql`
     ALTER TABLE users ADD COLUMN IF NOT EXISTS school_mode_pin TEXT
   `);
+
+  // ── Classroom roster feature ────────────────────────────────────────────────
+  await db.execute(sql`
+    CREATE TABLE IF NOT EXISTS classes (
+      id          SERIAL      PRIMARY KEY,
+      teacher_id  TEXT        NOT NULL,
+      class_name  TEXT        NOT NULL,
+      class_code  TEXT        NOT NULL UNIQUE,
+      created_at  TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    )
+  `);
+  // Student fields on the shared users table
+  await db.execute(sql`ALTER TABLE users ADD COLUMN IF NOT EXISTS is_student BOOLEAN NOT NULL DEFAULT FALSE`);
+  await db.execute(sql`ALTER TABLE users ADD COLUMN IF NOT EXISTS class_id INTEGER`);
+  await db.execute(sql`ALTER TABLE users ADD COLUMN IF NOT EXISTS first_name TEXT`);
+  await db.execute(sql`ALTER TABLE users ADD COLUMN IF NOT EXISTS avatar TEXT`);
+  await db.execute(sql`ALTER TABLE users ADD COLUMN IF NOT EXISTS pin TEXT`);
 }
 
 // ── Stripe init ──────────────────────────────────────────────────────────────

@@ -2,6 +2,7 @@ import { getAuth } from "@clerk/express";
 import { db } from "@workspace/db";
 import { sql } from "drizzle-orm";
 import type { Request, Response, NextFunction } from "express";
+import jwt from "jsonwebtoken";
 
 /**
  * Express middleware: requires a valid Clerk session.
@@ -28,6 +29,40 @@ export async function ensureUser(userId: string, email?: string | null): Promise
     VALUES (${userId}, ${email ?? null}, NOW(), NOW())
     ON CONFLICT (id) DO NOTHING
   `);
+}
+
+// ── Student JWT auth ──────────────────────────────────────────────────────────
+
+export interface StudentTokenPayload {
+  type: "student";
+  studentId: string;
+  classId: number;
+  teacherId: string;
+  firstName: string;
+  avatar: string;
+}
+
+export function signStudentToken(payload: Omit<StudentTokenPayload, "type">): string {
+  return jwt.sign(
+    { ...payload, type: "student" },
+    process.env.SESSION_SECRET!,
+    { expiresIn: "7d" },
+  );
+}
+
+export function requireStudentAuth(req: Request, res: Response, next: NextFunction): void {
+  const token = req.headers.authorization?.replace("Bearer ", "").trim();
+  if (!token) { res.status(401).json({ error: "Unauthorized" }); return; }
+  try {
+    const payload = jwt.verify(token, process.env.SESSION_SECRET!) as StudentTokenPayload;
+    if (payload.type !== "student") { res.status(401).json({ error: "Unauthorized" }); return; }
+    (req as any).studentPayload = payload;
+    (req as any).userId = payload.studentId;
+    (req as any).isStudent = true;
+    next();
+  } catch {
+    res.status(401).json({ error: "Invalid or expired token" });
+  }
 }
 
 /**

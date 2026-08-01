@@ -21,6 +21,9 @@ import GiftCardSuccess from "@/pages/gift-card-success";
 import GiftCardRedeem from "@/pages/gift-card-redeem";
 import GiftCards from "@/pages/gift-cards";
 import NotFound from "@/pages/not-found";
+import StudentLogin from "@/pages/student-login";
+import ClassroomHome from "@/pages/classroom-home";
+import { StudentAuthProvider } from "@/lib/studentAuth";
 
 // ── Clerk config ──────────────────────────────────────────────────────────────
 // REQUIRED — copy verbatim. Resolves key from hostname for custom-domain support.
@@ -96,12 +99,18 @@ const clerkAppearance = {
 // ── Pages ─────────────────────────────────────────────────────────────────────
 function SignInPage() {
   return (
-    <div className="flex min-h-[100dvh] items-center justify-center bg-background px-4">
+    <div className="flex min-h-[100dvh] flex-col items-center justify-center bg-background px-4 gap-6">
       <SignIn
         routing="path"
         path={`${basePath}/sign-in`}
         signUpUrl={`${basePath}/sign-up`}
       />
+      <a
+        href={`${basePath}/student-login`}
+        className="flex items-center gap-2 px-6 py-3 rounded-full bg-muted hover:bg-muted/80 text-foreground font-semibold text-sm transition-colors"
+      >
+        🏫 Student? Log in with your class code
+      </a>
     </div>
   );
 }
@@ -211,6 +220,8 @@ function ClerkProviderWithRoutes() {
             <Route path="/stories/:id" component={() => <ProtectedRoute component={StoryViewer} />} />
             <Route path="/subscribe" component={() => <ProtectedRoute component={Subscribe} />} />
             <Route path="/account" component={() => <ProtectedRoute component={Account} />} />
+            <Route path="/student-login" component={StudentLogin} />
+            <Route path="/classroom" component={ClassroomHome} />
             <Route
               path="/checkout/success"
               component={() => (
@@ -255,7 +266,9 @@ function App() {
 
   return (
     <WouterRouter base={basePath}>
-      <ClerkProviderWithRoutes />
+      <StudentAuthProvider>
+        <ClerkProviderWithRoutes />
+      </StudentAuthProvider>
     </WouterRouter>
   );
 }

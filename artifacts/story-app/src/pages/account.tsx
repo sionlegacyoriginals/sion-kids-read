@@ -6,6 +6,7 @@ import {
   User, CreditCard, Printer, CheckCircle2, XCircle,
   Loader2, LogOut, Package, Send, GraduationCap, Lock, Unlock
 } from "lucide-react";
+import { ClassroomSection } from "@/components/classroom-section";
 
 async function fetchUserMe() {
   const resp = await fetch("/api/users/me", { credentials: "include" });
@@ -292,6 +293,9 @@ export default function Account() {
           </div>
         )}
       </div>
+
+      {/* Classroom roster */}
+      <ClassroomSection />
 
       {/* Print orders */}
       <div className="bg-card border border-border/60 rounded-2xl p-6">
