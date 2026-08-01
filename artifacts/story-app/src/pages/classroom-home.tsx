@@ -1,6 +1,6 @@
 import { useLocation } from "wouter";
 import { useEffect, useState } from "react";
-import { Loader2, BookOpen } from "lucide-react";
+import { Loader2, BookOpen, Star, Calendar } from "lucide-react";
 import { useStudentAuth } from "@/lib/studentAuth";
 
 const basePath = import.meta.env.BASE_URL.replace(/\/$/, "");
@@ -61,6 +61,7 @@ export default function ClassroomHome() {
   const [stories, setStories] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedStory, setSelectedStory] = useState<number | null>(null);
+  const [announcement, setAnnouncement] = useState<any>(null);
 
   // Redirect if not logged in as student
   useEffect(() => {
@@ -74,6 +75,10 @@ export default function ClassroomHome() {
       .then(d => setStories(d.stories ?? []))
       .catch(() => {})
       .finally(() => setLoading(false));
+    studentFetch(`${basePath}/api/classroom/announcement`)
+      .then(r => r.json())
+      .then(d => setAnnouncement(d))
+      .catch(() => {});
   }, [student]);
 
   if (!student) return null;
@@ -108,11 +113,60 @@ export default function ClassroomHome() {
       </header>
 
       <main className="container mx-auto px-4 py-10 max-w-3xl">
-        <div className="mb-8">
+        <div className="mb-6">
           <h1 className="text-2xl font-serif font-bold text-foreground">
             Welcome, {student.firstName}! 👋
           </h1>
-          <p className="text-muted-foreground mt-1">Here are your class stories. Tap one to read!</p>
+        </div>
+
+        {/* Weekly announcement card */}
+        {announcement && (announcement.message || announcement.valueOfWeek || announcement.sightWords) && (
+          <div className="mb-8 bg-primary/5 border-2 border-primary/20 rounded-2xl p-5 space-y-4">
+            <div className="flex items-center gap-2">
+              <span className="text-xl">📣</span>
+              <h2 className="font-serif font-bold text-lg text-foreground">This Week</h2>
+              {announcement.dueDate && (
+                <span className="ml-auto flex items-center gap-1 text-xs font-semibold text-primary bg-primary/10 px-3 py-1 rounded-full">
+                  <Calendar className="w-3 h-3" />
+                  Due {new Date(announcement.dueDate).toLocaleDateString("en-US", { weekday: "long", month: "short", day: "numeric" })}
+                </span>
+              )}
+            </div>
+
+            {announcement.message && (
+              <p className="text-foreground leading-relaxed text-sm">{announcement.message}</p>
+            )}
+
+            <div className="flex flex-wrap gap-3">
+              {announcement.valueOfWeek && (
+                <div className="flex items-center gap-2 bg-yellow-50 border border-yellow-200 rounded-xl px-4 py-2.5">
+                  <span className="text-xl">💛</span>
+                  <div>
+                    <p className="text-xs font-bold text-yellow-700 uppercase tracking-wide">Value of the Week</p>
+                    <p className="font-bold text-foreground">{announcement.valueOfWeek}</p>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {announcement.sightWords && (
+              <div>
+                <p className="text-xs font-bold text-muted-foreground uppercase tracking-wide mb-2">🔤 Sight Words</p>
+                <div className="flex flex-wrap gap-2">
+                  {announcement.sightWords.split(",").map((w: string) => w.trim()).filter(Boolean).map((word: string) => (
+                    <span key={word} className="px-3 py-1.5 bg-primary text-white text-sm font-bold rounded-lg">
+                      {word}
+                    </span>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+
+        <div className="mb-6">
+          <h2 className="font-serif font-bold text-lg text-foreground">Class Stories</h2>
+          <p className="text-muted-foreground text-sm mt-0.5">Tap a story to read!</p>
         </div>
 
         {loading ? (

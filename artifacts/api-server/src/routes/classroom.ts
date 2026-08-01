@@ -167,6 +167,51 @@ router.post("/classroom/classes", requireAuth, async (req: any, res) => {
   }
 });
 
+// ── Teacher: Save weekly announcement ────────────────────────────────────────
+router.put("/classroom/classes/:classId/announcement", requireAuth, async (req: any, res) => {
+  try {
+    const { classId } = req.params;
+    const { message, valueOfWeek, sightWords, dueDate } = req.body;
+
+    // Verify teacher owns this class
+    const check = await db.execute(sql`SELECT id FROM classes WHERE id = ${Number(classId)} AND teacher_id = ${req.userId}`);
+    if (!check.rows.length) return res.status(403).json({ error: "Not your class." });
+
+    await db.execute(sql`
+      UPDATE classes SET
+        announcement_message     = ${message ?? null},
+        value_of_week            = ${valueOfWeek ?? null},
+        sight_words              = ${sightWords ?? null},
+        assignment_due_date      = ${dueDate ?? null},
+        announcement_updated_at  = NOW()
+      WHERE id = ${Number(classId)}
+    `);
+    res.json({ ok: true });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ── Student: Get class announcement ──────────────────────────────────────────
+router.get("/classroom/announcement", requireStudentAuth, async (req: any, res) => {
+  try {
+    const result = await db.execute(sql`
+      SELECT announcement_message, value_of_week, sight_words, assignment_due_date, announcement_updated_at
+      FROM classes WHERE id = ${(req as any).studentPayload.classId}
+    `);
+    const row = result.rows[0] ?? {};
+    res.json({
+      message: row.announcement_message ?? null,
+      valueOfWeek: row.value_of_week ?? null,
+      sightWords: row.sight_words ?? null,
+      dueDate: row.assignment_due_date ?? null,
+      updatedAt: row.announcement_updated_at ?? null,
+    });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // ── Teacher: List classes ─────────────────────────────────────────────────────
 router.get("/classroom/classes", requireAuth, async (req: any, res) => {
   try {
@@ -194,7 +239,7 @@ router.get("/classroom/classes/:classId", requireAuth, async (req: any, res) => 
     if (!cls.rows.length) return res.status(404).json({ error: "Class not found" });
 
     const students = await db.execute(sql`
-      SELECT id, first_name, avatar, pin, created_at
+      SELECT id, first_name, avatar, pin, points, created_at
       FROM users
       WHERE class_id = ${classId} AND is_student = TRUE
       ORDER BY first_name ASC

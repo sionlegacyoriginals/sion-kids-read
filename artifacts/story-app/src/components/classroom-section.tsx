@@ -6,7 +6,7 @@ import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import {
   GraduationCap, Plus, Trash2, RefreshCw, ChevronDown, ChevronUp,
-  Loader2, Eye, EyeOff, Copy, Check, Lock,
+  Loader2, Eye, EyeOff, Copy, Check, Lock, Megaphone, Save, X,
 } from "lucide-react";
 
 // ── API helpers ───────────────────────────────────────────────────────────────
@@ -27,6 +27,10 @@ function ClassPanel({ cls }: { cls: any }) {
   const [copied, setCopied] = useState(false);
   const [resetPins, setResetPins] = useState<Record<string, string>>({});
 
+  const [showAnnouncement, setShowAnnouncement] = useState(false);
+  const [ann, setAnn] = useState({ message: "", valueOfWeek: "", sightWords: "", dueDate: "" });
+  const [annSaved, setAnnSaved] = useState(false);
+
   const { data, isLoading, refetch } = useQuery({
     queryKey: ["classroom-class", cls.id],
     queryFn: () => apiFetch(`/api/classroom/classes/${cls.id}`),
@@ -34,6 +38,31 @@ function ClassPanel({ cls }: { cls: any }) {
   });
 
   const students: any[] = data?.students ?? [];
+
+  // Pre-fill announcement form from fetched class data
+  const clsData = data?.class;
+  useState(() => {
+    if (clsData) setAnn({
+      message:     clsData.announcement_message  ?? "",
+      valueOfWeek: clsData.value_of_week         ?? "",
+      sightWords:  clsData.sight_words           ?? "",
+      dueDate:     clsData.assignment_due_date   ? clsData.assignment_due_date.split("T")[0] : "",
+    });
+  });
+
+  const saveAnnouncement = useMutation({
+    mutationFn: () => apiFetch(`/api/classroom/classes/${cls.id}/announcement`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        message:     ann.message     || null,
+        valueOfWeek: ann.valueOfWeek || null,
+        sightWords:  ann.sightWords  || null,
+        dueDate:     ann.dueDate     || null,
+      }),
+    }),
+    onSuccess: () => { setAnnSaved(true); setTimeout(() => setAnnSaved(false), 2000); refetch(); },
+  });
 
   const addStudent = useMutation({
     mutationFn: (firstName: string) =>
@@ -92,6 +121,82 @@ function ClassPanel({ cls }: { cls: any }) {
 
       {open && (
         <div className="px-5 py-4 space-y-4 bg-card">
+
+          {/* Weekly Announcement */}
+          <div className="border border-primary/20 rounded-xl overflow-hidden">
+            <button
+              onClick={() => setShowAnnouncement(v => !v)}
+              className="w-full flex items-center gap-2 px-4 py-3 bg-primary/5 hover:bg-primary/10 transition-colors text-left"
+            >
+              <Megaphone className="w-4 h-4 text-primary shrink-0" />
+              <span className="font-bold text-sm text-foreground flex-1">Weekly Message to Students</span>
+              {showAnnouncement ? <ChevronUp className="w-4 h-4 text-muted-foreground" /> : <ChevronDown className="w-4 h-4 text-muted-foreground" />}
+            </button>
+
+            {showAnnouncement && (
+              <div className="px-4 py-4 space-y-3 bg-card">
+                <div>
+                  <label className="text-xs font-bold text-muted-foreground uppercase tracking-wide block mb-1">Message / Instructions</label>
+                  <textarea
+                    rows={3}
+                    placeholder="e.g. This week we're learning about kindness. Write a story using all the sight words below. Stories are due Thursday!"
+                    value={ann.message}
+                    onChange={e => setAnn(a => ({ ...a, message: e.target.value }))}
+                    className="w-full px-3 py-2.5 rounded-xl border border-border bg-background text-foreground text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 resize-none"
+                  />
+                </div>
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="text-xs font-bold text-muted-foreground uppercase tracking-wide block mb-1">💛 Value of the Week</label>
+                    <input
+                      type="text"
+                      placeholder="e.g. Kindness"
+                      value={ann.valueOfWeek}
+                      onChange={e => setAnn(a => ({ ...a, valueOfWeek: e.target.value }))}
+                      className="w-full px-3 py-2.5 rounded-xl border border-border bg-background text-foreground text-sm focus:outline-none focus:ring-2 focus:ring-primary/30"
+                    />
+                  </div>
+                  <div>
+                    <label className="text-xs font-bold text-muted-foreground uppercase tracking-wide block mb-1">📅 Due Date</label>
+                    <input
+                      type="date"
+                      value={ann.dueDate}
+                      onChange={e => setAnn(a => ({ ...a, dueDate: e.target.value }))}
+                      className="w-full px-3 py-2.5 rounded-xl border border-border bg-background text-foreground text-sm focus:outline-none focus:ring-2 focus:ring-primary/30"
+                    />
+                  </div>
+                </div>
+                <div>
+                  <label className="text-xs font-bold text-muted-foreground uppercase tracking-wide block mb-1">🔤 Sight Words (comma-separated)</label>
+                  <input
+                    type="text"
+                    placeholder="e.g. said, were, they, from, have, one"
+                    value={ann.sightWords}
+                    onChange={e => setAnn(a => ({ ...a, sightWords: e.target.value }))}
+                    className="w-full px-3 py-2.5 rounded-xl border border-border bg-background text-foreground text-sm focus:outline-none focus:ring-2 focus:ring-primary/30"
+                  />
+                </div>
+                <div className="flex items-center gap-2 pt-1">
+                  <button
+                    onClick={() => saveAnnouncement.mutate()}
+                    disabled={saveAnnouncement.isPending}
+                    className="flex items-center gap-1.5 px-4 py-2 bg-primary text-white text-sm font-bold rounded-xl hover:bg-primary/90 transition-all disabled:opacity-50"
+                  >
+                    {saveAnnouncement.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
+                    {annSaved ? "Saved!" : "Save & Post"}
+                  </button>
+                  <button
+                    onClick={() => setAnn({ message: "", valueOfWeek: "", sightWords: "", dueDate: "" })}
+                    className="flex items-center gap-1.5 px-3 py-2 border border-border text-muted-foreground text-sm rounded-xl hover:bg-muted/50 transition-all"
+                  >
+                    <X className="w-4 h-4" /> Clear
+                  </button>
+                  <span className="text-xs text-muted-foreground ml-auto">Students see this when they log in</span>
+                </div>
+              </div>
+            )}
+          </div>
+
           {/* Add student */}
           <div className="flex gap-2">
             <input
@@ -132,6 +237,9 @@ function ClassPanel({ cls }: { cls: any }) {
                   >
                     <span className="text-2xl leading-none shrink-0">{s.avatar}</span>
                     <span className="font-semibold text-foreground text-sm flex-1">{s.first_name}</span>
+                    <span className="flex items-center gap-1 px-2.5 py-1 bg-yellow-50 border border-yellow-200 rounded-full text-xs font-bold text-yellow-700 shrink-0">
+                      ⭐ {s.points ?? 0}
+                    </span>
 
                     {/* PIN display */}
                     <div className="flex items-center gap-1 shrink-0">
