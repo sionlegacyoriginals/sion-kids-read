@@ -292,7 +292,7 @@ export async function sendPrintOrderConfirmation(params: {
           </table>
 
           <p style="margin:0 0 8px;color:#374151;font-size:15px;line-height:1.6;">
-            Once your book ships, Lulu Direct will send you a separate email with tracking information.
+            Once your book is on its way, we'll be in touch with shipping details.
           </p>
           <p style="margin:0 0 28px;color:#374151;font-size:15px;line-height:1.6;">
             Thank you for preserving this story. 💜
