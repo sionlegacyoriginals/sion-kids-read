@@ -159,15 +159,21 @@ export async function sendOwnerPrintPackage(params: {
           <!-- Steps -->
           <table width="100%" cellpadding="0" cellspacing="0" style="background:#f5f3ff;border-radius:12px;margin-bottom:28px;">
             <tr><td style="padding:24px 28px;">
-              <p style="margin:0 0 12px;color:#7c3aed;font-size:12px;font-weight:bold;letter-spacing:1px;text-transform:uppercase;">Steps to print</p>
-              <ol style="margin:0;padding-left:20px;color:#374151;font-size:14px;line-height:1.9;">
-                <li>Go to <a href="https://www.lulu.com" style="color:#7c3aed;">lulu.com</a> and log in</li>
-                <li>Create a new 6″×9″ full-colour softcover print job</li>
-                <li>Upload <strong>interior.pdf</strong> as the interior file</li>
-                <li>Upload <strong>cover.pdf</strong> as the cover file</li>
-                <li>Ship to the address below</li>
-                <li>Use order reference: <strong>Order #${orderId}</strong></li>
+              <p style="margin:0 0 12px;color:#7c3aed;font-size:12px;font-weight:bold;letter-spacing:1px;text-transform:uppercase;">How to print &amp; ship online</p>
+              <ol style="margin:0;padding-left:20px;color:#374151;font-size:14px;line-height:2.0;">
+                <li>Open <strong>interior.pdf</strong> from this email — this is the file you upload for printing</li>
+                <li>Go to one of these online print services:<br>
+                  <span style="font-size:13px;color:#6b7280;">
+                    • <a href="https://www.staples.com/services/printing" style="color:#7c3aed;">staples.com</a> → Print &amp; Marketing → Booklets<br>
+                    • <a href="https://www.fedex.com/en-us/office.html" style="color:#7c3aed;">fedex.com/office</a> → Online Printing → Booklets<br>
+                    • <a href="https://mixam.com/booklets" style="color:#7c3aed;">mixam.com</a> → Booklets (best quality, ships in 2–3 days)
+                  </span>
+                </li>
+                <li>Upload the interior PDF — select <strong>6″ × 9″</strong>, full colour, saddle-stitch (stapled) or perfect-bound</li>
+                <li>Enter the customer's shipping address below as the delivery address</li>
+                <li>Place the order — they mail it directly to the customer</li>
               </ol>
+              <p style="margin:16px 0 0;font-size:12px;color:#9ca3af;">💡 Tip: Mixam gives the most book-like result. Staples is fastest if you need same-day. FedEx Office works well for 1-off orders.</p>
             </td></tr>
           </table>
 
