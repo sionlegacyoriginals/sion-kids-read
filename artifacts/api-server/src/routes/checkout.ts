@@ -345,6 +345,46 @@ router.get("/checkout/orders", requireAuth, async (req: any, res) => {
   }
 });
 
+// ── GET /api/admin/cancel-order — admin-only, MASTER_TEST_CODE auth ──────────
+router.get("/admin/cancel-order", async (req: any, res) => {
+  const secret = req.query.secret as string;
+  const masterCode = process.env.MASTER_TEST_CODE;
+  if (!masterCode || secret !== masterCode) {
+    return res.status(403).json({ error: "Forbidden" });
+  }
+  const orderId = parseInt(req.query.orderId as string, 10);
+  if (isNaN(orderId)) return res.status(400).json({ error: "orderId required" });
+  try {
+    const row = await db.execute(
+      sql`SELECT id, status, lulu_job_id FROM print_orders WHERE id = ${orderId}`,
+    );
+    const order = row.rows[0];
+    if (!order) return res.status(404).json({ error: "Order not found" });
+
+    // Try to cancel at Lulu if a job was submitted
+    if (order.lulu_job_id) {
+      try {
+        const { cancelLuluJob } = await import("../lib/luluService");
+        await cancelLuluJob(order.lulu_job_id as string);
+        console.log(`Lulu job ${order.lulu_job_id} cancelled for order ${orderId}`);
+      } catch (luluErr: any) {
+        console.warn(`Lulu cancel failed for job ${order.lulu_job_id}:`, luluErr.message);
+        // Still mark cancelled in DB even if Lulu call fails
+      }
+    }
+
+    await db.execute(sql`
+      UPDATE print_orders
+      SET status = 'cancelled', updated_at = NOW()
+      WHERE id = ${orderId}
+    `);
+
+    res.json({ ok: true, message: `Order ${orderId} cancelled` });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // ── GET /api/admin/retrigger-lulu — admin-only, MASTER_TEST_CODE auth ─────────
 router.get("/admin/retrigger-lulu", async (req: any, res) => {
   const secret = req.query.secret as string;

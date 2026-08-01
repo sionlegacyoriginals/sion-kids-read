@@ -114,6 +114,19 @@ export async function getLuluJobStatus(
   return resp.json();
 }
 
+export async function cancelLuluJob(jobId: string): Promise<void> {
+  const token = await getLuluAccessToken();
+  const resp = await fetch(`${LULU_API_BASE}/print-jobs/${jobId}/`, {
+    method: "DELETE",
+    headers: { Authorization: `Bearer ${token}` },
+  });
+  // 204 = deleted, 404 = already gone — both are acceptable
+  if (!resp.ok && resp.status !== 404) {
+    const text = await resp.text();
+    throw new Error(`Lulu job cancellation failed: ${resp.status} ${text}`);
+  }
+}
+
 /**
  * Full fulfillment pipeline for a paid print order:
  *  1. Fetch order + story data
