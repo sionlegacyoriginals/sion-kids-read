@@ -26,7 +26,7 @@ const PT_PER_INCH = 72;
 const PAGE_W = 6 * PT_PER_INCH;   // 432 pt
 const PAGE_H = 9 * PT_PER_INCH;   // 648 pt
 const MARGIN = 0.75 * PT_PER_INCH; // 54 pt
-const MIN_INTERIOR_PAGES = 32;     // Lulu minimum for 6×9 perfect-bound softcover
+const MIN_INTERIOR_PAGES = 0;      // No minimum — generate only real content pages
 
 function bufferFromDoc(doc: any): Promise<Buffer> {
   return new Promise((resolve, reject) => {
@@ -154,14 +154,7 @@ async function buildInteriorPdf(params: {
       width: contentW, align: "center",
     });
 
-  // ── Pad to Lulu minimum (must be even) ──────────────────────────────────
-  const current: number = (doc as any)._pageCount ?? 8;
-  let toAdd = Math.max(0, MIN_INTERIOR_PAGES - current);
-  if ((current + toAdd) % 2 !== 0) toAdd += 1;
-  for (let i = 0; i < toAdd; i++) {
-    doc.addPage({ size: [PAGE_W, PAGE_H] });
-    doc.rect(0, 0, PAGE_W, PAGE_H).fill("#fdf9f4");
-  }
+  // ── No padding — just the real story content ─────────────────────────────
 
   return bufferFromDoc(doc);
 }
