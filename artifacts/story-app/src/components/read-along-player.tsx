@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from "react";
-import { Play, Pause, Square, Headphones, ChevronDown, ChevronUp } from "lucide-react";
+import { Play, Pause, Square, Headphones, ChevronDown, ChevronUp, GripHorizontal } from "lucide-react";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -338,14 +338,67 @@ export function ReadAlongBar({
   const [showVoices, setShowVoices] = useState(false);
   const groups = groupByRegion(voices);
 
+  // Draggable position — null = default bottom-center
+  const [pos, setPos] = useState<{ x: number; y: number } | null>(null);
+  const barRef = useRef<HTMLDivElement>(null);
+  const dragRef = useRef<{
+    pointerId: number;
+    startClientX: number;
+    startClientY: number;
+    startBarX: number;
+    startBarY: number;
+  } | null>(null);
+
+  function onGripPointerDown(e: React.PointerEvent<HTMLElement>) {
+    e.preventDefault();
+    e.stopPropagation();
+    (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
+    const bar = barRef.current;
+    if (!bar) return;
+    const rect = bar.getBoundingClientRect();
+    dragRef.current = {
+      pointerId: e.pointerId,
+      startClientX: e.clientX,
+      startClientY: e.clientY,
+      startBarX: pos?.x ?? rect.left + rect.width / 2,
+      startBarY: pos?.y ?? rect.top + rect.height / 2,
+    };
+  }
+
+  function onGripPointerMove(e: React.PointerEvent<HTMLElement>) {
+    if (!dragRef.current || dragRef.current.pointerId !== e.pointerId) return;
+    const bar = barRef.current;
+    const hw = bar ? bar.offsetWidth / 2 : 160;
+    const hh = bar ? bar.offsetHeight / 2 : 40;
+    const newX = Math.max(hw, Math.min(window.innerWidth - hw,
+      dragRef.current.startBarX + (e.clientX - dragRef.current.startClientX)));
+    const newY = Math.max(hh, Math.min(window.innerHeight - hh,
+      dragRef.current.startBarY + (e.clientY - dragRef.current.startClientY)));
+    setPos({ x: newX, y: newY });
+  }
+
+  function onGripPointerUp() { dragRef.current = null; }
+
   const genderIcon = (v: SpeechSynthesisVoice) => {
     const g = guessGender(v);
     return g === "male" ? "👨" : g === "female" ? "👩" : "🎙️";
   };
 
+  const outerStyle: React.CSSProperties = pos
+    ? { left: pos.x, top: pos.y, transform: "translate(-50%, -50%)", bottom: "auto", right: "auto" }
+    : {};
+
   return (
-    <div className="fixed bottom-0 left-0 right-0 z-50 flex justify-center pointer-events-none">
-      <div className="pointer-events-auto w-full max-w-2xl mx-4 mb-4 flex flex-col gap-2">
+    <div
+      className={pos
+        ? "fixed z-50 pointer-events-none"
+        : "fixed bottom-0 left-0 right-0 z-50 flex justify-center pointer-events-none"}
+      style={outerStyle}
+    >
+      <div
+        ref={barRef}
+        className={`pointer-events-auto flex flex-col gap-2 ${pos ? "w-[min(calc(100vw-32px),42rem)]" : "w-full max-w-2xl mx-4 mb-4"}`}
+      >
 
         {/* ── Voice picker panel ── */}
         {showVoices && (
@@ -417,6 +470,19 @@ export function ReadAlongBar({
 
         {/* ── Main player card ── */}
         <div className="bg-primary rounded-2xl shadow-2xl shadow-primary/30 p-4 flex flex-col gap-3">
+
+          {/* Drag grip — centered at the top */}
+          <div className="flex justify-center -mt-1 -mb-1">
+            <span
+              className="cursor-grab active:cursor-grabbing touch-none px-3 py-0.5 text-white/30 hover:text-white/60 transition-colors"
+              onPointerDown={onGripPointerDown}
+              onPointerMove={onGripPointerMove}
+              onPointerUp={onGripPointerUp}
+              onPointerCancel={onGripPointerUp}
+            >
+              <GripHorizontal className="w-5 h-5" />
+            </span>
+          </div>
 
           {/* Row 1 — playback */}
           <div className="flex items-center gap-3">
