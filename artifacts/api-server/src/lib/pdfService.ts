@@ -21,6 +21,7 @@ const FONTS_DIR = path.resolve(
 );
 const FONT_REGULAR = path.join(FONTS_DIR, "DejaVuSans.ttf");
 const FONT_BOLD    = path.join(FONTS_DIR, "DejaVuSans-Bold.ttf");
+const FONT_CURSIVE = path.join(FONTS_DIR, "DancingScript-Regular.ttf");
 
 const PT_PER_INCH = 72;
 const PAGE_W = 6 * PT_PER_INCH;   // 432 pt
@@ -49,6 +50,125 @@ function addPageNumber(doc: any, pageNum: number) {
 function addDecorativeDot(doc: any) {
   const cx = PAGE_W / 2;
   doc.circle(cx, MARGIN / 2, 2).fill("#d4b896");
+}
+
+/** Split a paragraph into individual sentences. */
+function splitSentences(text: string): string[] {
+  const raw = text.match(/[^.!?…]+[.!?…]+(?:\s|$)?/g) ?? [text];
+  return raw.map(s => s.trim()).filter(s => s.length > 4);
+}
+
+/**
+ * Append writing-practice pages to an open PDFDocument.
+ * Each sentence gets its own page:
+ *   READ IT  — sentence in print
+ *   TRACE IT — same sentence in light-gray cursive (child traces over)
+ *   WRITE IT — three sets of primary ruled lines
+ *
+ * Returns the number of pages added.
+ */
+function addPracticeSection(doc: any, content: string, childName: string): number {
+  const CW = PAGE_W - MARGIN * 2;
+  const paragraphs = content.split("\n").filter(Boolean);
+
+  // Gather sentences across all paragraphs (cap at 22 so the section doesn't balloon)
+  const sentences: string[] = [];
+  for (const para of paragraphs) {
+    sentences.push(...splitSentences(para));
+    if (sentences.length >= 22) break;
+  }
+
+  let pagesAdded = 0;
+
+  // ── Section intro page ────────────────────────────────────────────────────
+  doc.addPage({ size: [PAGE_W, PAGE_H] });
+  pagesAdded++;
+  doc.rect(0, 0, PAGE_W, PAGE_H).fill("#fdf9f4");
+  // Big pencil motif area
+  doc.rect(MARGIN, PAGE_H * 0.38, CW, 2).fill("#d4b896");
+  doc.font(FONT_BOLD).fontSize(28).fillColor("#1c2a3a")
+    .text("✏ Practice Writing", MARGIN, PAGE_H * 0.28, { width: CW, align: "center" });
+  doc.font(FONT_REGULAR).fontSize(13).fillColor("#7c6a5a")
+    .text(
+      `Trace each sentence, then write it yourself!\nKeep practising — you're doing great, ${childName}!`,
+      MARGIN, PAGE_H * 0.42,
+      { width: CW, align: "center", lineGap: 6 },
+    );
+  // Small tip
+  doc.font(FONT_REGULAR).fontSize(9).fillColor("#b0a090")
+    .text("Tip: use a pencil so you can erase and try again.", MARGIN, PAGE_H * 0.60, {
+      width: CW, align: "center",
+    });
+
+  // ── One page per sentence ─────────────────────────────────────────────────
+  for (const sentence of sentences) {
+    doc.addPage({ size: [PAGE_W, PAGE_H] });
+    pagesAdded++;
+    doc.rect(0, 0, PAGE_W, PAGE_H).fill("#fdf9f4");
+
+    let y = MARGIN * 0.8;
+
+    // ── READ IT ───────────────────────────────────────────────────────────
+    doc.font(FONT_REGULAR).fontSize(7).fillColor("#b0a090")
+      .text("READ IT", MARGIN, y, { width: CW, characterSpacing: 1 });
+    y += 13;
+
+    const printH = doc.heightOfString(sentence, { width: CW, fontSize: 13, lineGap: 3 });
+    doc.font(FONT_REGULAR).fontSize(13).fillColor("#1c2a3a")
+      .text(sentence, MARGIN, y, { width: CW, lineGap: 3 });
+    y += printH + 14;
+
+    // divider
+    doc.rect(MARGIN, y, CW, 0.75).fill("#ddd5c8");
+    y += 12;
+
+    // ── TRACE IT ──────────────────────────────────────────────────────────
+    doc.font(FONT_REGULAR).fontSize(7).fillColor("#b0a090")
+      .text("TRACE IT", MARGIN, y, { width: CW, characterSpacing: 1 });
+    y += 13;
+
+    // Light-gray cursive — child traces directly over this
+    const traceH = doc.heightOfString(sentence, { width: CW, fontSize: 22, lineGap: 6 });
+    doc.font(FONT_CURSIVE).fontSize(22).fillColor("#cfc5b5")
+      .text(sentence, MARGIN, y, { width: CW, lineGap: 6 });
+    y += traceH + 18;
+
+    // divider
+    doc.rect(MARGIN, y, CW, 0.75).fill("#ddd5c8");
+    y += 14;
+
+    // ── WRITE IT ──────────────────────────────────────────────────────────
+    doc.font(FONT_REGULAR).fontSize(7).fillColor("#b0a090")
+      .text("WRITE IT", MARGIN, y, { width: CW, characterSpacing: 1 });
+    y += 16;
+
+    // How many sets of ruled lines fit in remaining space?
+    const lineSetH = 72; // each set = top rule + dashed mid + base rule + blank row
+    const remaining = PAGE_H - MARGIN * 0.5 - y;
+    const sets = Math.max(2, Math.min(4, Math.floor(remaining / lineSetH)));
+
+    for (let s = 0; s < sets; s++) {
+      const topY    = y;
+      const midY    = y + 24;
+      const baseY   = y + 48;
+
+      // Top solid rule (ascender height guide)
+      doc.rect(MARGIN, topY, CW, 0.5).fill("#c8c0b0");
+
+      // Mid dashed rule (capital/x-height guide)
+      const dashLen = 5, gapLen = 4;
+      for (let x = MARGIN; x < MARGIN + CW; x += dashLen + gapLen) {
+        doc.rect(x, midY, Math.min(dashLen, MARGIN + CW - x), 0.5).fill("#ddd5c8");
+      }
+
+      // Baseline solid rule
+      doc.rect(MARGIN, baseY, CW, 0.75).fill("#c8c0b0");
+
+      y += lineSetH;
+    }
+  }
+
+  return pagesAdded;
 }
 
 async function buildInteriorPdf(params: {
@@ -154,7 +274,8 @@ async function buildInteriorPdf(params: {
       width: contentW, align: "center",
     });
 
-  // ── No padding — just the real story content ─────────────────────────────
+  // ── Writing practice section ──────────────────────────────────────────────
+  addPracticeSection(doc, params.content, params.childName);
 
   return bufferFromDoc(doc);
 }
@@ -408,6 +529,9 @@ export async function generateCombinedPdf(params: {
     .text("~ The End ~", MARGIN, PAGE_H / 2 - 40, { width: contentW, align: "center" });
   doc.font(FONT_REGULAR).fontSize(11).fillColor("#7c6a5a")
     .text(`Made with love for ${params.childName}`, MARGIN, PAGE_H / 2 + 14, { width: contentW, align: "center" });
+
+  // ── Writing practice section ────────────────────────────────────────────────
+  addPracticeSection(doc, params.content, params.childName);
 
   // ── Back cover page ────────────────────────────────────────────────────────
   doc.addPage({ size: [PAGE_W, PAGE_H] });

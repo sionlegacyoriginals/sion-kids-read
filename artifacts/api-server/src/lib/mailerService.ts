@@ -139,6 +139,15 @@ export async function sendOwnerPrintPackage(params: {
     addr.phone_number ? `📞 ${addr.phone_number}` : null,
   ].filter(Boolean).join("<br>");
 
+  const plainAddr = [
+    addr.name,
+    addr.street1,
+    addr.street2,
+    `${addr.city}, ${addr.state_code} ${addr.postcode}`,
+    addr.country_code === "US" ? "United States" : addr.country_code,
+    addr.phone_number ?? "",
+  ].filter(Boolean).join("\n");
+
   const html = `
 <!DOCTYPE html>
 <html>
@@ -147,65 +156,67 @@ export async function sendOwnerPrintPackage(params: {
   <table width="100%" cellpadding="0" cellspacing="0" style="background:#fdf9f6;padding:40px 0;">
     <tr><td align="center">
       <table width="560" cellpadding="0" cellspacing="0" style="background:#ffffff;border-radius:16px;overflow:hidden;box-shadow:0 2px 12px rgba(0,0,0,0.08);">
+
+        <!-- Header -->
         <tr><td style="background:#7c3aed;padding:28px 40px;text-align:center;">
           <p style="margin:0;color:#e9d5ff;font-size:12px;letter-spacing:1px;text-transform:uppercase;">Sion Legacy Originals — New Order</p>
-          <h1 style="margin:8px 0 0;color:#ffffff;font-size:24px;font-weight:normal;">📦 Order #${orderId} — Action Needed</h1>
+          <h1 style="margin:8px 0 0;color:#ffffff;font-size:26px;font-weight:normal;">📦 Order #${orderId} — Print &amp; Ship</h1>
+          <p style="margin:8px 0 0;color:#e9d5ff;font-size:14px;">${storyTitle}</p>
         </td></tr>
+
         <tr><td style="padding:32px 40px;">
-          <p style="margin:0 0 20px;color:#374151;font-size:15px;line-height:1.6;">
-            A customer just paid <strong>$${(amountCents / 100).toFixed(2)}</strong> for a printed storybook.
-            The interior and cover PDFs are attached to this email. Here's what to do:
-          </p>
 
-          <!-- Steps -->
-          <table width="100%" cellpadding="0" cellspacing="0" style="background:#f5f3ff;border-radius:12px;margin-bottom:28px;">
+          <!-- Payment summary -->
+          <table width="100%" cellpadding="0" cellspacing="0" style="background:#f0fdf4;border-radius:10px;margin-bottom:24px;">
+            <tr><td style="padding:16px 20px;">
+              <p style="margin:0;color:#059669;font-size:15px;">
+                ✅ <strong>$${(amountCents / 100).toFixed(2)} received</strong> from ${customerName}
+                <span style="color:#6b7280;font-size:13px;">(${customerEmail})</span>
+              </p>
+            </td></tr>
+          </table>
+
+          <!-- Lulu steps -->
+          <table width="100%" cellpadding="0" cellspacing="0" style="background:#f5f3ff;border-radius:12px;margin-bottom:24px;">
             <tr><td style="padding:24px 28px;">
-              <p style="margin:0 0 12px;color:#7c3aed;font-size:12px;font-weight:bold;letter-spacing:1px;text-transform:uppercase;">How to print &amp; ship online</p>
-              <ol style="margin:0;padding-left:20px;color:#374151;font-size:14px;line-height:2.0;">
-                <li>Open <strong>${params.combinedPdfBuffer ? `order-${orderId}-print-shop.pdf` : "interior.pdf"}</strong> from this email — this is the single file to upload</li>
-                <li>Go to one of these print services:<br>
-                  <span style="font-size:13px;color:#6b7280;">
-                    • <a href="https://www.staples.com/services/printing" style="color:#7c3aed;">staples.com</a> → Print &amp; Marketing → Booklets<br>
-                    • <a href="https://www.fedex.com/en-us/office.html" style="color:#7c3aed;">fedex.com/office</a> → Online Printing → Booklets<br>
-                    • <a href="https://mixam.com/booklets" style="color:#7c3aed;">mixam.com</a> → Booklets (best quality, ships in 2–3 days)
-                  </span>
-                </li>
-                <li>Upload the PDF — select <strong>6″ × 9″</strong>, full colour, saddle-stitch or perfect-bound</li>
-                <li>Enter the customer's shipping address below as the delivery address</li>
-                <li>Place the order — they mail it directly to the customer</li>
+              <p style="margin:0 0 14px;color:#7c3aed;font-size:13px;font-weight:bold;letter-spacing:1px;text-transform:uppercase;">
+                How to print on Lulu.com
+              </p>
+              <ol style="margin:0;padding-left:20px;color:#374151;font-size:14px;line-height:2.2;">
+                <li>Go to <a href="https://www.lulu.com/create/books" style="color:#7c3aed;font-weight:bold;">lulu.com/create/books</a> and start a new print book</li>
+                <li>Size: <strong>6″ × 9″</strong> &nbsp;·&nbsp; Binding: <strong>Perfect Bound</strong> &nbsp;·&nbsp; Color: <strong>Full Colour</strong> &nbsp;·&nbsp; Paper: <strong>60# white</strong></li>
+                <li>Upload <strong>order-${orderId}-interior.pdf</strong> as the interior</li>
+                <li>Upload <strong>order-${orderId}-cover.pdf</strong> as the cover</li>
+                <li>Quantity: <strong>1</strong></li>
+                <li>Ship to the address below — enter it as the shipping address at checkout</li>
               </ol>
-              <p style="margin:16px 0 0;font-size:12px;color:#9ca3af;">💡 Tip: Mixam gives the most book-like result. Staples is fastest if you need same-day. FedEx Office works well for 1-off orders.</p>
+              <p style="margin:14px 0 0;font-size:12px;color:#9ca3af;">
+                Lulu pod spec for reference: <code>0600X0900FCSTDPB060UW444MXX</code>
+              </p>
             </td></tr>
           </table>
 
-          <!-- Order details -->
-          <table width="100%" cellpadding="0" cellspacing="0" style="border:1px solid #e5e7eb;border-radius:12px;margin-bottom:24px;">
+          <!-- Ship-to address — large and easy to copy -->
+          <table width="100%" cellpadding="0" cellspacing="0" style="border:2px solid #7c3aed;border-radius:12px;margin-bottom:24px;">
+            <tr><td style="background:#7c3aed;padding:10px 20px;">
+              <p style="margin:0;color:#ffffff;font-size:12px;font-weight:bold;letter-spacing:1px;text-transform:uppercase;">📬 Ship To — copy this into Lulu checkout</p>
+            </td></tr>
             <tr><td style="padding:20px 24px;">
-              <p style="margin:0 0 12px;color:#6b7280;font-size:12px;font-weight:bold;letter-spacing:1px;text-transform:uppercase;">Order Details</p>
-              <table width="100%" cellpadding="0" cellspacing="4">
-                <tr>
-                  <td style="color:#6b7280;font-size:14px;width:35%;padding-bottom:8px;">Story</td>
-                  <td style="color:#111827;font-size:14px;font-weight:bold;padding-bottom:8px;">${storyTitle}</td>
-                </tr>
-                <tr>
-                  <td style="color:#6b7280;font-size:14px;padding-bottom:8px;">Customer</td>
-                  <td style="color:#111827;font-size:14px;padding-bottom:8px;">${customerName} (${customerEmail})</td>
-                </tr>
-                <tr>
-                  <td style="color:#6b7280;font-size:14px;vertical-align:top;padding-bottom:8px;">Ship to</td>
-                  <td style="color:#111827;font-size:14px;line-height:1.6;padding-bottom:8px;">${addressLines}</td>
-                </tr>
-                <tr>
-                  <td style="color:#6b7280;font-size:14px;">Amount paid</td>
-                  <td style="color:#059669;font-size:14px;font-weight:bold;">$${(amountCents / 100).toFixed(2)}</td>
-                </tr>
-              </table>
+              <pre style="margin:0;font-family:'Georgia',serif;font-size:16px;line-height:1.8;color:#111827;white-space:pre-wrap;">${plainAddr}</pre>
             </td></tr>
           </table>
 
-          <p style="margin:0;color:#9ca3af;font-size:12px;">
-            Both PDFs are attached. Lulu spec: 6×9 in, full colour, perfect-bound softcover, 60# white paper (pod_package_id: 0600X0900FCSTDPB060UW444MXX).
-          </p>
+          <!-- Attachments reminder -->
+          <table width="100%" cellpadding="0" cellspacing="0" style="border:1px solid #e5e7eb;border-radius:12px;">
+            <tr><td style="padding:18px 22px;">
+              <p style="margin:0 0 10px;color:#6b7280;font-size:12px;font-weight:bold;letter-spacing:1px;text-transform:uppercase;">Attached PDFs</p>
+              <p style="margin:0;color:#374151;font-size:14px;line-height:1.8;">
+                📄 <strong>order-${orderId}-interior.pdf</strong> — upload to Lulu as the interior<br>
+                🖼 <strong>order-${orderId}-cover.pdf</strong> — upload to Lulu as the cover${params.combinedPdfBuffer ? `<br>📋 <strong>order-${orderId}-print-shop.pdf</strong> — single combined file (Staples / FedEx Office backup)` : ""}
+              </p>
+            </td></tr>
+          </table>
+
         </td></tr>
       </table>
     </td></tr>
