@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from "react";
-import { Play, Pause, Square, Headphones, ChevronDown, ChevronUp, GripHorizontal } from "lucide-react";
+import { Play, Pause, Square, Headphones, ChevronDown, ChevronUp, GripHorizontal, Settings2 } from "lucide-react";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -72,12 +72,20 @@ function splitSentences(text: string): Sentence[] {
 // ─── Voice helpers ────────────────────────────────────────────────────────────
 
 const MALE_HINTS = [
-  "male", "alex", "daniel", "tom ", "david", "mark", "james",
-  "fred", "ralph", "junior", "aaron", "arthur", "gordon", "lee ",
-  "oliver", "rishi", "rocko", "samson", "bob", "bruce", "charlie",
-  "eric", "george", "henry", "jake", " joe", "john", "kevin",
-  "michael", " mike", "paul", "peter", "ryan", "scott", "steve",
-  "thomas", "william",
+  "male",
+  // macOS / iOS
+  "alex", "daniel", "tom ", "arthur", "gordon", "oliver", "rishi",
+  "fred", "ralph", "junior", "lee ",
+  // Windows / Microsoft Edge / Azure
+  "david", "mark", "guy", "christopher", "eric", "william", "benjamin",
+  "bryan", "andrew", "tony", "davis", "jason", "roger", "steffan",
+  "ethan", "liam", "brandon", "jacob",
+  // Google / Android
+  " en-gb-wavenet-b", " en-gb-wavenet-d", " en-us-wavenet-b", " en-us-wavenet-d",
+  // Generic common male names
+  "aaron", "bob", "bruce", "charlie", "george", "henry", "jake",
+  " joe", "john", "kevin", "michael", " mike", "paul", "peter",
+  "ryan", "scott", "steve", "thomas", "james", "samson", "rocko",
 ];
 const FEMALE_HINTS = [
   "female", "samantha", "victoria", "karen", "moira", "fiona", "susan",
@@ -188,7 +196,23 @@ export function useReadAlong(paragraphs: string[]) {
       const v = loadEnglishVoices();
       if (v.length > 0) {
         setVoices(v);
-        setSelectedVoice((prev) => prev ?? v[0]);
+        setSelectedVoice((prev) => {
+          if (prev) return prev;
+          // Prefer a natural-sounding US English voice
+          const preferred = [
+            "Samantha",          // macOS / iOS default
+            "Google US English", // Chrome on desktop
+            "Microsoft Aria",    // Edge
+            "Microsoft Jenny",   // Edge
+            "Alex",              // older macOS
+          ];
+          for (const name of preferred) {
+            const match = v.find((x) => x.name.includes(name));
+            if (match) return match;
+          }
+          // Fall back to first en-US voice, then any English voice
+          return v.find((x) => x.lang === "en-US") ?? v[0];
+        });
       }
     };
     update();
@@ -336,6 +360,8 @@ export function ReadAlongBar({
   voices, selectedVoice, changeVoice,
 }: PlayerBarProps) {
   const [showVoices, setShowVoices] = useState(false);
+  const [showControls, setShowControls] = useState(false);
+  const [genderFilter, setGenderFilter] = useState<"all" | "male" | "female">("all");
   const groups = groupByRegion(voices);
 
   // Draggable position — null = default bottom-center
@@ -400,8 +426,8 @@ export function ReadAlongBar({
         className={`pointer-events-auto flex flex-col gap-2 ${pos ? "w-[min(calc(100vw-32px),42rem)]" : "w-full max-w-2xl mx-4 mb-4"}`}
       >
 
-        {/* ── Voice picker panel ── */}
-        {showVoices && (
+        {/* ── Voice picker panel (only when controls expanded) ── */}
+        {showControls && showVoices && (
           <div className="bg-white border border-border/60 rounded-2xl shadow-2xl p-4 animate-in slide-in-from-bottom-2">
             <div className="flex items-center justify-between mb-4">
               <p className="font-bold text-foreground text-base">Choose a reading voice</p>
@@ -433,37 +459,60 @@ export function ReadAlongBar({
               </p>
             </div>
 
+            {/* Gender filter tabs */}
+            <div className="flex gap-1.5 mb-4">
+              {(["male", "all", "female"] as const).map((g) => (
+                <button
+                  key={g}
+                  onClick={() => setGenderFilter(g)}
+                  className={`flex-1 py-1.5 rounded-xl text-sm font-bold border transition-all ${
+                    genderFilter === g
+                      ? "bg-primary text-white border-primary"
+                      : "bg-muted/40 text-muted-foreground border-transparent hover:text-foreground"
+                  }`}
+                >
+                  {g === "male" ? "👨 Male" : g === "female" ? "👩 Female" : "🎙️ All"}
+                </button>
+              ))}
+            </div>
+
             {/* Region groups */}
             {groups.length === 0 && (
               <p className="text-sm text-muted-foreground">No voices loaded yet. Tap play to trigger loading.</p>
             )}
-            <div className="space-y-4">
-              {groups.map((group) => (
-                <div key={group.lang}>
-                  <p className="text-xs font-bold text-muted-foreground uppercase tracking-wide mb-2">
-                    {group.region}
-                  </p>
-                  <div className="flex flex-wrap gap-2">
-                    {group.voices.map((v) => {
-                      const isSelected = selectedVoice?.name === v.name;
-                      return (
-                        <button
-                          key={v.name}
-                          onClick={() => { changeVoice(v); setShowVoices(false); }}
-                          className={`flex items-center gap-1.5 px-3 py-2 rounded-xl text-sm font-semibold border transition-all ${
-                            isSelected
-                              ? "bg-primary text-white border-primary"
-                              : "bg-muted/50 text-foreground border-border hover:border-primary/50 hover:bg-primary/5"
-                          }`}
-                        >
-                          <span className="text-base leading-none">{genderIcon(v)}</span>
-                          {shortName(v)}
-                        </button>
-                      );
-                    })}
+            <div className="space-y-4 max-h-64 overflow-y-auto">
+              {groups.map((group) => {
+                const filtered = genderFilter === "all"
+                  ? group.voices
+                  : group.voices.filter((v) => guessGender(v) === genderFilter);
+                if (filtered.length === 0) return null;
+                return (
+                  <div key={group.lang}>
+                    <p className="text-xs font-bold text-muted-foreground uppercase tracking-wide mb-2">
+                      {group.region}
+                    </p>
+                    <div className="flex flex-wrap gap-2">
+                      {filtered.map((v) => {
+                        const isSelected = selectedVoice?.name === v.name;
+                        return (
+                          <button
+                            key={v.name}
+                            onClick={() => { changeVoice(v); setShowVoices(false); }}
+                            className={`flex items-center gap-1.5 px-3 py-2 rounded-xl text-sm font-semibold border transition-all ${
+                              isSelected
+                                ? "bg-primary text-white border-primary"
+                                : "bg-muted/50 text-foreground border-border hover:border-primary/50 hover:bg-primary/5"
+                            }`}
+                          >
+                            <span className="text-base leading-none">{genderIcon(v)}</span>
+                            {shortName(v)}
+                          </button>
+                        );
+                      })}
+                    </div>
                   </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           </div>
         )}
@@ -505,6 +554,13 @@ export function ReadAlongBar({
               </p>
             </div>
 
+            <button
+              onClick={() => { setShowControls(v => !v); if (showControls) setShowVoices(false); }}
+              className={`w-10 h-10 rounded-xl flex items-center justify-center transition-all shrink-0 ${showControls ? "bg-white/30" : "bg-white/10 hover:bg-white/20"}`}
+              aria-label="Voice &amp; speed settings"
+            >
+              <Settings2 className="w-4 h-4 text-white" />
+            </button>
             <button onClick={stop} className="w-10 h-10 rounded-xl bg-white/10 hover:bg-white/20 flex items-center justify-center transition-all shrink-0" aria-label="Stop">
               <Square className="w-5 h-5 text-white fill-white" />
             </button>
@@ -513,7 +569,8 @@ export function ReadAlongBar({
             </button>
           </div>
 
-          {/* Row 2 — voice + speed */}
+          {/* Row 2 — voice + speed (collapsible) */}
+          {showControls && (
           <div className="flex items-center gap-2 pt-1 border-t border-white/20">
             {/* Voice selector */}
             <button
@@ -548,6 +605,7 @@ export function ReadAlongBar({
               ))}
             </div>
           </div>
+          )}
         </div>
       </div>
     </div>
