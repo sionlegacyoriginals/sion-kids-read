@@ -190,34 +190,58 @@ export function useReadAlong(paragraphs: string[]) {
     sentencesRef.current = splitSentences(fullText);
   }, [fullText]);
 
-  // Load voices (Chrome resolves them async after voiceschanged)
+  // Load voices — Chrome loads them asynchronously after "voiceschanged".
+  // Some Chrome versions never fire the event (especially on first load or after
+  // a tab has been inactive). We combine the event with a polling fallback so
+  // voices always resolve.
   useEffect(() => {
-    const update = () => {
+    let cancelled = false;
+    let pollTimer: ReturnType<typeof setTimeout> | null = null;
+
+    const applyVoices = (v: SpeechSynthesisVoice[]) => {
+      if (cancelled || v.length === 0) return;
+      setVoices(v);
+      setSelectedVoice((prev) => {
+        if (prev) return prev;
+        const preferred = [
+          "Samantha",          // macOS / iOS default
+          "Google US English", // Chrome on desktop
+          "Microsoft Aria",    // Edge
+          "Microsoft Jenny",   // Edge
+          "Alex",              // older macOS
+        ];
+        for (const name of preferred) {
+          const match = v.find((x) => x.name.includes(name));
+          if (match) return match;
+        }
+        return v.find((x) => x.lang === "en-US") ?? v[0];
+      });
+    };
+
+    const tryLoad = () => {
       const v = loadEnglishVoices();
       if (v.length > 0) {
-        setVoices(v);
-        setSelectedVoice((prev) => {
-          if (prev) return prev;
-          // Prefer a natural-sounding US English voice
-          const preferred = [
-            "Samantha",          // macOS / iOS default
-            "Google US English", // Chrome on desktop
-            "Microsoft Aria",    // Edge
-            "Microsoft Jenny",   // Edge
-            "Alex",              // older macOS
-          ];
-          for (const name of preferred) {
-            const match = v.find((x) => x.name.includes(name));
-            if (match) return match;
-          }
-          // Fall back to first en-US voice, then any English voice
-          return v.find((x) => x.lang === "en-US") ?? v[0];
-        });
+        applyVoices(v);
+      } else {
+        // Poll every 250 ms until voices arrive (max ~5 s)
+        let attempts = 0;
+        const poll = () => {
+          if (cancelled) return;
+          const vv = loadEnglishVoices();
+          if (vv.length > 0) { applyVoices(vv); return; }
+          if (++attempts < 20) pollTimer = setTimeout(poll, 250);
+        };
+        pollTimer = setTimeout(poll, 250);
       }
     };
-    update();
-    window.speechSynthesis.addEventListener("voiceschanged", update);
-    return () => window.speechSynthesis.removeEventListener("voiceschanged", update);
+
+    tryLoad();
+    window.speechSynthesis.addEventListener("voiceschanged", tryLoad);
+    return () => {
+      cancelled = true;
+      if (pollTimer !== null) clearTimeout(pollTimer);
+      window.speechSynthesis.removeEventListener("voiceschanged", tryLoad);
+    };
   }, []);
 
   /** Build a configured utterance for a sentence */
