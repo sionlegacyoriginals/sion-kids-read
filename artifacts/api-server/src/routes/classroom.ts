@@ -688,7 +688,14 @@ router.get("/classroom/stories", requireStudentAuth, async (req: any, res) => {
         AND (story_status = 'teacher' OR story_status = 'published')
       ORDER BY created_at DESC
     `);
-    res.json({ stories: result.rows });
+    const domain = (req as any).hostname;
+    const toAbsUrl = (p: string | null) =>
+      p ? (p.startsWith("/ref-photos/") ? `https://${domain}/api${p}` : `https://${domain}/api/storage${p}`) : null;
+    const stories = (result.rows as any[]).map(s => ({
+      ...s,
+      cover_image_url: toAbsUrl(s.cover_image_url),
+    }));
+    res.json({ stories });
   } catch (err: any) {
     res.status(500).json({ error: err.message });
   }
@@ -722,8 +729,21 @@ router.get("/classroom/stories/:id", requireStudentAuth, async (req: any, res) =
       WHERE student_id = ${studentId} AND story_id = ${storyId}
     `);
 
+    const domain = (req as any).hostname;
+    const toAbsUrl = (p: string | null) =>
+      p ? (p.startsWith("/ref-photos/") ? `https://${domain}/api${p}` : `https://${domain}/api/storage${p}`) : null;
+    const raw = result.rows[0] as any;
+    const story = {
+      ...raw,
+      cover_image_url: toAbsUrl(raw.cover_image_url),
+      illustration_urls: Array.isArray(raw.illustration_urls)
+        ? raw.illustration_urls.map(toAbsUrl)
+        : (typeof raw.illustration_urls === "string"
+          ? (JSON.parse(raw.illustration_urls) as string[]).map(toAbsUrl)
+          : []),
+    };
     res.json({
-      story: result.rows[0],
+      story,
       sightWords,
       alreadyRead: readRes.rows.length > 0,
       completedExerciseTypes: (compRes.rows as any[]).map(r => r.exercise_type),
