@@ -486,7 +486,7 @@ router.get("/classroom/me", requireStudentAuth, async (req: any, res) => {
 // ── Student: Submit a story for teacher approval ──────────────────────────────
 router.post("/classroom/student-stories", requireStudentAuth, async (req: any, res) => {
   try {
-    const { prompt } = req.body;
+    const { prompt, avatarPaths } = req.body;
     if (!prompt?.trim()) return res.status(400).json({ error: "Please describe what your story is about." });
 
     const p = req.studentPayload;
@@ -526,17 +526,49 @@ router.post("/classroom/student-stories", requireStudentAuth, async (req: any, r
     const title = titleMatch?.[1]?.trim() ?? `${p.firstName}'s Story`;
     const content = raw.replace(/^TITLE:\s*.+\n?/m, "").trim();
 
+    // Validated avatar paths — must be /ref-photos/avatar_* to prevent injection
+    const validAvatarPaths = Array.isArray(avatarPaths)
+      ? (avatarPaths as string[]).filter((p) => typeof p === "string" && p.startsWith("/ref-photos/avatar_"))
+      : [];
+    const referenceImagePathsJson = validAvatarPaths.length > 0
+      ? JSON.stringify(validAvatarPaths)
+      : null;
+
     // Save to stories table, linked to teacher's account, marked pending
     const saved = await db.execute(sql`
       INSERT INTO stories (user_id, child_name, child_age, child_gender, theme, title, content,
-        submitted_by_student_id, story_status, created_at, updated_at)
+        submitted_by_student_id, story_status, reference_image_paths, created_at, updated_at)
       VALUES (
         ${cls.teacher_id}, ${p.firstName}, 8, 'neutral',
         ${valueOfWeek || 'general'}, ${title}, ${content},
-        ${p.studentId}, 'pending', NOW(), NOW()
+        ${p.studentId}, 'pending', ${referenceImagePathsJson}, NOW(), NOW()
       )
       RETURNING id, title, content
     `);
+
+    const storyId = (saved.rows[0] as any).id;
+
+    // If avatars were picked, generate cover art in the background (same as parent flow)
+    if (validAvatarPaths.length > 0) {
+      const { generateStoryImages } = await import("../lib/storyImages");
+      generateStoryImages({
+        childName: p.firstName,
+        childAge: 8,
+        childGender: "neutral",
+        theme: valueOfWeek || "general",
+        storyTitle: title,
+        storyContent: content,
+        referenceImagePaths: validAvatarPaths,
+      }).then(async ({ coverImagePath, illustrationPaths }) => {
+        await db.execute(sql`
+          UPDATE stories
+          SET cover_image_url   = ${coverImagePath},
+              illustration_urls = ${JSON.stringify(illustrationPaths)},
+              updated_at        = NOW()
+          WHERE id = ${storyId}
+        `);
+      }).catch(() => { /* background — silent failure is OK */ });
+    }
 
     res.json({ story: saved.rows[0] });
   } catch (err: any) {

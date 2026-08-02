@@ -4,6 +4,7 @@ import {
   Loader2, BookOpen, Star, Calendar, PenLine, Send, X,
   CheckCircle, Sparkles, ChevronLeft, Play, Pause, Square, Volume2,
 } from "lucide-react";
+import { AvatarPicker } from "@/components/avatar-picker";
 import { useStudentAuth } from "@/lib/studentAuth";
 import {
   useReadAlong,
@@ -440,6 +441,8 @@ function StoryReader({
 function WriteStoryForm({ studentFetch, sightWords, onSubmitted }: {
   studentFetch: any; sightWords: string[]; onSubmitted: () => void;
 }) {
+  const [step, setStep] = useState<"avatar" | "prompt">("avatar");
+  const [selectedAvatars, setSelectedAvatars] = useState<string[]>([]);
   const [prompt, setPrompt] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [done, setDone] = useState(false);
@@ -452,7 +455,10 @@ function WriteStoryForm({ studentFetch, sightWords, onSubmitted }: {
       const r = await studentFetch(`${basePath}/api/classroom/student-stories`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ prompt: prompt.trim() }),
+        body: JSON.stringify({
+          prompt: prompt.trim(),
+          avatarPaths: selectedAvatars,
+        }),
       });
       const d = await r.json();
       if (!r.ok) throw new Error(d.error ?? "Failed");
@@ -473,36 +479,106 @@ function WriteStoryForm({ studentFetch, sightWords, onSubmitted }: {
   );
 
   return (
-    <div className="bg-primary/5 border-2 border-primary/20 rounded-2xl p-5 space-y-4">
+    <div className="bg-primary/5 border-2 border-primary/20 rounded-2xl p-5 space-y-5">
       <h3 className="font-serif font-bold text-lg text-foreground flex items-center gap-2">
         <PenLine className="w-5 h-5 text-primary" /> Write a Story
       </h3>
-      {sightWords.length > 0 && (
-        <div>
-          <p className="text-xs font-bold text-muted-foreground uppercase tracking-wide mb-2">Include these sight words:</p>
-          <div className="flex flex-wrap gap-1.5">
-            {sightWords.map(w => (
-              <span key={w} className="px-2.5 py-1 bg-primary text-white text-xs font-bold rounded-lg">{w}</span>
-            ))}
-          </div>
+
+      {/* Step indicators */}
+      <div className="flex items-center gap-2 text-xs font-bold">
+        <button
+          type="button"
+          onClick={() => setStep("avatar")}
+          className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full border transition-all ${
+            step === "avatar"
+              ? "bg-primary text-white border-primary"
+              : "bg-background text-muted-foreground border-border hover:border-primary/40"
+          }`}
+        >
+          <span>1.</span> Pick your character
+        </button>
+        <span className="text-muted-foreground/40">→</span>
+        <button
+          type="button"
+          onClick={() => setStep("prompt")}
+          className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full border transition-all ${
+            step === "prompt"
+              ? "bg-primary text-white border-primary"
+              : "bg-background text-muted-foreground border-border hover:border-primary/40"
+          }`}
+        >
+          <span>2.</span> Write your story
+        </button>
+      </div>
+
+      {/* Step 1 — Avatar picker */}
+      {step === "avatar" && (
+        <div className="space-y-4">
+          <AvatarPicker
+            selected={selectedAvatars}
+            onChange={setSelectedAvatars}
+            maxSelect={2}
+            basePath={basePath}
+          />
+          <button
+            type="button"
+            onClick={() => setStep("prompt")}
+            className="flex items-center gap-2 px-6 py-2.5 bg-primary text-white font-bold rounded-full hover:bg-primary/90 transition-all text-sm"
+          >
+            {selectedAvatars.length > 0 ? `Continue with ${selectedAvatars.length} character${selectedAvatars.length > 1 ? "s" : ""}` : "Skip — no character image"} →
+          </button>
         </div>
       )}
-      <textarea
-        rows={3}
-        placeholder="What is your story about? (e.g. 'A brave dog who helps find a lost kitten')"
-        value={prompt}
-        onChange={e => { setPrompt(e.target.value); setError(""); }}
-        className="w-full px-4 py-3 rounded-xl border border-border bg-background text-foreground text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 resize-none"
-      />
-      {error && <p className="text-destructive text-xs">{error}</p>}
-      <button
-        onClick={submit}
-        disabled={submitting || !prompt.trim()}
-        className="flex items-center gap-2 px-6 py-2.5 bg-primary text-white font-bold rounded-full hover:bg-primary/90 transition-all disabled:opacity-50"
-      >
-        {submitting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
-        {submitting ? "Writing your story…" : "Submit story"}
-      </button>
+
+      {/* Step 2 — Story prompt */}
+      {step === "prompt" && (
+        <div className="space-y-4">
+          {/* Selected avatars reminder */}
+          {selectedAvatars.length > 0 && (
+            <div className="flex items-center gap-2 text-xs text-primary font-semibold bg-primary/5 border border-primary/20 rounded-xl px-3 py-2">
+              <span>✨</span>
+              {selectedAvatars.length} character image{selectedAvatars.length > 1 ? "s" : ""} selected — AI will illustrate your story
+              <button
+                type="button"
+                onClick={() => setStep("avatar")}
+                className="ml-auto text-primary/60 hover:text-primary underline"
+              >
+                Change
+              </button>
+            </div>
+          )}
+
+          {/* Sight words */}
+          {sightWords.length > 0 && (
+            <div>
+              <p className="text-xs font-bold text-muted-foreground uppercase tracking-wide mb-2">Include these sight words:</p>
+              <div className="flex flex-wrap gap-1.5">
+                {sightWords.map(w => (
+                  <span key={w} className="px-2.5 py-1 bg-primary text-white text-xs font-bold rounded-lg">{w}</span>
+                ))}
+              </div>
+            </div>
+          )}
+
+          <textarea
+            rows={3}
+            placeholder="What is your story about? (e.g. 'A brave dog who helps find a lost kitten')"
+            value={prompt}
+            onChange={e => { setPrompt(e.target.value); setError(""); }}
+            className="w-full px-4 py-3 rounded-xl border border-border bg-background text-foreground text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 resize-none"
+            autoFocus
+          />
+          {error && <p className="text-destructive text-xs">{error}</p>}
+          <button
+            onClick={submit}
+            disabled={submitting || !prompt.trim()}
+            className="flex items-center gap-2 px-6 py-2.5 bg-primary text-white font-bold rounded-full hover:bg-primary/90 transition-all disabled:opacity-50"
+          >
+            {submitting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
+            {submitting ? "Writing your story…" : "Submit story"}
+          </button>
+        </div>
+      )}
     </div>
   );
 }

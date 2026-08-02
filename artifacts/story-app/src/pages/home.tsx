@@ -14,6 +14,7 @@ import {
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { MagicLoader } from "@/components/magic-loader";
 import { BookOpen, ArrowRight, Feather, BookMarked, ImagePlus, X, Loader2, BookHeart, Star, Printer, Gift, Sparkles } from "lucide-react";
+import { AvatarPicker, ImageSourceToggle } from "@/components/avatar-picker";
 import { Logo } from "@/components/logo";
 import { format } from "date-fns";
 
@@ -172,6 +173,10 @@ export default function Home() {
   const activeSlotRef = useRef<number>(0);
   const [generationError, setGenerationError] = useState<string | null>(null);
 
+  // Avatar bank mode
+  const [imageMode, setImageMode] = useState<"upload" | "avatar">("upload");
+  const [selectedAvatars, setSelectedAvatars] = useState<string[]>([]);
+
   const uploadFile = async (file: File): Promise<{ objectPath: string } | null> => {
     return new Promise((resolve) => {
       const reader = new FileReader();
@@ -295,9 +300,12 @@ export default function Home() {
         ? "auto"
         : customVerse.trim() || undefined;
 
-    const referenceImagePaths = filledImages.length > 0
-      ? JSON.stringify(filledImages.map(i => i.objectPath))
-      : undefined;
+    const referenceImagePaths =
+      imageMode === "avatar" && selectedAvatars.length > 0
+        ? JSON.stringify(selectedAvatars)
+        : filledImages.length > 0
+        ? JSON.stringify(filledImages.map(i => i.objectPath))
+        : undefined;
 
     setGenerationError(null);
     createStory.mutate({
@@ -334,13 +342,10 @@ export default function Home() {
   };
 
   if (createStory.isPending) {
+    const hasImages = filledImages.length > 0 || selectedAvatars.length > 0;
     return (
       <MagicLoader
-        message={
-          filledImages.length > 0
-            ? "Writing your tale & painting the pictures…"
-            : "Writing a magical tale…"
-        }
+        message={hasImages ? "Writing your tale & painting the pictures…" : "Writing a magical tale…"}
       />
     );
   }
@@ -444,81 +449,89 @@ export default function Home() {
               />
             </div>
 
-            {/* Reference Photos */}
+            {/* Reference Photos / Avatar Bank */}
             <div className="space-y-3">
-              <div>
-                <label className="text-sm font-bold text-foreground flex items-center gap-2">
-                  <ImagePlus className="w-4 h-4" />
-                  Reference Photos
-                  <span className="text-xs font-normal text-muted-foreground">(Optional — up to 5)</span>
-                </label>
-                <p className="text-xs text-muted-foreground mt-1">
-                  Upload photos of your child and AI will paint a personalized cover image and illustrations for the book.
-                </p>
+              <div className="flex items-start justify-between gap-3 flex-wrap">
+                <div>
+                  <label className="text-sm font-bold text-foreground flex items-center gap-2">
+                    <ImagePlus className="w-4 h-4" />
+                    Character Image
+                    <span className="text-xs font-normal text-muted-foreground">(Optional)</span>
+                  </label>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    AI will paint a personalized cover image and illustrations based on your selection.
+                  </p>
+                </div>
+                <ImageSourceToggle mode={imageMode} onChange={(m) => {
+                  setImageMode(m);
+                  // Clear the other mode's selection when switching
+                  if (m === "upload") setSelectedAvatars([]);
+                  if (m === "avatar") setUploadedImages(Array(MAX_IMAGES).fill(null));
+                }} />
               </div>
 
-              {/* Hidden file input — key forces remount so every slot click gets a fresh element */}
-              <input
-                key={fileInputKey}
-                ref={fileInputRef}
-                type="file"
-                accept="image/*"
-                className="hidden"
-                onChange={handleFileChange}
-              />
-
-              <div className="grid grid-cols-5 gap-2">
-                {Array.from({ length: MAX_IMAGES }).map((_, idx) => {
-                  const img = uploadedImages[idx];
-                  const isUploading = uploadingSlot === idx;
-
-                  return (
-                    <div key={idx} className="relative aspect-square">
-                      {img ? (
-                        <div className="w-full h-full rounded-xl overflow-hidden border-2 border-primary/30 group">
-                          <img
-                            src={img.previewUrl}
-                            alt={`Reference ${idx + 1}`}
-                            className="w-full h-full object-cover"
-                          />
-                          <button
-                            type="button"
-                            onClick={() => removeImage(idx)}
-                            className="absolute top-1 right-1 w-5 h-5 bg-foreground/80 text-background rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
-                          >
-                            <X className="w-3 h-3" />
-                          </button>
-                        </div>
-                      ) : (
-                        <button
-                          type="button"
-                          onClick={() => handleSlotClick(idx)}
-                          disabled={uploadingSlot !== null}
-                          className={`w-full h-full rounded-xl border-2 border-dashed flex flex-col items-center justify-center transition-colors gap-1 ${
-                            isUploading
-                              ? "border-primary/50 bg-primary/5"
-                              : "border-border hover:border-primary/40 hover:bg-primary/5"
-                          }`}
-                        >
-                          {isUploading ? (
-                            <div className="w-5 h-5 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+              {/* Upload mode */}
+              {imageMode === "upload" && (
+                <>
+                  <input
+                    key={fileInputKey}
+                    ref={fileInputRef}
+                    type="file"
+                    accept="image/*"
+                    className="hidden"
+                    onChange={handleFileChange}
+                  />
+                  <div className="grid grid-cols-5 gap-2">
+                    {Array.from({ length: MAX_IMAGES }).map((_, idx) => {
+                      const img = uploadedImages[idx];
+                      const isUploading = uploadingSlot === idx;
+                      return (
+                        <div key={idx} className="relative aspect-square">
+                          {img ? (
+                            <div className="w-full h-full rounded-xl overflow-hidden border-2 border-primary/30 group">
+                              <img src={img.previewUrl} alt={`Reference ${idx + 1}`} className="w-full h-full object-cover" />
+                              <button
+                                type="button"
+                                onClick={() => removeImage(idx)}
+                                className="absolute top-1 right-1 w-5 h-5 bg-foreground/80 text-background rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
+                              >
+                                <X className="w-3 h-3" />
+                              </button>
+                            </div>
                           ) : (
-                            <>
-                              <ImagePlus className="w-5 h-5 text-muted-foreground/50" />
-                              <span className="text-[10px] text-muted-foreground/50 font-medium">Add</span>
-                            </>
+                            <button
+                              type="button"
+                              onClick={() => handleSlotClick(idx)}
+                              disabled={uploadingSlot !== null}
+                              className={`w-full h-full rounded-xl border-2 border-dashed flex flex-col items-center justify-center transition-colors gap-1 ${
+                                isUploading ? "border-primary/50 bg-primary/5" : "border-border hover:border-primary/40 hover:bg-primary/5"
+                              }`}
+                            >
+                              {isUploading
+                                ? <div className="w-5 h-5 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+                                : <><ImagePlus className="w-5 h-5 text-muted-foreground/50" /><span className="text-[10px] text-muted-foreground/50 font-medium">Add</span></>
+                              }
+                            </button>
                           )}
-                        </button>
-                      )}
-                    </div>
-                  );
-                })}
-              </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                  {filledImages.length > 0 && (
+                    <p className="text-xs text-primary font-medium">
+                      ✨ {filledImages.length} photo{filledImages.length > 1 ? "s" : ""} uploaded — AI will illustrate the book
+                    </p>
+                  )}
+                </>
+              )}
 
-              {filledImages.length > 0 && (
-                <p className="text-xs text-primary font-medium">
-                  ✨ {filledImages.length} photo{filledImages.length > 1 ? "s" : ""} uploaded — AI will illustrate the book
-                </p>
+              {/* Avatar bank mode */}
+              {imageMode === "avatar" && (
+                <AvatarPicker
+                  selected={selectedAvatars}
+                  onChange={setSelectedAvatars}
+                  maxSelect={2}
+                />
               )}
             </div>
 

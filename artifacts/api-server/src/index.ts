@@ -4,6 +4,11 @@ import { db } from "@workspace/db";
 import { sql } from "drizzle-orm";
 import app from "./app";
 import { logger } from "./lib/logger";
+import { readFile, access } from "node:fs/promises";
+import { resolve, dirname } from "node:path";
+import { fileURLToPath } from "node:url";
+
+const __serverDir = dirname(fileURLToPath(import.meta.url));
 
 // ── DB migrations ────────────────────────────────────────────────────────────
 async function runAppMigrations() {
@@ -202,6 +207,70 @@ async function runAppMigrations() {
       UNIQUE(student_id, story_id, exercise_type)
     )
   `);
+  // Avatar bank — pre-seeded character illustrations for story art
+  await db.execute(sql`
+    CREATE TABLE IF NOT EXISTS avatar_bank (
+      id         TEXT        PRIMARY KEY,
+      name       TEXT        NOT NULL,
+      category   TEXT        NOT NULL,
+      emoji      TEXT        NOT NULL DEFAULT '',
+      sort_order INTEGER     NOT NULL DEFAULT 0,
+      created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    )
+  `);
+
+  // Seed avatar images if the bank is empty (runs in both dev and prod on startup)
+  const avatarCount = await db.execute(sql`SELECT COUNT(*) AS n FROM avatar_bank`);
+  if (Number((avatarCount.rows[0] as any).n) === 0) {
+    const AVATARS = [
+      { id: "avatar_kid_001",       name: "Amara",           category: "kids",      emoji: "👧🏿" },
+      { id: "avatar_kid_002",       name: "Liam",            category: "kids",      emoji: "👦🏼" },
+      { id: "avatar_kid_003",       name: "Sofia",           category: "kids",      emoji: "👧🏽" },
+      { id: "avatar_kid_004",       name: "Kai",             category: "kids",      emoji: "👦🏻" },
+      { id: "avatar_kid_005",       name: "Maya",            category: "kids",      emoji: "👧🏾" },
+      { id: "avatar_kid_006",       name: "Marcus",          category: "kids",      emoji: "👦🏿" },
+      { id: "avatar_animal_001",    name: "Leo the Lion",    category: "animals",   emoji: "🦁" },
+      { id: "avatar_animal_002",    name: "Benny the Bunny", category: "animals",   emoji: "🐰" },
+      { id: "avatar_animal_003",    name: "Fiona the Fox",   category: "animals",   emoji: "🦊" },
+      { id: "avatar_animal_004",    name: "Drake the Dragon",category: "animals",   emoji: "🐉" },
+      { id: "avatar_animal_005",    name: "Buddy the Dog",   category: "animals",   emoji: "🐶" },
+      { id: "avatar_adventure_001", name: "Astronaut",       category: "adventure", emoji: "🚀" },
+      { id: "avatar_adventure_002", name: "Superhero",       category: "adventure", emoji: "🦸" },
+      { id: "avatar_adventure_003", name: "Explorer",        category: "adventure", emoji: "🧭" },
+      { id: "avatar_adventure_004", name: "Knight",          category: "adventure", emoji: "⚔️" },
+      { id: "avatar_career_001",    name: "Doctor",          category: "careers",   emoji: "👨‍⚕️" },
+      { id: "avatar_career_002",    name: "Police Officer",  category: "careers",   emoji: "👮" },
+      { id: "avatar_career_003",    name: "Veterinarian",    category: "careers",   emoji: "🐾" },
+      { id: "avatar_career_004",    name: "Mechanic",        category: "careers",   emoji: "🔧" },
+      { id: "avatar_career_005",    name: "Firefighter",     category: "careers",   emoji: "🚒" },
+    ];
+    // Avatar PNGs live at repo-root/attached_assets/avatars/ — resolve relative to server entry
+    const avatarDir = resolve(__serverDir, "../../attached_assets/avatars");
+    let seeded = 0;
+    for (const [i, a] of AVATARS.entries()) {
+      try {
+        const imgPath = resolve(avatarDir, `${a.id}.png`);
+        await access(imgPath); // throws if missing — skip silently
+        const buf = await readFile(imgPath);
+        const dataUrl = `data:image/png;base64,${buf.toString("base64")}`;
+        await db.execute(sql`
+          INSERT INTO reference_photos (id, data_url) VALUES (${a.id}, ${dataUrl})
+          ON CONFLICT (id) DO UPDATE SET data_url = EXCLUDED.data_url
+        `);
+        await db.execute(sql`
+          INSERT INTO avatar_bank (id, name, category, emoji, sort_order)
+          VALUES (${a.id}, ${a.name}, ${a.category}, ${a.emoji}, ${i})
+          ON CONFLICT (id) DO UPDATE SET
+            name=EXCLUDED.name, category=EXCLUDED.category,
+            emoji=EXCLUDED.emoji, sort_order=EXCLUDED.sort_order
+        `);
+        seeded++;
+      } catch {
+        // Missing file or DB error — skip this avatar
+      }
+    }
+    if (seeded > 0) logger.info({ seeded }, "Avatar bank seeded");
+  }
 }
 
 // ── Stripe init ──────────────────────────────────────────────────────────────

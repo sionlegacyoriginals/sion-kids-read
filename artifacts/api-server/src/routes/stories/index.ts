@@ -20,6 +20,7 @@ import {
 import { openai } from "@workspace/integrations-openai-ai-server";
 import { generateImageBuffer } from "@workspace/integrations-openai-ai-server/image";
 import { ObjectStorageService } from "../../lib/objectStorage";
+import { generateStoryImages as _generateStoryImages } from "../../lib/storyImages";
 import { requireAuth, ensureUser, hasActiveSubscription } from "../../lib/auth";
 
 const router: IRouter = Router();
@@ -97,7 +98,10 @@ First, output ONLY a creative story title on the very first line starting with "
 Then output the full story starting on the next line. Do not include any other preamble.`;
 }
 
-// ─── Image generation ────────────────────────────────────────────────────────
+// ─── Image generation (re-exported from shared lib for local use) ─────────────
+
+// NOTE: generateStoryImages is imported as _generateStoryImages from lib/storyImages.
+// The local alias below keeps all existing call-sites working without changes.
 
 async function generateStoryImages(params: {
   childName: string;
