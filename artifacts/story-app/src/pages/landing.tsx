@@ -7,9 +7,9 @@ export default function Landing() {
     <div className="min-h-screen">
       {/* Hero */}
       <section className="relative overflow-hidden py-24 px-4 text-center">
-        <div className="absolute inset-0 -z-10 bg-gradient-to-b from-primary/10 via-accent/5 to-transparent" />
-        <div className="absolute top-10 left-10 w-32 h-32 bg-primary/10 rounded-full blur-3xl" />
-        <div className="absolute bottom-0 right-10 w-48 h-48 bg-accent/20 rounded-full blur-3xl" />
+        <div className="absolute inset-0 -z-10 bg-gradient-to-b from-primary/10 via-accent/5 to-transparent pointer-events-none" />
+        <div className="absolute top-10 left-10 w-32 h-32 bg-primary/10 rounded-full blur-3xl pointer-events-none" />
+        <div className="absolute bottom-0 right-10 w-48 h-48 bg-accent/20 rounded-full blur-3xl pointer-events-none" />
 
         <div className="max-w-3xl mx-auto">
           <span className="inline-flex items-center gap-2 px-4 py-1.5 bg-primary/10 text-primary font-bold text-sm rounded-full mb-6">
