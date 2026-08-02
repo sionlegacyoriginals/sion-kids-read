@@ -27,6 +27,16 @@ function ClassPanel({ cls }: { cls: any }) {
   const [copied, setCopied] = useState(false);
   const [resetPins, setResetPins] = useState<Record<string, string>>({});
 
+  const VALUES_OF_WEEK = [
+    "Kindness", "Generosity", "Courage", "Honesty", "Friendship",
+    "Perseverance", "Gratitude", "Forgiveness", "Compassion", "Patience",
+    "Humility", "Loyalty", "Joy", "Hope", "Love", "Self-Control",
+    "Trustworthiness", "Responsibility", "Creativity", "Curiosity",
+    "Teamwork", "Respect", "Empathy", "Sharing", "Diligence",
+    "Bravery", "Wisdom", "Acceptance", "Thankfulness", "Service",
+    "Peacemaking", "Integrity", "Helpfulness", "Wonder", "Faith",
+  ];
+
   const [showAnnouncement, setShowAnnouncement] = useState(false);
   const [ann, setAnn] = useState({ message: "", valueOfWeek: "", sightWords: "", dueDate: "", pointValuePerSightWord: "1", pointsForPublished: "5" });
   const [annSaved, setAnnSaved] = useState(false);
@@ -182,13 +192,16 @@ function ClassPanel({ cls }: { cls: any }) {
                 <div className="grid grid-cols-2 gap-3">
                   <div>
                     <label className="text-xs font-bold text-muted-foreground uppercase tracking-wide block mb-1">💛 Value of the Week</label>
-                    <input
-                      type="text"
-                      placeholder="e.g. Kindness"
+                    <select
                       value={ann.valueOfWeek}
                       onChange={e => setAnn(a => ({ ...a, valueOfWeek: e.target.value }))}
                       className="w-full px-3 py-2.5 rounded-xl border border-border bg-background text-foreground text-sm focus:outline-none focus:ring-2 focus:ring-primary/30"
-                    />
+                    >
+                      <option value="">— Pick a value —</option>
+                      {VALUES_OF_WEEK.map(v => (
+                        <option key={v} value={v}>{v}</option>
+                      ))}
+                    </select>
                   </div>
                   <div>
                     <label className="text-xs font-bold text-muted-foreground uppercase tracking-wide block mb-1">📅 Due Date</label>
@@ -378,48 +391,51 @@ function ClassPanel({ cls }: { cls: any }) {
                 return (
                   <div
                     key={s.id}
-                    className="flex items-center gap-3 py-2.5 px-3 rounded-xl bg-muted/30 border border-border/40"
+                    className="flex flex-col gap-1.5 py-2.5 px-3 rounded-xl bg-muted/30 border border-border/40"
                   >
-                    <span className="text-2xl leading-none shrink-0">{s.avatar}</span>
-                    <span className="font-semibold text-foreground text-sm flex-1">{s.first_name}</span>
-                    <span className="flex items-center gap-1 px-2.5 py-1 bg-yellow-50 border border-yellow-200 rounded-full text-xs font-bold text-yellow-700 shrink-0">
-                      ⭐ {s.points ?? 0}
-                    </span>
-
-                    {/* PIN display */}
-                    <div className="flex items-center gap-1 shrink-0">
-                      <span className="text-xs text-muted-foreground">PIN:</span>
-                      <span className="font-mono text-sm font-bold text-foreground w-10 text-center">
-                        {pinVisible ? displayPin : "••••"}
+                    {/* Row 1: avatar + name + points */}
+                    <div className="flex items-center gap-2">
+                      <span className="text-2xl leading-none shrink-0">{s.avatar}</span>
+                      <span className="font-semibold text-foreground text-sm flex-1 min-w-0 truncate">{s.first_name}</span>
+                      <span className="flex items-center gap-1 px-2 py-0.5 bg-yellow-50 border border-yellow-200 rounded-full text-xs font-bold text-yellow-700 shrink-0">
+                        ⭐ {s.points ?? 0}
                       </span>
-                      <button
-                        onClick={() => setShowPins(p => ({ ...p, [s.id]: !p[s.id] }))}
-                        className="p-1 rounded-lg hover:bg-muted transition-colors text-muted-foreground hover:text-foreground"
-                        title={pinVisible ? "Hide PIN" : "Show PIN"}
-                      >
-                        {pinVisible ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
-                      </button>
                     </div>
 
-                    {/* Reset PIN */}
-                    <button
-                      onClick={() => resetPin.mutate(s.id)}
-                      disabled={resetPin.isPending}
-                      className="p-1.5 rounded-lg hover:bg-amber-100 text-muted-foreground hover:text-amber-600 transition-colors shrink-0"
-                      title="Reset PIN"
-                    >
-                      <RefreshCw className="w-3.5 h-3.5" />
-                    </button>
-
-                    {/* Remove */}
-                    <button
-                      onClick={() => removeStudent.mutate(s.id)}
-                      disabled={removeStudent.isPending}
-                      className="p-1.5 rounded-lg hover:bg-red-100 text-muted-foreground hover:text-red-500 transition-colors shrink-0"
-                      title="Remove student"
-                    >
-                      <Trash2 className="w-3.5 h-3.5" />
-                    </button>
+                    {/* Row 2: PIN + actions */}
+                    <div className="flex items-center gap-1 pl-9">
+                      <span className="text-xs text-muted-foreground shrink-0">PIN:</span>
+                      <span className="font-mono text-sm font-bold text-foreground w-10 text-center shrink-0">
+                        {pinVisible ? displayPin : "••••"}
+                      </span>
+                      {/* Show / hide PIN */}
+                      <button
+                        onClick={() => setShowPins(p => ({ ...p, [s.id]: !p[s.id] }))}
+                        className="p-1.5 rounded-lg hover:bg-muted transition-colors text-muted-foreground hover:text-foreground shrink-0"
+                        title={pinVisible ? "Hide PIN" : "Show PIN"}
+                      >
+                        {pinVisible ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                      </button>
+                      <div className="flex-1" />
+                      {/* Reset PIN */}
+                      <button
+                        onClick={() => resetPin.mutate(s.id)}
+                        disabled={resetPin.isPending}
+                        className="p-1.5 rounded-lg hover:bg-amber-100 text-muted-foreground hover:text-amber-600 transition-colors shrink-0"
+                        title="Reset PIN"
+                      >
+                        <RefreshCw className="w-4 h-4" />
+                      </button>
+                      {/* Remove */}
+                      <button
+                        onClick={() => removeStudent.mutate(s.id)}
+                        disabled={removeStudent.isPending}
+                        className="p-1.5 rounded-lg hover:bg-red-100 text-muted-foreground hover:text-red-500 transition-colors shrink-0"
+                        title="Remove student"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    </div>
                   </div>
                 );
               })}
