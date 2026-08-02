@@ -1,25 +1,384 @@
 import { useLocation } from "wouter";
-import { useEffect, useState } from "react";
-import { Loader2, BookOpen, Star, Calendar, PenLine, Send, X, CheckCircle, Clock, XCircle } from "lucide-react";
+import { useEffect, useRef, useState, useCallback } from "react";
+import {
+  Loader2, BookOpen, Star, Calendar, PenLine, Send, X,
+  CheckCircle, Clock, XCircle, Play, Pause, Square,
+  Volume2, ChevronLeft, Sparkles, Trophy,
+} from "lucide-react";
 import { useStudentAuth } from "@/lib/studentAuth";
 
 const basePath = import.meta.env.BASE_URL.replace(/\/$/, "");
 
-// ── Simple story reader (student view) ───────────────────────────────────────
-function StoryReader({ storyId, onBack }: { storyId: number; onBack: () => void }) {
-  const { studentFetch } = useStudentAuth();
+// ── Points toast ──────────────────────────────────────────────────────────────
+function PointsToast({ points, label, onDone }: { points: number; label: string; onDone: () => void }) {
+  useEffect(() => {
+    const t = setTimeout(onDone, 3000);
+    return () => clearTimeout(t);
+  }, []);
+  return (
+    <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 animate-in slide-in-from-bottom-4 fade-in">
+      <div className="flex items-center gap-3 bg-yellow-400 text-yellow-900 font-bold px-6 py-3 rounded-2xl shadow-xl">
+        <Star className="w-5 h-5 fill-yellow-700 text-yellow-700" />
+        <span>+{points} {points === 1 ? "point" : "points"}! {label}</span>
+      </div>
+    </div>
+  );
+}
+
+// ── Word-highlighted text ─────────────────────────────────────────────────────
+function HighlightedText({ text, activeCharIndex }: { text: string; activeCharIndex: number }) {
+  // Split text into word-tokens + whitespace-tokens
+  const tokens: { type: "word" | "space"; text: string; start: number }[] = [];
+  let i = 0;
+  while (i < text.length) {
+    if (/\s/.test(text[i])) {
+      let j = i;
+      while (j < text.length && /\s/.test(text[j])) j++;
+      tokens.push({ type: "space", text: text.slice(i, j), start: i });
+      i = j;
+    } else {
+      let j = i;
+      while (j < text.length && !/\s/.test(text[j])) j++;
+      tokens.push({ type: "word", text: text.slice(i, j), start: i });
+      i = j;
+    }
+  }
+
+  return (
+    <>
+      {tokens.map((tok, idx) => {
+        if (tok.type === "space") return <span key={idx}>{tok.text}</span>;
+        const isActive = activeCharIndex >= tok.start && activeCharIndex < tok.start + tok.text.length;
+        return (
+          <span
+            key={idx}
+            className={isActive ? "bg-yellow-300 text-yellow-900 rounded px-0.5 transition-colors" : ""}
+          >
+            {tok.text}
+          </span>
+        );
+      })}
+    </>
+  );
+}
+
+// ── Sight-word exercise ───────────────────────────────────────────────────────
+function SightWordExercises({
+  exercises,
+  onComplete,
+  alreadyDone,
+}: {
+  exercises: { sentence: string; answer: string; options: string[] }[];
+  onComplete: (correct: number) => void;
+  alreadyDone: boolean;
+}) {
+  const [answers, setAnswers] = useState<Record<number, string>>({});
+  const [submitted, setSubmitted] = useState(alreadyDone);
+  const [score, setScore] = useState<number | null>(alreadyDone ? null : null);
+
+  function submit() {
+    let correct = 0;
+    exercises.forEach((ex, i) => {
+      if (answers[i]?.toLowerCase() === ex.answer.toLowerCase()) correct++;
+    });
+    setScore(correct);
+    setSubmitted(true);
+    onComplete(correct);
+  }
+
+  if (alreadyDone && score === null) {
+    return (
+      <div className="flex items-center gap-2 text-green-700 bg-green-50 border border-green-200 rounded-xl px-4 py-3 text-sm font-semibold">
+        <CheckCircle className="w-4 h-4" /> Sight word exercises already completed!
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-4">
+      <h3 className="font-bold text-foreground flex items-center gap-2">
+        <span className="text-xl">🔤</span> Fill in the Sight Word
+      </h3>
+      {exercises.map((ex, i) => (
+        <div key={i} className="bg-muted/50 rounded-xl p-4 space-y-3">
+          <p className="font-serif text-base leading-relaxed text-foreground">
+            {ex.sentence.replace("___", "______")}
+          </p>
+          <div className="grid grid-cols-2 gap-2">
+            {ex.options.map((opt) => {
+              const selected = answers[i] === opt;
+              const isCorrect = submitted && opt.toLowerCase() === ex.answer.toLowerCase();
+              const isWrong = submitted && selected && !isCorrect;
+              return (
+                <button
+                  key={opt}
+                  onClick={() => !submitted && setAnswers(prev => ({ ...prev, [i]: opt }))}
+                  className={`px-4 py-2.5 rounded-xl border-2 text-sm font-bold transition-all text-left
+                    ${isCorrect ? "border-green-500 bg-green-50 text-green-800" :
+                      isWrong ? "border-red-400 bg-red-50 text-red-700" :
+                      selected ? "border-primary bg-primary/10 text-primary" :
+                      "border-border bg-background hover:border-primary/50"}`}
+                >
+                  {opt}
+                  {isCorrect && " ✓"}
+                  {isWrong && " ✗"}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      ))}
+      {!submitted ? (
+        <button
+          onClick={submit}
+          disabled={Object.keys(answers).length < exercises.length}
+          className="w-full py-3 bg-primary text-white font-bold rounded-xl hover:bg-primary/90 transition-all disabled:opacity-40"
+        >
+          Check my answers
+        </button>
+      ) : (
+        <div className={`rounded-xl px-4 py-3 font-bold text-center
+          ${score === exercises.length ? "bg-green-50 border border-green-200 text-green-800" :
+            "bg-blue-50 border border-blue-200 text-blue-800"}`}>
+          {score === exercises.length
+            ? `🎉 Perfect! ${score}/${exercises.length} correct!`
+            : `${score}/${exercises.length} correct — great effort!`}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ── Comprehension exercise ────────────────────────────────────────────────────
+function ComprehensionExercises({
+  questions,
+  onComplete,
+  alreadyDone,
+}: {
+  questions: { question: string; answer: string; options: string[] }[];
+  onComplete: (correct: number) => void;
+  alreadyDone: boolean;
+}) {
+  const [answers, setAnswers] = useState<Record<number, string>>({});
+  const [submitted, setSubmitted] = useState(alreadyDone);
+  const [score, setScore] = useState<number | null>(null);
+
+  function submit() {
+    let correct = 0;
+    questions.forEach((q, i) => {
+      if (answers[i]?.toLowerCase() === q.answer.toLowerCase()) correct++;
+    });
+    setScore(correct);
+    setSubmitted(true);
+    onComplete(correct);
+  }
+
+  if (alreadyDone && score === null) {
+    return (
+      <div className="flex items-center gap-2 text-green-700 bg-green-50 border border-green-200 rounded-xl px-4 py-3 text-sm font-semibold">
+        <CheckCircle className="w-4 h-4" /> Comprehension questions already completed!
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-4">
+      <h3 className="font-bold text-foreground flex items-center gap-2">
+        <span className="text-xl">🧠</span> Comprehension Questions
+      </h3>
+      {questions.map((q, i) => (
+        <div key={i} className="bg-muted/50 rounded-xl p-4 space-y-3">
+          <p className="font-bold text-sm text-foreground">{i + 1}. {q.question}</p>
+          <div className="grid grid-cols-1 gap-2">
+            {q.options.map((opt) => {
+              const selected = answers[i] === opt;
+              const isCorrect = submitted && opt.toLowerCase() === q.answer.toLowerCase();
+              const isWrong = submitted && selected && !isCorrect;
+              return (
+                <button
+                  key={opt}
+                  onClick={() => !submitted && setAnswers(prev => ({ ...prev, [i]: opt }))}
+                  className={`px-4 py-2.5 rounded-xl border-2 text-sm font-semibold transition-all text-left
+                    ${isCorrect ? "border-green-500 bg-green-50 text-green-800" :
+                      isWrong ? "border-red-400 bg-red-50 text-red-700" :
+                      selected ? "border-primary bg-primary/10 text-primary" :
+                      "border-border bg-background hover:border-primary/50"}`}
+                >
+                  {opt}
+                  {isCorrect && " ✓"}
+                  {isWrong && " ✗"}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      ))}
+      {!submitted ? (
+        <button
+          onClick={submit}
+          disabled={Object.keys(answers).length < questions.length}
+          className="w-full py-3 bg-primary text-white font-bold rounded-xl hover:bg-primary/90 transition-all disabled:opacity-40"
+        >
+          Check my answers
+        </button>
+      ) : (
+        <div className={`rounded-xl px-4 py-3 font-bold text-center
+          ${score === questions.length ? "bg-green-50 border border-green-200 text-green-800" :
+            "bg-blue-50 border border-blue-200 text-blue-800"}`}>
+          {score === questions.length
+            ? `🎉 All correct! ${score}/${questions.length}`
+            : `${score}/${questions.length} correct — keep reading!`}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ── Full story reader ─────────────────────────────────────────────────────────
+function StoryReader({
+  storyId,
+  onBack,
+  studentFetch,
+  onPointsEarned,
+}: {
+  storyId: number;
+  onBack: () => void;
+  studentFetch: any;
+  onPointsEarned: (pts: number, label: string) => void;
+}) {
   const [story, setStory] = useState<any>(null);
+  const [sightWords, setSightWords] = useState<string>("");
+  const [alreadyRead, setAlreadyRead] = useState(false);
+  const [completedTypes, setCompletedTypes] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
+  // Audio state
+  const [isPlaying, setIsPlaying] = useState(false);
+  const [activeCharIndex, setActiveCharIndex] = useState(-1);
+  const utteranceRef = useRef<SpeechSynthesisUtterance | null>(null);
+  const fullTextRef = useRef<string>("");
+
+  // Exercises
+  const [exercises, setExercises] = useState<any>(null);
+  const [exercisesLoading, setExercisesLoading] = useState(false);
+  const [exercisesLoaded, setExercisesLoaded] = useState(false);
+  const [exCompletedTypes, setExCompletedTypes] = useState<string[]>([]);
+
   useEffect(() => {
     studentFetch(`${basePath}/api/classroom/stories/${storyId}`)
-      .then(r => r.json())
-      .then(d => { if (d.story) setStory(d.story); else setError(d.error ?? "Not found"); })
+      .then((r: any) => r.json())
+      .then((d: any) => {
+        if (d.story) {
+          setStory(d.story);
+          setSightWords(d.sightWords ?? "");
+          setAlreadyRead(d.alreadyRead ?? false);
+          setCompletedTypes(d.completedExerciseTypes ?? []);
+          fullTextRef.current = d.story.content ?? "";
+        } else {
+          setError(d.error ?? "Not found");
+        }
+      })
       .catch(() => setError("Could not load story."))
       .finally(() => setLoading(false));
+
+    return () => {
+      window.speechSynthesis?.cancel();
+    };
   }, [storyId]);
 
+  // ── Audio controls ────────────────────────────────────────────────────────
+  const startReading = useCallback(() => {
+    if (!story?.content) return;
+    window.speechSynthesis?.cancel();
+
+    const utterance = new SpeechSynthesisUtterance(story.content);
+    utterance.rate = 0.88;
+    utterance.pitch = 1.05;
+
+    // Pick a pleasant voice if available
+    const voices = window.speechSynthesis?.getVoices() ?? [];
+    const preferred = voices.find(v =>
+      v.lang.startsWith("en") && (v.name.includes("Samantha") || v.name.includes("Karen") || v.name.includes("Daniel"))
+    ) ?? voices.find(v => v.lang.startsWith("en"));
+    if (preferred) utterance.voice = preferred;
+
+    utterance.onboundary = (e) => {
+      if (e.name === "word") setActiveCharIndex(e.charIndex);
+    };
+    utterance.onend = () => {
+      setIsPlaying(false);
+      setActiveCharIndex(-1);
+      // Award points for reading
+      if (!alreadyRead) {
+        studentFetch(`${basePath}/api/classroom/stories/${storyId}/read`, { method: "POST" })
+          .then((r: any) => r.json())
+          .then((d: any) => {
+            if (d.pointsAwarded > 0) onPointsEarned(d.pointsAwarded, "for reading this story!");
+            setAlreadyRead(true);
+          })
+          .catch(() => {});
+      }
+    };
+    utterance.onerror = () => { setIsPlaying(false); setActiveCharIndex(-1); };
+
+    utteranceRef.current = utterance;
+    window.speechSynthesis?.speak(utterance);
+    setIsPlaying(true);
+  }, [story, alreadyRead, storyId]);
+
+  function pauseReading() {
+    window.speechSynthesis?.pause();
+    setIsPlaying(false);
+  }
+
+  function resumeReading() {
+    window.speechSynthesis?.resume();
+    setIsPlaying(true);
+  }
+
+  function stopReading() {
+    window.speechSynthesis?.cancel();
+    setIsPlaying(false);
+    setActiveCharIndex(-1);
+  }
+
+  // ── Load exercises ────────────────────────────────────────────────────────
+  async function loadExercises() {
+    setExercisesLoading(true);
+    try {
+      const r = await studentFetch(`${basePath}/api/classroom/stories/${storyId}/exercises`);
+      const d = await r.json();
+      setExercises(d.exercises);
+      setExCompletedTypes(d.completedTypes ?? []);
+      setExercisesLoaded(true);
+    } catch {
+      // silently fail
+    } finally {
+      setExercisesLoading(false);
+    }
+  }
+
+  async function handleExerciseComplete(type: "sightwords" | "comprehension", correct: number) {
+    if (exCompletedTypes.includes(type)) return;
+    try {
+      const r = await studentFetch(`${basePath}/api/classroom/stories/${storyId}/exercises/complete`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ exerciseType: type, correctCount: correct }),
+      });
+      const d = await r.json();
+      if (d.pointsAwarded > 0) {
+        onPointsEarned(
+          d.pointsAwarded,
+          type === "sightwords" ? "for sight word exercises!" : "for comprehension questions!"
+        );
+      }
+      setExCompletedTypes(prev => [...prev, type]);
+    } catch {}
+  }
+
+  // ── Render ────────────────────────────────────────────────────────────────
   if (loading) return <div className="flex justify-center py-20"><Loader2 className="w-8 h-8 animate-spin text-primary" /></div>;
   if (error) return (
     <div className="text-center py-20 text-muted-foreground">
@@ -28,27 +387,124 @@ function StoryReader({ storyId, onBack }: { storyId: number; onBack: () => void 
     </div>
   );
 
-  const paragraphs: string[] = (story.content ?? "")
-    .split(/\n+/)
-    .map((p: string) => p.trim())
-    .filter(Boolean);
+  const paragraphs = (story.content ?? "").split(/\n+/).map((p: string) => p.trim()).filter(Boolean);
+
+  // Build per-paragraph char offsets so highlighting works across paragraphs
+  let charCursor = 0;
+  const parasWithOffset = paragraphs.map((p: string) => {
+    const start = charCursor;
+    charCursor += p.length + 1; // +1 for the newline between paragraphs
+    return { text: p, start };
+  });
 
   return (
-    <div className="max-w-2xl mx-auto py-6 px-4 space-y-6 animate-in fade-in">
-      <button onClick={onBack} className="flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors">
-        ← Back to stories
+    <div className="max-w-2xl mx-auto py-6 px-4 space-y-8 animate-in fade-in pb-24">
+      {/* Back */}
+      <button
+        onClick={() => { stopReading(); onBack(); }}
+        className="flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors"
+      >
+        <ChevronLeft className="w-4 h-4" /> Back to stories
       </button>
 
+      {/* Cover */}
       {story.cover_image_url && (
-        <img src={story.cover_image_url} alt={story.title} className="w-full rounded-3xl object-cover max-h-72" />
+        <img src={story.cover_image_url} alt={story.title} className="w-full rounded-3xl object-cover max-h-72 shadow-md" />
       )}
 
+      {/* Title */}
       <h1 className="text-2xl font-serif font-bold text-foreground">{story.title}</h1>
 
+      {/* Audio controls */}
+      <div className="flex items-center gap-3 bg-primary/5 border border-primary/20 rounded-2xl px-5 py-4">
+        <Volume2 className="w-5 h-5 text-primary shrink-0" />
+        <span className="text-sm font-semibold text-foreground flex-1">Read aloud</span>
+        {!isPlaying ? (
+          <button
+            onClick={utteranceRef.current && window.speechSynthesis?.paused ? resumeReading : startReading}
+            className="flex items-center gap-2 px-5 py-2 bg-primary text-white font-bold rounded-full hover:bg-primary/90 transition-all text-sm"
+          >
+            <Play className="w-4 h-4 fill-white" />
+            {utteranceRef.current && window.speechSynthesis?.paused ? "Resume" : "Play"}
+          </button>
+        ) : (
+          <button
+            onClick={pauseReading}
+            className="flex items-center gap-2 px-5 py-2 bg-primary text-white font-bold rounded-full hover:bg-primary/90 transition-all text-sm"
+          >
+            <Pause className="w-4 h-4 fill-white" /> Pause
+          </button>
+        )}
+        {(isPlaying || activeCharIndex >= 0) && (
+          <button
+            onClick={stopReading}
+            className="p-2 rounded-full border border-border hover:bg-muted transition-all"
+            title="Stop"
+          >
+            <Square className="w-3.5 h-3.5" />
+          </button>
+        )}
+      </div>
+
+      {/* Story text with word highlighting */}
       <div className="space-y-4">
-        {paragraphs.map((p, i) => (
-          <p key={i} className="text-foreground leading-relaxed text-lg font-serif">{p}</p>
+        {parasWithOffset.map((para, i) => (
+          <p key={i} className="text-foreground leading-relaxed text-lg font-serif">
+            <HighlightedText
+              text={para.text}
+              activeCharIndex={activeCharIndex >= 0 ? activeCharIndex - para.start : -1}
+            />
+          </p>
         ))}
+      </div>
+
+      {/* "Already read" badge */}
+      {alreadyRead && (
+        <div className="flex items-center gap-2 text-sm text-green-700 bg-green-50 border border-green-200 rounded-xl px-4 py-2.5 font-semibold">
+          <CheckCircle className="w-4 h-4" /> You've read this story
+        </div>
+      )}
+
+      {/* Writing exercises section */}
+      <div className="border-t border-border/60 pt-6 space-y-6">
+        <div className="flex items-center justify-between">
+          <h2 className="text-lg font-serif font-bold text-foreground flex items-center gap-2">
+            <Sparkles className="w-5 h-5 text-primary" /> Writing Exercises
+          </h2>
+          {!exercisesLoaded && (
+            <button
+              onClick={loadExercises}
+              disabled={exercisesLoading}
+              className="flex items-center gap-2 px-5 py-2 bg-primary text-white font-bold rounded-full text-sm hover:bg-primary/90 transition-all disabled:opacity-50"
+            >
+              {exercisesLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Sparkles className="w-4 h-4" />}
+              {exercisesLoading ? "Loading…" : "Start exercises"}
+            </button>
+          )}
+        </div>
+
+        {exercisesLoaded && exercises && (
+          <div className="space-y-8">
+            {exercises.sightWordExercises?.length > 0 && (
+              <SightWordExercises
+                exercises={exercises.sightWordExercises}
+                alreadyDone={exCompletedTypes.includes("sightwords") || completedTypes.includes("sightwords")}
+                onComplete={(correct) => handleExerciseComplete("sightwords", correct)}
+              />
+            )}
+            {exercises.comprehensionQuestions?.length > 0 && (
+              <ComprehensionExercises
+                questions={exercises.comprehensionQuestions}
+                alreadyDone={exCompletedTypes.includes("comprehension") || completedTypes.includes("comprehension")}
+                onComplete={(correct) => handleExerciseComplete("comprehension", correct)}
+              />
+            )}
+          </div>
+        )}
+
+        {exercisesLoaded && !exercises && (
+          <p className="text-muted-foreground text-sm">Exercises not available for this story.</p>
+        )}
       </div>
     </div>
   );
@@ -134,6 +590,8 @@ export default function ClassroomHome() {
   const [selectedStory, setSelectedStory] = useState<number | null>(null);
   const [announcement, setAnnouncement] = useState<any>(null);
   const [showWriteForm, setShowWriteForm] = useState(false);
+  const [points, setPoints] = useState<number>(0);
+  const [toast, setToast] = useState<{ pts: number; label: string } | null>(null);
 
   // Redirect if not logged in as student
   useEffect(() => {
@@ -143,22 +601,59 @@ export default function ClassroomHome() {
   useEffect(() => {
     if (!student) return;
     studentFetch(`${basePath}/api/classroom/stories`)
-      .then(r => r.json())
-      .then(d => setStories(d.stories ?? []))
+      .then((r: any) => r.json())
+      .then((d: any) => setStories(d.stories ?? []))
       .catch(() => {})
       .finally(() => setLoading(false));
     studentFetch(`${basePath}/api/classroom/announcement`)
-      .then(r => r.json())
-      .then(d => setAnnouncement(d))
+      .then((r: any) => r.json())
+      .then((d: any) => setAnnouncement(d))
+      .catch(() => {});
+    // Fetch current points
+    studentFetch(`${basePath}/api/classroom/me`)
+      .then((r: any) => r.json())
+      .then((d: any) => { if (d.points != null) setPoints(d.points); })
       .catch(() => {});
   }, [student]);
+
+  function handlePointsEarned(pts: number, label: string) {
+    setPoints(prev => prev + pts);
+    setToast({ pts, label });
+  }
 
   if (!student) return null;
 
   if (selectedStory !== null) {
     return (
       <div className="min-h-[100dvh] bg-background">
-        <StoryReader storyId={selectedStory} onBack={() => setSelectedStory(null)} />
+        {/* Mini header while reading */}
+        <header className="sticky top-0 z-50 border-b border-border/50 bg-background/80 backdrop-blur-md">
+          <div className="container mx-auto px-4 h-14 flex items-center justify-between">
+            <button
+              onClick={() => setSelectedStory(null)}
+              className="flex items-center gap-1.5 text-sm font-semibold text-muted-foreground hover:text-foreground"
+            >
+              <ChevronLeft className="w-4 h-4" /> Stories
+            </button>
+            <div className="flex items-center gap-1.5 bg-yellow-100 text-yellow-800 font-bold text-sm px-3 py-1 rounded-full">
+              <Star className="w-3.5 h-3.5 fill-yellow-500 text-yellow-500" />
+              {points}
+            </div>
+          </div>
+        </header>
+        <StoryReader
+          storyId={selectedStory}
+          onBack={() => setSelectedStory(null)}
+          studentFetch={studentFetch}
+          onPointsEarned={handlePointsEarned}
+        />
+        {toast && (
+          <PointsToast
+            points={toast.pts}
+            label={toast.label}
+            onDone={() => setToast(null)}
+          />
+        )}
       </div>
     );
   }
@@ -175,12 +670,19 @@ export default function ClassroomHome() {
               <p className="text-xs text-muted-foreground leading-tight">{student.className}</p>
             </div>
           </div>
-          <button
-            onClick={() => { signOutStudent(); navigate("/student-login"); }}
-            className="text-sm text-muted-foreground hover:text-foreground transition-colors font-medium"
-          >
-            Sign out
-          </button>
+          <div className="flex items-center gap-3">
+            {/* Points badge */}
+            <div className="flex items-center gap-1.5 bg-yellow-100 text-yellow-800 font-bold text-sm px-3 py-1.5 rounded-full">
+              <Star className="w-3.5 h-3.5 fill-yellow-500 text-yellow-500" />
+              {points} {points === 1 ? "point" : "points"}
+            </div>
+            <button
+              onClick={() => { signOutStudent(); navigate("/student-login"); }}
+              className="text-sm text-muted-foreground hover:text-foreground transition-colors font-medium"
+            >
+              Sign out
+            </button>
+          </div>
         </div>
       </header>
 
@@ -257,9 +759,13 @@ export default function ClassroomHome() {
           </button>
         )}
 
-        <div className="mb-6">
-          <h2 className="font-serif font-bold text-lg text-foreground">Class Stories</h2>
-          <p className="text-muted-foreground text-sm mt-0.5">Tap a story to read!</p>
+        <div className="mb-6 flex items-center justify-between">
+          <div>
+            <h2 className="font-serif font-bold text-lg text-foreground">Class Stories</h2>
+            <p className="text-muted-foreground text-sm mt-0.5">
+              Tap a story to read, listen, and earn points! 🌟
+            </p>
+          </div>
         </div>
 
         {loading ? (
@@ -302,6 +808,14 @@ export default function ClassroomHome() {
           </div>
         )}
       </main>
+
+      {toast && (
+        <PointsToast
+          points={toast.pts}
+          label={toast.label}
+          onDone={() => setToast(null)}
+        />
+      )}
     </div>
   );
 }

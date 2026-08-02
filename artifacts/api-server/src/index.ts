@@ -169,6 +169,39 @@ async function runAppMigrations() {
       created_at  TIMESTAMPTZ NOT NULL DEFAULT NOW()
     )
   `);
+
+  // ── Story reading + exercises feature ───────────────────────────────────────
+  // Track which student has read which story (points awarded once per story)
+  await db.execute(sql`
+    CREATE TABLE IF NOT EXISTS story_reads (
+      id         SERIAL      PRIMARY KEY,
+      student_id TEXT        NOT NULL,
+      story_id   INTEGER     NOT NULL,
+      created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+      UNIQUE(student_id, story_id)
+    )
+  `);
+  // Cache AI-generated exercises per story
+  await db.execute(sql`
+    CREATE TABLE IF NOT EXISTS story_exercises (
+      id             SERIAL      PRIMARY KEY,
+      story_id       INTEGER     NOT NULL UNIQUE,
+      exercises_json TEXT        NOT NULL,
+      created_at     TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    )
+  `);
+  // Track which students completed which exercise types (points awarded once)
+  await db.execute(sql`
+    CREATE TABLE IF NOT EXISTS exercise_completions (
+      id             SERIAL      PRIMARY KEY,
+      student_id     TEXT        NOT NULL,
+      story_id       INTEGER     NOT NULL,
+      exercise_type  TEXT        NOT NULL,
+      points_awarded INTEGER     NOT NULL DEFAULT 0,
+      created_at     TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+      UNIQUE(student_id, story_id, exercise_type)
+    )
+  `);
 }
 
 // ── Stripe init ──────────────────────────────────────────────────────────────

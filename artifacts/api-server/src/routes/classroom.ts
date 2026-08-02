@@ -465,9 +465,10 @@ router.post("/classroom/login", async (req, res) => {
 router.get("/classroom/me", requireStudentAuth, async (req: any, res) => {
   try {
     const p = req.studentPayload;
-    const cls = await db.execute(sql`
-      SELECT class_name, class_code FROM classes WHERE id = ${p.classId}
-    `);
+    const [cls, me] = await Promise.all([
+      db.execute(sql`SELECT class_name, class_code FROM classes WHERE id = ${p.classId}`),
+      db.execute(sql`SELECT points FROM users WHERE id = ${p.studentId}`),
+    ]);
     res.json({
       id: p.studentId,
       firstName: p.firstName,
@@ -475,6 +476,7 @@ router.get("/classroom/me", requireStudentAuth, async (req: any, res) => {
       classId: p.classId,
       className: cls.rows[0]?.class_name ?? "",
       teacherId: p.teacherId,
+      points: (me.rows[0] as any)?.points ?? 0,
     });
   } catch (err: any) {
     res.status(500).json({ error: err.message });
@@ -663,12 +665,226 @@ router.get("/classroom/stories", requireStudentAuth, async (req: any, res) => {
 // ── Student: Read a single story ──────────────────────────────────────────────
 router.get("/classroom/stories/:id", requireStudentAuth, async (req: any, res) => {
   try {
-    const { teacherId } = req.studentPayload;
+    const { teacherId, studentId, classId } = req.studentPayload;
     const storyId = parseInt(req.params.id, 10);
+    const result = await db.execute(sql`
+      SELECT id, title, child_name, content, cover_image_url, illustration_urls,
+             submitted_by_student_id
+      FROM stories
+      WHERE id = ${storyId} AND user_id = ${teacherId} AND deleted_at IS NULL
+    `);
+    if (!result.rows.length) return res.status(404).json({ error: "Story not found" });
+
+    // Fetch class sight words for exercises
+    const clsRes = await db.execute(sql`SELECT sight_words FROM classes WHERE id = ${classId}`);
+    const sightWords = (clsRes.rows[0] as any)?.sight_words ?? "";
+
+    // Has this student already read this story?
+    const readRes = await db.execute(sql`
+      SELECT id FROM story_reads WHERE student_id = ${studentId} AND story_id = ${storyId}
+    `);
+
+    // Which exercise types has this student completed?
+    const compRes = await db.execute(sql`
+      SELECT exercise_type FROM exercise_completions
+      WHERE student_id = ${studentId} AND story_id = ${storyId}
+    `);
+
+    res.json({
+      story: result.rows[0],
+      sightWords,
+      alreadyRead: readRes.rows.length > 0,
+      completedExerciseTypes: (compRes.rows as any[]).map(r => r.exercise_type),
+    });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ── Student: Mark story as read + award points ─────────────────────────────
+router.post("/classroom/stories/:storyId/read", requireStudentAuth, async (req: any, res) => {
+  try {
+    const { studentId } = req.studentPayload;
+    const storyId = parseInt(req.params.storyId, 10);
+    const READ_POINTS = 2;
+
+    // Can't earn points for your own story
+    const storyRes = await db.execute(sql`
+      SELECT submitted_by_student_id FROM stories WHERE id = ${storyId} AND deleted_at IS NULL
+    `);
+    if (!storyRes.rows.length) return res.status(404).json({ error: "Story not found" });
+    const isOwn = (storyRes.rows[0] as any).submitted_by_student_id === studentId;
+
+    // Insert read record (ignore conflict = already read)
+    const insertRes = await db.execute(sql`
+      INSERT INTO story_reads (student_id, story_id)
+      VALUES (${studentId}, ${storyId})
+      ON CONFLICT (student_id, story_id) DO NOTHING
+      RETURNING id
+    `);
+
+    const isNew = insertRes.rows.length > 0;
+    let pointsAwarded = 0;
+
+    if (isNew && !isOwn) {
+      pointsAwarded = READ_POINTS;
+      await db.execute(sql`
+        UPDATE users SET points = points + ${READ_POINTS} WHERE id = ${studentId}
+      `);
+    }
+
+    res.json({ ok: true, pointsAwarded, alreadyRead: !isNew });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ── Student: Get exercises for a story (generate + cache if not exist) ─────
+router.get("/classroom/stories/:storyId/exercises", requireStudentAuth, async (req: any, res) => {
+  try {
+    const { teacherId, classId, studentId } = req.studentPayload;
+    const storyId = parseInt(req.params.storyId, 10);
+
+    // Verify access
+    const storyRes = await db.execute(sql`
+      SELECT id, title, content FROM stories
+      WHERE id = ${storyId} AND user_id = ${teacherId} AND deleted_at IS NULL
+    `);
+    if (!storyRes.rows.length) return res.status(404).json({ error: "Story not found" });
+    const story = storyRes.rows[0] as any;
+
+    // Check cache
+    const cached = await db.execute(sql`
+      SELECT exercises_json FROM story_exercises WHERE story_id = ${storyId}
+    `);
+    if (cached.rows.length) {
+      const completions = await db.execute(sql`
+        SELECT exercise_type FROM exercise_completions
+        WHERE student_id = ${studentId} AND story_id = ${storyId}
+      `);
+      return res.json({
+        exercises: JSON.parse((cached.rows[0] as any).exercises_json),
+        completedTypes: (completions.rows as any[]).map(r => r.exercise_type),
+      });
+    }
+
+    // Get class sight words
+    const clsRes = await db.execute(sql`SELECT sight_words FROM classes WHERE id = ${classId}`);
+    const sightWordsRaw = (clsRes.rows[0] as any)?.sight_words ?? "";
+    const sightWords = sightWordsRaw.split(",").map((w: string) => w.trim()).filter(Boolean);
+
+    // Generate exercises with AI
+    const sightWordInstruction = sightWords.length
+      ? `Sight words to use (find sentences in the story that contain these and blank them out): ${sightWords.slice(0, 3).join(", ")}.`
+      : "Pick 3 important words from the story to use as fill-in-the-blank.";
+
+    const prompt = `You are creating reading exercises for an elementary school student who just read this story.
+
+STORY TITLE: ${story.title}
+STORY:
+${story.content}
+
+${sightWordInstruction}
+
+Create exactly this JSON (no other text):
+{
+  "sightWordExercises": [
+    {
+      "sentence": "The ___ went to school.",
+      "answer": "dog",
+      "options": ["dog", "cat", "bird", "fish"]
+    }
+  ],
+  "comprehensionQuestions": [
+    {
+      "question": "Who is the main character?",
+      "answer": "Buddy",
+      "options": ["Buddy", "Calvin", "Emily", "Sara"]
+    }
+  ]
+}
+
+Rules:
+- sightWordExercises: exactly 3 items. Use actual sentences from the story with one key word blanked as "___". The answer must match one of the 4 options. Options should be plausible but only one correct.
+- comprehensionQuestions: exactly 3 items. Questions about who/what/where/why. One clearly correct answer.
+- All answers must be findable in the story.
+- Keep language simple for young readers.`;
+
+    const completion = await openai.chat.completions.create({
+      model: "gpt-4o-mini",
+      messages: [{ role: "user", content: prompt }],
+      max_tokens: 800,
+      response_format: { type: "json_object" },
+    });
+
+    const raw = completion.choices[0]?.message?.content ?? "{}";
+    let exercises: any;
+    try { exercises = JSON.parse(raw); } catch { exercises = { sightWordExercises: [], comprehensionQuestions: [] }; }
+
+    // Cache it
+    await db.execute(sql`
+      INSERT INTO story_exercises (story_id, exercises_json)
+      VALUES (${storyId}, ${JSON.stringify(exercises)})
+      ON CONFLICT (story_id) DO NOTHING
+    `);
+
+    const completions = await db.execute(sql`
+      SELECT exercise_type FROM exercise_completions
+      WHERE student_id = ${studentId} AND story_id = ${storyId}
+    `);
+
+    res.json({
+      exercises,
+      completedTypes: (completions.rows as any[]).map(r => r.exercise_type),
+    });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ── Student: Submit exercise answers + award points ────────────────────────
+router.post("/classroom/stories/:storyId/exercises/complete", requireStudentAuth, async (req: any, res) => {
+  try {
+    const { studentId } = req.studentPayload;
+    const storyId = parseInt(req.params.storyId, 10);
+    const { exerciseType, correctCount } = req.body;
+    // exerciseType: "sightwords" | "comprehension"
+    // correctCount: number of correct answers the student got
+
+    if (!exerciseType || correctCount == null) {
+      return res.status(400).json({ error: "exerciseType and correctCount required" });
+    }
+
+    const pointsToAward = Math.max(0, parseInt(correctCount, 10));
+
+    const insertRes = await db.execute(sql`
+      INSERT INTO exercise_completions (student_id, story_id, exercise_type, points_awarded)
+      VALUES (${studentId}, ${storyId}, ${exerciseType}, ${pointsToAward})
+      ON CONFLICT (student_id, story_id, exercise_type) DO NOTHING
+      RETURNING id
+    `);
+
+    const isNew = insertRes.rows.length > 0;
+    if (isNew && pointsToAward > 0) {
+      await db.execute(sql`
+        UPDATE users SET points = points + ${pointsToAward} WHERE id = ${studentId}
+      `);
+    }
+
+    res.json({ ok: true, pointsAwarded: isNew ? pointsToAward : 0, alreadyCompleted: !isNew });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ── Teacher: Read a story in class mode (Clerk auth) ──────────────────────
+router.get("/classroom/teacher/stories/:storyId", requireAuth, async (req: any, res) => {
+  try {
+    const storyId = parseInt(req.params.storyId, 10);
     const result = await db.execute(sql`
       SELECT id, title, child_name, content, cover_image_url, illustration_urls
       FROM stories
-      WHERE id = ${storyId} AND user_id = ${teacherId} AND deleted_at IS NULL
+      WHERE id = ${storyId} AND user_id = ${req.userId} AND deleted_at IS NULL
     `);
     if (!result.rows.length) return res.status(404).json({ error: "Story not found" });
     res.json({ story: result.rows[0] });

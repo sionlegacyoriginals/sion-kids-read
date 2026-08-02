@@ -285,6 +285,13 @@ export default function StoryViewer() {
           >
             <Monitor className="w-4 h-4" /> Smartboard
           </button>
+          <Link
+            href={`/classroom/class-read/${id}`}
+            className="inline-flex items-center gap-2 px-4 py-2 rounded-xl border border-border text-sm font-semibold text-muted-foreground hover:text-primary hover:border-primary/40 transition-all"
+            title="Open classroom reading mode for projection"
+          >
+            📺 Read to Class
+          </Link>
           {!readAlong.visible && (
             <ReadAloudButton onClick={readAlong.open} />
           )}
