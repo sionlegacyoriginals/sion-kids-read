@@ -2,10 +2,15 @@ import { useLocation } from "wouter";
 import { useEffect, useRef, useState, useCallback } from "react";
 import {
   Loader2, BookOpen, Star, Calendar, PenLine, Send, X,
-  CheckCircle, Clock, XCircle, Play, Pause, Square,
-  Volume2, ChevronLeft, Sparkles, Trophy,
+  CheckCircle, Sparkles, ChevronLeft, Play, Pause, Square, Volume2,
 } from "lucide-react";
 import { useStudentAuth } from "@/lib/studentAuth";
+import {
+  useReadAlong,
+  buildReadAlongData,
+  type ActiveRange,
+  type ReadAlongParagraphData,
+} from "@/components/read-along-player";
 
 const basePath = import.meta.env.BASE_URL.replace(/\/$/, "");
 
@@ -25,34 +30,26 @@ function PointsToast({ points, label, onDone }: { points: number; label: string;
   );
 }
 
-// ── Word-highlighted text ─────────────────────────────────────────────────────
-function HighlightedText({ text, activeCharIndex }: { text: string; activeCharIndex: number }) {
-  // Split text into word-tokens + whitespace-tokens
-  const tokens: { type: "word" | "space"; text: string; start: number }[] = [];
-  let i = 0;
-  while (i < text.length) {
-    if (/\s/.test(text[i])) {
-      let j = i;
-      while (j < text.length && /\s/.test(text[j])) j++;
-      tokens.push({ type: "space", text: text.slice(i, j), start: i });
-      i = j;
-    } else {
-      let j = i;
-      while (j < text.length && !/\s/.test(text[j])) j++;
-      tokens.push({ type: "word", text: text.slice(i, j), start: i });
-      i = j;
-    }
-  }
-
+// ── Sentence-highlighted paragraph ────────────────────────────────────────────
+function HighlightedParagraph({
+  pd,
+  activeRange,
+}: {
+  pd: ReadAlongParagraphData;
+  activeRange: ActiveRange;
+}) {
   return (
     <>
-      {tokens.map((tok, idx) => {
-        if (tok.type === "space") return <span key={idx}>{tok.text}</span>;
-        const isActive = activeCharIndex >= tok.start && activeCharIndex < tok.start + tok.text.length;
+      {pd.tokens.map((tok, i) => {
+        const active =
+          activeRange !== null &&
+          tok.isWord &&
+          tok.start >= activeRange[0] &&
+          tok.start < activeRange[1];
         return (
           <span
-            key={idx}
-            className={isActive ? "bg-yellow-300 text-yellow-900 rounded px-0.5 transition-colors" : ""}
+            key={i}
+            className={active ? "bg-yellow-300 text-yellow-900 rounded px-0.5 transition-colors" : ""}
           >
             {tok.text}
           </span>
@@ -74,7 +71,7 @@ function SightWordExercises({
 }) {
   const [answers, setAnswers] = useState<Record<number, string>>({});
   const [submitted, setSubmitted] = useState(alreadyDone);
-  const [score, setScore] = useState<number | null>(alreadyDone ? null : null);
+  const [score, setScore] = useState<number | null>(null);
 
   function submit() {
     let correct = 0;
@@ -119,9 +116,7 @@ function SightWordExercises({
                       selected ? "border-primary bg-primary/10 text-primary" :
                       "border-border bg-background hover:border-primary/50"}`}
                 >
-                  {opt}
-                  {isCorrect && " ✓"}
-                  {isWrong && " ✗"}
+                  {opt}{isCorrect && " ✓"}{isWrong && " ✗"}
                 </button>
               );
             })}
@@ -140,9 +135,7 @@ function SightWordExercises({
         <div className={`rounded-xl px-4 py-3 font-bold text-center
           ${score === exercises.length ? "bg-green-50 border border-green-200 text-green-800" :
             "bg-blue-50 border border-blue-200 text-blue-800"}`}>
-          {score === exercises.length
-            ? `🎉 Perfect! ${score}/${exercises.length} correct!`
-            : `${score}/${exercises.length} correct — great effort!`}
+          {score === exercises.length ? `🎉 Perfect! ${score}/${exercises.length} correct!` : `${score}/${exercises.length} correct — great effort!`}
         </div>
       )}
     </div>
@@ -204,9 +197,7 @@ function ComprehensionExercises({
                       selected ? "border-primary bg-primary/10 text-primary" :
                       "border-border bg-background hover:border-primary/50"}`}
                 >
-                  {opt}
-                  {isCorrect && " ✓"}
-                  {isWrong && " ✗"}
+                  {opt}{isCorrect && " ✓"}{isWrong && " ✗"}
                 </button>
               );
             })}
@@ -225,9 +216,7 @@ function ComprehensionExercises({
         <div className={`rounded-xl px-4 py-3 font-bold text-center
           ${score === questions.length ? "bg-green-50 border border-green-200 text-green-800" :
             "bg-blue-50 border border-blue-200 text-blue-800"}`}>
-          {score === questions.length
-            ? `🎉 All correct! ${score}/${questions.length}`
-            : `${score}/${questions.length} correct — keep reading!`}
+          {score === questions.length ? `🎉 All correct! ${score}/${questions.length}` : `${score}/${questions.length} correct — keep reading!`}
         </div>
       )}
     </div>
@@ -247,17 +236,10 @@ function StoryReader({
   onPointsEarned: (pts: number, label: string) => void;
 }) {
   const [story, setStory] = useState<any>(null);
-  const [sightWords, setSightWords] = useState<string>("");
-  const [alreadyRead, setAlreadyRead] = useState(false);
   const [completedTypes, setCompletedTypes] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
-
-  // Audio state
-  const [isPlaying, setIsPlaying] = useState(false);
-  const [activeCharIndex, setActiveCharIndex] = useState(-1);
-  const utteranceRef = useRef<SpeechSynthesisUtterance | null>(null);
-  const fullTextRef = useRef<string>("");
+  const [alreadyRead, setAlreadyRead] = useState(false);
 
   // Exercises
   const [exercises, setExercises] = useState<any>(null);
@@ -265,52 +247,26 @@ function StoryReader({
   const [exercisesLoaded, setExercisesLoaded] = useState(false);
   const [exCompletedTypes, setExCompletedTypes] = useState<string[]>([]);
 
+  // Build paragraphs for readAlong hook (empty until story loads)
+  const paragraphs = story
+    ? (story.content ?? "").split(/\n+/).map((p: string) => p.trim()).filter(Boolean)
+    : [];
+
+  // Use the battle-tested sentence-by-sentence hook — handles Chrome long-text bug + async voice loading
+  const readAlong = useReadAlong(paragraphs);
+
+  // Detect when reading finishes (activeRange → null after playing = done, not paused)
+  const hasStartedRef = useRef(false);
+  const alreadyReadRef = useRef(alreadyRead);
+  alreadyReadRef.current = alreadyRead;
+
   useEffect(() => {
-    studentFetch(`${basePath}/api/classroom/stories/${storyId}`)
-      .then((r: any) => r.json())
-      .then((d: any) => {
-        if (d.story) {
-          setStory(d.story);
-          setSightWords(d.sightWords ?? "");
-          setAlreadyRead(d.alreadyRead ?? false);
-          setCompletedTypes(d.completedExerciseTypes ?? []);
-          fullTextRef.current = d.story.content ?? "";
-        } else {
-          setError(d.error ?? "Not found");
-        }
-      })
-      .catch(() => setError("Could not load story."))
-      .finally(() => setLoading(false));
-
-    return () => {
-      window.speechSynthesis?.cancel();
-    };
-  }, [storyId]);
-
-  // ── Audio controls ────────────────────────────────────────────────────────
-  const startReading = useCallback(() => {
-    if (!story?.content) return;
-    window.speechSynthesis?.cancel();
-
-    const utterance = new SpeechSynthesisUtterance(story.content);
-    utterance.rate = 0.88;
-    utterance.pitch = 1.05;
-
-    // Pick a pleasant voice if available
-    const voices = window.speechSynthesis?.getVoices() ?? [];
-    const preferred = voices.find(v =>
-      v.lang.startsWith("en") && (v.name.includes("Samantha") || v.name.includes("Karen") || v.name.includes("Daniel"))
-    ) ?? voices.find(v => v.lang.startsWith("en"));
-    if (preferred) utterance.voice = preferred;
-
-    utterance.onboundary = (e) => {
-      if (e.name === "word") setActiveCharIndex(e.charIndex);
-    };
-    utterance.onend = () => {
-      setIsPlaying(false);
-      setActiveCharIndex(-1);
-      // Award points for reading
-      if (!alreadyRead) {
+    if (readAlong.isPlaying) {
+      hasStartedRef.current = true;
+    } else if (hasStartedRef.current && readAlong.activeRange === null) {
+      // Reading finished naturally (pausing keeps activeRange non-null)
+      hasStartedRef.current = false;
+      if (!alreadyReadRef.current) {
         studentFetch(`${basePath}/api/classroom/stories/${storyId}/read`, { method: "POST" })
           .then((r: any) => r.json())
           .then((d: any) => {
@@ -319,31 +275,27 @@ function StoryReader({
           })
           .catch(() => {});
       }
-    };
-    utterance.onerror = () => { setIsPlaying(false); setActiveCharIndex(-1); };
+    }
+  }, [readAlong.isPlaying, readAlong.activeRange]);
 
-    utteranceRef.current = utterance;
-    window.speechSynthesis?.speak(utterance);
-    setIsPlaying(true);
-  }, [story, alreadyRead, storyId]);
+  useEffect(() => {
+    studentFetch(`${basePath}/api/classroom/stories/${storyId}`)
+      .then((r: any) => r.json())
+      .then((d: any) => {
+        if (d.story) {
+          setStory(d.story);
+          setAlreadyRead(d.alreadyRead ?? false);
+          setCompletedTypes(d.completedExerciseTypes ?? []);
+        } else {
+          setError(d.error ?? "Not found");
+        }
+      })
+      .catch(() => setError("Could not load story."))
+      .finally(() => setLoading(false));
 
-  function pauseReading() {
-    window.speechSynthesis?.pause();
-    setIsPlaying(false);
-  }
+    return () => { readAlong.stop(); };
+  }, [storyId]);
 
-  function resumeReading() {
-    window.speechSynthesis?.resume();
-    setIsPlaying(true);
-  }
-
-  function stopReading() {
-    window.speechSynthesis?.cancel();
-    setIsPlaying(false);
-    setActiveCharIndex(-1);
-  }
-
-  // ── Load exercises ────────────────────────────────────────────────────────
   async function loadExercises() {
     setExercisesLoading(true);
     try {
@@ -352,11 +304,8 @@ function StoryReader({
       setExercises(d.exercises);
       setExCompletedTypes(d.completedTypes ?? []);
       setExercisesLoaded(true);
-    } catch {
-      // silently fail
-    } finally {
-      setExercisesLoading(false);
-    }
+    } catch { /* silent */ }
+    finally { setExercisesLoading(false); }
   }
 
   async function handleExerciseComplete(type: "sightwords" | "comprehension", correct: number) {
@@ -369,16 +318,13 @@ function StoryReader({
       });
       const d = await r.json();
       if (d.pointsAwarded > 0) {
-        onPointsEarned(
-          d.pointsAwarded,
-          type === "sightwords" ? "for sight word exercises!" : "for comprehension questions!"
-        );
+        onPointsEarned(d.pointsAwarded,
+          type === "sightwords" ? "for sight word exercises!" : "for comprehension questions!");
       }
       setExCompletedTypes(prev => [...prev, type]);
     } catch {}
   }
 
-  // ── Render ────────────────────────────────────────────────────────────────
   if (loading) return <div className="flex justify-center py-20"><Loader2 className="w-8 h-8 animate-spin text-primary" /></div>;
   if (error) return (
     <div className="text-center py-20 text-muted-foreground">
@@ -387,21 +333,11 @@ function StoryReader({
     </div>
   );
 
-  const paragraphs = (story.content ?? "").split(/\n+/).map((p: string) => p.trim()).filter(Boolean);
-
-  // Build per-paragraph char offsets so highlighting works across paragraphs
-  let charCursor = 0;
-  const parasWithOffset = paragraphs.map((p: string) => {
-    const start = charCursor;
-    charCursor += p.length + 1; // +1 for the newline between paragraphs
-    return { text: p, start };
-  });
-
   return (
     <div className="max-w-2xl mx-auto py-6 px-4 space-y-8 animate-in fade-in pb-24">
       {/* Back */}
       <button
-        onClick={() => { stopReading(); onBack(); }}
+        onClick={() => { readAlong.stop(); onBack(); }}
         className="flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors"
       >
         <ChevronLeft className="w-4 h-4" /> Back to stories
@@ -419,25 +355,17 @@ function StoryReader({
       <div className="flex items-center gap-3 bg-primary/5 border border-primary/20 rounded-2xl px-5 py-4">
         <Volume2 className="w-5 h-5 text-primary shrink-0" />
         <span className="text-sm font-semibold text-foreground flex-1">Read aloud</span>
-        {!isPlaying ? (
+        <button
+          onClick={readAlong.togglePlay}
+          className="flex items-center gap-2 px-5 py-2 bg-primary text-white font-bold rounded-full hover:bg-primary/90 transition-all text-sm"
+        >
+          {readAlong.isPlaying
+            ? <><Pause className="w-4 h-4 fill-white" /> Pause</>
+            : <><Play className="w-4 h-4 fill-white" /> {readAlong.activeRange ? "Resume" : "Play"}</>}
+        </button>
+        {(readAlong.isPlaying || readAlong.activeRange !== null) && (
           <button
-            onClick={utteranceRef.current && window.speechSynthesis?.paused ? resumeReading : startReading}
-            className="flex items-center gap-2 px-5 py-2 bg-primary text-white font-bold rounded-full hover:bg-primary/90 transition-all text-sm"
-          >
-            <Play className="w-4 h-4 fill-white" />
-            {utteranceRef.current && window.speechSynthesis?.paused ? "Resume" : "Play"}
-          </button>
-        ) : (
-          <button
-            onClick={pauseReading}
-            className="flex items-center gap-2 px-5 py-2 bg-primary text-white font-bold rounded-full hover:bg-primary/90 transition-all text-sm"
-          >
-            <Pause className="w-4 h-4 fill-white" /> Pause
-          </button>
-        )}
-        {(isPlaying || activeCharIndex >= 0) && (
-          <button
-            onClick={stopReading}
+            onClick={readAlong.stop}
             className="p-2 rounded-full border border-border hover:bg-muted transition-all"
             title="Stop"
           >
@@ -446,16 +374,18 @@ function StoryReader({
         )}
       </div>
 
-      {/* Story text with word highlighting */}
+      {/* Story text with sentence highlighting */}
       <div className="space-y-4">
-        {parasWithOffset.map((para, i) => (
-          <p key={i} className="text-foreground leading-relaxed text-lg font-serif">
-            <HighlightedText
-              text={para.text}
-              activeCharIndex={activeCharIndex >= 0 ? activeCharIndex - para.start : -1}
-            />
-          </p>
-        ))}
+        {readAlong.paragraphData.length > 0
+          ? readAlong.paragraphData.map((pd, i) => (
+              <p key={i} className="text-foreground leading-relaxed text-lg font-serif">
+                <HighlightedParagraph pd={pd} activeRange={readAlong.activeRange} />
+              </p>
+            ))
+          : paragraphs.map((p: string, i: number) => (
+              <p key={i} className="text-foreground leading-relaxed text-lg font-serif">{p}</p>
+            ))
+        }
       </div>
 
       {/* "Already read" badge */}
@@ -465,7 +395,7 @@ function StoryReader({
         </div>
       )}
 
-      {/* Writing exercises section */}
+      {/* Writing exercises */}
       <div className="border-t border-border/60 pt-6 space-y-6">
         <div className="flex items-center justify-between">
           <h2 className="text-lg font-serif font-bold text-foreground flex items-center gap-2">
@@ -489,21 +419,17 @@ function StoryReader({
               <SightWordExercises
                 exercises={exercises.sightWordExercises}
                 alreadyDone={exCompletedTypes.includes("sightwords") || completedTypes.includes("sightwords")}
-                onComplete={(correct) => handleExerciseComplete("sightwords", correct)}
+                onComplete={(c) => handleExerciseComplete("sightwords", c)}
               />
             )}
             {exercises.comprehensionQuestions?.length > 0 && (
               <ComprehensionExercises
                 questions={exercises.comprehensionQuestions}
                 alreadyDone={exCompletedTypes.includes("comprehension") || completedTypes.includes("comprehension")}
-                onComplete={(correct) => handleExerciseComplete("comprehension", correct)}
+                onComplete={(c) => handleExerciseComplete("comprehension", c)}
               />
             )}
           </div>
-        )}
-
-        {exercisesLoaded && !exercises && (
-          <p className="text-muted-foreground text-sm">Exercises not available for this story.</p>
         )}
       </div>
     </div>
@@ -593,7 +519,6 @@ export default function ClassroomHome() {
   const [points, setPoints] = useState<number>(0);
   const [toast, setToast] = useState<{ pts: number; label: string } | null>(null);
 
-  // Redirect if not logged in as student
   useEffect(() => {
     if (!student) { navigate("/student-login"); }
   }, [student]);
@@ -609,7 +534,6 @@ export default function ClassroomHome() {
       .then((r: any) => r.json())
       .then((d: any) => setAnnouncement(d))
       .catch(() => {});
-    // Fetch current points
     studentFetch(`${basePath}/api/classroom/me`)
       .then((r: any) => r.json())
       .then((d: any) => { if (d.points != null) setPoints(d.points); })
@@ -626,7 +550,6 @@ export default function ClassroomHome() {
   if (selectedStory !== null) {
     return (
       <div className="min-h-[100dvh] bg-background">
-        {/* Mini header while reading */}
         <header className="sticky top-0 z-50 border-b border-border/50 bg-background/80 backdrop-blur-md">
           <div className="container mx-auto px-4 h-14 flex items-center justify-between">
             <button
@@ -647,20 +570,13 @@ export default function ClassroomHome() {
           studentFetch={studentFetch}
           onPointsEarned={handlePointsEarned}
         />
-        {toast && (
-          <PointsToast
-            points={toast.pts}
-            label={toast.label}
-            onDone={() => setToast(null)}
-          />
-        )}
+        {toast && <PointsToast points={toast.pts} label={toast.label} onDone={() => setToast(null)} />}
       </div>
     );
   }
 
   return (
     <div className="min-h-[100dvh] bg-background">
-      {/* Student header */}
       <header className="sticky top-0 z-50 border-b border-border/50 bg-background/80 backdrop-blur-md">
         <div className="container mx-auto px-4 h-16 flex items-center justify-between">
           <div className="flex items-center gap-3">
@@ -671,7 +587,6 @@ export default function ClassroomHome() {
             </div>
           </div>
           <div className="flex items-center gap-3">
-            {/* Points badge */}
             <div className="flex items-center gap-1.5 bg-yellow-100 text-yellow-800 font-bold text-sm px-3 py-1.5 rounded-full">
               <Star className="w-3.5 h-3.5 fill-yellow-500 text-yellow-500" />
               {points} {points === 1 ? "point" : "points"}
@@ -688,12 +603,10 @@ export default function ClassroomHome() {
 
       <main className="container mx-auto px-4 py-10 max-w-3xl">
         <div className="mb-6">
-          <h1 className="text-2xl font-serif font-bold text-foreground">
-            Welcome, {student.firstName}! 👋
-          </h1>
+          <h1 className="text-2xl font-serif font-bold text-foreground">Welcome, {student.firstName}! 👋</h1>
         </div>
 
-        {/* Weekly announcement card */}
+        {/* Weekly announcement */}
         {announcement && (announcement.message || announcement.valueOfWeek || announcement.sightWords) && (
           <div className="mb-8 bg-primary/5 border-2 border-primary/20 rounded-2xl p-5 space-y-4">
             <div className="flex items-center gap-2">
@@ -706,11 +619,7 @@ export default function ClassroomHome() {
                 </span>
               )}
             </div>
-
-            {announcement.message && (
-              <p className="text-foreground leading-relaxed text-sm">{announcement.message}</p>
-            )}
-
+            {announcement.message && <p className="text-foreground leading-relaxed text-sm">{announcement.message}</p>}
             <div className="flex flex-wrap gap-3">
               {announcement.valueOfWeek && (
                 <div className="flex items-center gap-2 bg-yellow-50 border border-yellow-200 rounded-xl px-4 py-2.5">
@@ -722,15 +631,12 @@ export default function ClassroomHome() {
                 </div>
               )}
             </div>
-
             {announcement.sightWords && (
               <div>
                 <p className="text-xs font-bold text-muted-foreground uppercase tracking-wide mb-2">🔤 Sight Words</p>
                 <div className="flex flex-wrap gap-2">
                   {announcement.sightWords.split(",").map((w: string) => w.trim()).filter(Boolean).map((word: string) => (
-                    <span key={word} className="px-3 py-1.5 bg-primary text-white text-sm font-bold rounded-lg">
-                      {word}
-                    </span>
+                    <span key={word} className="px-3 py-1.5 bg-primary text-white text-sm font-bold rounded-lg">{word}</span>
                   ))}
                 </div>
               </div>
@@ -738,7 +644,7 @@ export default function ClassroomHome() {
           </div>
         )}
 
-        {/* Write a Story — always visible */}
+        {/* Write a Story */}
         {showWriteForm ? (
           <div className="mb-8">
             <button onClick={() => setShowWriteForm(false)} className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground mb-3 transition-colors">
@@ -759,19 +665,13 @@ export default function ClassroomHome() {
           </button>
         )}
 
-        <div className="mb-6 flex items-center justify-between">
-          <div>
-            <h2 className="font-serif font-bold text-lg text-foreground">Class Stories</h2>
-            <p className="text-muted-foreground text-sm mt-0.5">
-              Tap a story to read, listen, and earn points! 🌟
-            </p>
-          </div>
+        <div className="mb-6">
+          <h2 className="font-serif font-bold text-lg text-foreground">Class Stories</h2>
+          <p className="text-muted-foreground text-sm mt-0.5">Tap a story to read, listen, and earn points! 🌟</p>
         </div>
 
         {loading ? (
-          <div className="flex justify-center py-20">
-            <Loader2 className="w-8 h-8 animate-spin text-primary" />
-          </div>
+          <div className="flex justify-center py-20"><Loader2 className="w-8 h-8 animate-spin text-primary" /></div>
         ) : stories.length === 0 ? (
           <div className="text-center py-16 text-muted-foreground">
             <BookOpen className="w-12 h-12 mx-auto mb-3 opacity-30" />
@@ -787,20 +687,14 @@ export default function ClassroomHome() {
                 className="group flex flex-col rounded-2xl overflow-hidden border-2 border-border hover:border-primary bg-card transition-all hover:shadow-lg active:scale-95 text-left"
               >
                 {s.cover_image_url ? (
-                  <img
-                    src={s.cover_image_url}
-                    alt={s.title}
-                    className="w-full h-36 object-cover"
-                  />
+                  <img src={s.cover_image_url} alt={s.title} className="w-full h-36 object-cover" />
                 ) : (
                   <div className="w-full h-36 bg-primary/10 flex items-center justify-center">
                     <BookOpen className="w-10 h-10 text-primary/40" />
                   </div>
                 )}
                 <div className="p-3">
-                  <p className="font-bold text-foreground text-sm leading-tight line-clamp-2 font-serif">
-                    {s.title ?? "Untitled story"}
-                  </p>
+                  <p className="font-bold text-foreground text-sm leading-tight line-clamp-2 font-serif">{s.title ?? "Untitled story"}</p>
                   <p className="text-xs text-muted-foreground mt-1">{s.child_name}</p>
                 </div>
               </button>
@@ -809,13 +703,7 @@ export default function ClassroomHome() {
         )}
       </main>
 
-      {toast && (
-        <PointsToast
-          points={toast.pts}
-          label={toast.label}
-          onDone={() => setToast(null)}
-        />
-      )}
+      {toast && <PointsToast points={toast.pts} label={toast.label} onDone={() => setToast(null)} />}
     </div>
   );
 }

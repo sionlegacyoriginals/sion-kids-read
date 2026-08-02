@@ -1,40 +1,39 @@
 /**
  * Teacher "Class Reading Mode" — project this on the board for group reading.
  * Accessible at /classroom/class-read/:storyId  (requires Clerk teacher auth)
- * Large text, audio with word highlighting, no exercises/points.
+ * Large text, sentence-highlighted audio, no exercises/points.
  */
-import { useEffect, useRef, useState, useCallback } from "react";
+import { useEffect, useState } from "react";
 import { useParams, useLocation } from "wouter";
-import { Loader2, Play, Pause, Square, Volume2, ChevronLeft, BookOpen } from "lucide-react";
+import { Loader2, Play, Pause, Square, Volume2, ChevronLeft } from "lucide-react";
 import { useAuth } from "@clerk/react";
+import {
+  useReadAlong,
+  type ReadAlongParagraphData,
+  type ActiveRange,
+} from "@/components/read-along-player";
 
 const basePath = import.meta.env.BASE_URL.replace(/\/$/, "");
 
-function HighlightedText({ text, activeCharIndex }: { text: string; activeCharIndex: number }) {
-  const tokens: { type: "word" | "space"; text: string; start: number }[] = [];
-  let i = 0;
-  while (i < text.length) {
-    if (/\s/.test(text[i])) {
-      let j = i;
-      while (j < text.length && /\s/.test(text[j])) j++;
-      tokens.push({ type: "space", text: text.slice(i, j), start: i });
-      i = j;
-    } else {
-      let j = i;
-      while (j < text.length && !/\s/.test(text[j])) j++;
-      tokens.push({ type: "word", text: text.slice(i, j), start: i });
-      i = j;
-    }
-  }
+function HighlightedParagraph({
+  pd,
+  activeRange,
+}: {
+  pd: ReadAlongParagraphData;
+  activeRange: ActiveRange;
+}) {
   return (
     <>
-      {tokens.map((tok, idx) => {
-        if (tok.type === "space") return <span key={idx}>{tok.text}</span>;
-        const isActive = activeCharIndex >= tok.start && activeCharIndex < tok.start + tok.text.length;
+      {pd.tokens.map((tok, i) => {
+        const active =
+          activeRange !== null &&
+          tok.isWord &&
+          tok.start >= activeRange[0] &&
+          tok.start < activeRange[1];
         return (
           <span
-            key={idx}
-            className={isActive ? "bg-yellow-300 text-yellow-900 rounded px-1 transition-colors" : ""}
+            key={i}
+            className={active ? "bg-yellow-300 text-yellow-900 rounded px-1 transition-colors" : ""}
           >
             {tok.text}
           </span>
@@ -52,9 +51,14 @@ export default function ClassroomRead() {
   const [story, setStory] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
-  const [isPlaying, setIsPlaying] = useState(false);
-  const [activeCharIndex, setActiveCharIndex] = useState(-1);
-  const utteranceRef = useRef<SpeechSynthesisUtterance | null>(null);
+
+  // Build paragraphs for hook (empty until story loads)
+  const paragraphs = story
+    ? (story.content ?? "").split(/\n+/).map((p: string) => p.trim()).filter(Boolean)
+    : [];
+
+  // Battle-tested sentence-by-sentence reader — fixes Chrome long-text bug
+  const readAlong = useReadAlong(paragraphs);
 
   useEffect(() => {
     async function load() {
@@ -73,35 +77,8 @@ export default function ClassroomRead() {
       }
     }
     load();
-    return () => { window.speechSynthesis?.cancel(); };
+    return () => { readAlong.stop(); };
   }, [params.storyId]);
-
-  const startReading = useCallback(() => {
-    if (!story?.content) return;
-    window.speechSynthesis?.cancel();
-
-    const utterance = new SpeechSynthesisUtterance(story.content);
-    utterance.rate = 0.85;
-    utterance.pitch = 1.05;
-
-    const voices = window.speechSynthesis?.getVoices() ?? [];
-    const preferred = voices.find(v =>
-      v.lang.startsWith("en") && (v.name.includes("Samantha") || v.name.includes("Karen") || v.name.includes("Daniel"))
-    ) ?? voices.find(v => v.lang.startsWith("en"));
-    if (preferred) utterance.voice = preferred;
-
-    utterance.onboundary = (e) => { if (e.name === "word") setActiveCharIndex(e.charIndex); };
-    utterance.onend = () => { setIsPlaying(false); setActiveCharIndex(-1); };
-    utterance.onerror = () => { setIsPlaying(false); setActiveCharIndex(-1); };
-
-    utteranceRef.current = utterance;
-    window.speechSynthesis?.speak(utterance);
-    setIsPlaying(true);
-  }, [story]);
-
-  function pauseReading() { window.speechSynthesis?.pause(); setIsPlaying(false); }
-  function resumeReading() { window.speechSynthesis?.resume(); setIsPlaying(true); }
-  function stopReading() { window.speechSynthesis?.cancel(); setIsPlaying(false); setActiveCharIndex(-1); }
 
   if (loading) return (
     <div className="flex min-h-[100dvh] items-center justify-center">
@@ -118,49 +95,35 @@ export default function ClassroomRead() {
     </div>
   );
 
-  const paragraphs = (story.content ?? "").split(/\n+/).map((p: string) => p.trim()).filter(Boolean);
-  let charCursor = 0;
-  const parasWithOffset = paragraphs.map((p: string) => {
-    const start = charCursor;
-    charCursor += p.length + 1;
-    return { text: p, start };
-  });
-
   return (
     <div className="min-h-[100dvh] bg-background">
-      {/* Header */}
+      {/* Header with audio controls */}
       <header className="sticky top-0 z-50 border-b border-border/50 bg-background/90 backdrop-blur-md">
         <div className="container mx-auto px-6 h-16 flex items-center justify-between max-w-5xl">
           <button
-            onClick={() => { stopReading(); navigate("/classroom-setup"); }}
+            onClick={() => { readAlong.stop(); navigate("/classroom-setup"); }}
             className="flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors font-semibold"
           >
             <ChevronLeft className="w-4 h-4" /> Classroom
           </button>
+
           <span className="text-sm font-bold text-muted-foreground uppercase tracking-widest">
             📺 Class Reading Mode
           </span>
-          {/* Audio controls in header */}
+
           <div className="flex items-center gap-2">
-            {!isPlaying ? (
+            <Volume2 className="w-4 h-4 text-muted-foreground" />
+            <button
+              onClick={readAlong.togglePlay}
+              className="flex items-center gap-2 px-5 py-2 bg-primary text-white font-bold rounded-full hover:bg-primary/90 transition-all text-sm"
+            >
+              {readAlong.isPlaying
+                ? <><Pause className="w-4 h-4 fill-white" /> Pause</>
+                : <><Play className="w-4 h-4 fill-white" /> {readAlong.activeRange ? "Resume" : "Read Aloud"}</>}
+            </button>
+            {(readAlong.isPlaying || readAlong.activeRange !== null) && (
               <button
-                onClick={utteranceRef.current && window.speechSynthesis?.paused ? resumeReading : startReading}
-                className="flex items-center gap-2 px-5 py-2 bg-primary text-white font-bold rounded-full hover:bg-primary/90 transition-all text-sm"
-              >
-                <Play className="w-4 h-4 fill-white" />
-                {utteranceRef.current && window.speechSynthesis?.paused ? "Resume" : "Read Aloud"}
-              </button>
-            ) : (
-              <button
-                onClick={pauseReading}
-                className="flex items-center gap-2 px-5 py-2 bg-primary text-white font-bold rounded-full hover:bg-primary/90 transition-all text-sm"
-              >
-                <Pause className="w-4 h-4 fill-white" /> Pause
-              </button>
-            )}
-            {(isPlaying || activeCharIndex >= 0) && (
-              <button
-                onClick={stopReading}
+                onClick={readAlong.stop}
                 className="p-2 rounded-full border border-border hover:bg-muted transition-all"
               >
                 <Square className="w-3.5 h-3.5" />
@@ -170,7 +133,7 @@ export default function ClassroomRead() {
         </div>
       </header>
 
-      {/* Story */}
+      {/* Story — large text for projection */}
       <main className="container mx-auto px-6 py-10 max-w-3xl">
         {story.cover_image_url && (
           <img
@@ -185,14 +148,16 @@ export default function ClassroomRead() {
         </h1>
 
         <div className="space-y-8">
-          {parasWithOffset.map((para, i) => (
-            <p key={i} className="text-foreground leading-loose text-2xl font-serif">
-              <HighlightedText
-                text={para.text}
-                activeCharIndex={activeCharIndex >= 0 ? activeCharIndex - para.start : -1}
-              />
-            </p>
-          ))}
+          {readAlong.paragraphData.length > 0
+            ? readAlong.paragraphData.map((pd, i) => (
+                <p key={i} className="text-foreground leading-loose text-2xl font-serif">
+                  <HighlightedParagraph pd={pd} activeRange={readAlong.activeRange} />
+                </p>
+              ))
+            : paragraphs.map((p: string, i: number) => (
+                <p key={i} className="text-foreground leading-loose text-2xl font-serif">{p}</p>
+              ))
+          }
         </div>
       </main>
     </div>
