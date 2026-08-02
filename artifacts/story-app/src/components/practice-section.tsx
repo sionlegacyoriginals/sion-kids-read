@@ -20,9 +20,9 @@ function splitSentences(content: string): string[] {
 
 // ─── per-canvas hook ─────────────────────────────────────────────────────────
 
-type DrawMode = "draw" | "erase";
+export type DrawMode = "draw" | "erase";
 
-function useDrawCanvas(mode: DrawMode) {
+export function useDrawCanvas(mode: DrawMode) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const isDrawing = useRef(false);
   const lastPos = useRef<{ x: number; y: number } | null>(null);
@@ -157,7 +157,7 @@ function useDrawCanvas(mode: DrawMode) {
 
 // ─── reusable drawing layer ──────────────────────────────────────────────────
 
-function DrawLayer({
+export function DrawLayer({
   mode,
   onMount,
 }: {

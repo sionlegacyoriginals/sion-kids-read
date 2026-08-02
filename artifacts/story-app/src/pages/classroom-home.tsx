@@ -3,8 +3,10 @@ import { useEffect, useRef, useState, useCallback } from "react";
 import {
   Loader2, BookOpen, Star, Calendar, PenLine, Send, X,
   CheckCircle, Sparkles, ChevronLeft, Play, Pause, Square, Volume2,
+  Pen, Eraser, Trash2,
 } from "lucide-react";
 import { AvatarPicker } from "@/components/avatar-picker";
+import { DrawLayer, useDrawCanvas, type DrawMode } from "@/components/practice-section";
 import { useStudentAuth } from "@/lib/studentAuth";
 import {
   useReadAlong,
@@ -153,7 +155,98 @@ function SightWordExercises({
 }
 
 // ── Sight-word tracing & writing practice ────────────────────────────────────
+function WordDrawCard({ word, mode }: { word: string; mode: DrawMode }) {
+  const clearFns = useRef<Record<string, () => void>>({});
+  function reg(zone: string) {
+    return (fn: () => void) => { clearFns.current[zone] = fn; };
+  }
+  function clearAll() {
+    Object.values(clearFns.current).forEach((fn) => fn());
+  }
+
+  return (
+    <div className="bg-white rounded-3xl border border-[#e8dfd5] shadow-sm overflow-hidden">
+      {/* Word label */}
+      <div className="px-6 pt-5 pb-3 border-b border-[#f0ebe5] flex items-center justify-between">
+        <span className="text-xs font-bold uppercase tracking-[0.2em] text-violet-600">{word}</span>
+        <button
+          onClick={clearAll}
+          className="inline-flex items-center gap-1 px-2 py-1 rounded-lg text-xs text-muted-foreground hover:text-foreground border border-transparent hover:border-border transition-all"
+        >
+          <Trash2 className="w-3 h-3" /> Clear
+        </button>
+      </div>
+
+      {/* Trace in Print */}
+      <div className="px-6 pt-4 pb-5 border-b border-[#f0ebe5]">
+        <p className="text-[10px] font-bold tracking-[0.15em] text-[#b0a090] uppercase mb-2">Trace It (Print)</p>
+        <div className="relative select-none" style={{ touchAction: "none" }}>
+          <p
+            className="pointer-events-none py-2 px-1"
+            style={{
+              fontFamily: "'Schoolbell', 'Comic Sans MS', cursive",
+              fontSize: "3rem",
+              lineHeight: 1.4,
+              color: "rgba(0,0,0,0.10)",
+              WebkitTextStroke: "1.5px rgba(0,0,0,0.22)",
+              letterSpacing: "6px",
+            }}
+          >
+            {word}
+          </p>
+          <DrawLayer mode={mode} onMount={reg("print")} />
+        </div>
+      </div>
+
+      {/* Trace in Cursive */}
+      <div className="px-6 pt-4 pb-5 border-b border-[#f0ebe5]">
+        <p className="text-[10px] font-bold tracking-[0.15em] text-[#b0a090] uppercase mb-2">Trace It (Cursive)</p>
+        <div className="relative select-none" style={{ touchAction: "none" }}>
+          <p
+            className="pointer-events-none py-2 px-1"
+            style={{
+              fontFamily: "'Dancing Script', cursive",
+              fontWeight: 600,
+              fontSize: "3rem",
+              lineHeight: 1.5,
+              color: "rgba(0,0,0,0.10)",
+              WebkitTextStroke: "1px rgba(0,0,0,0.18)",
+            }}
+          >
+            {word}
+          </p>
+          <DrawLayer mode={mode} onMount={reg("cursive")} />
+        </div>
+      </div>
+
+      {/* Write it yourself */}
+      <div className="px-6 pt-4 pb-6">
+        <p className="text-[10px] font-bold tracking-[0.15em] text-[#b0a090] uppercase mb-3">Write It (your own)</p>
+        <div className="relative select-none" style={{ touchAction: "none" }}>
+          <div className="space-y-1 pointer-events-none">
+            {[0, 1, 2].map((i) => (
+              <div key={i} className="relative" style={{ height: "60px" }}>
+                <div className="absolute top-0 left-0 right-0 h-px bg-[#c8c0b0]" />
+                <div
+                  className="absolute left-0 right-0 h-px"
+                  style={{
+                    top: "30px",
+                    background: "repeating-linear-gradient(to right,#ddd5c8 0px,#ddd5c8 5px,transparent 5px,transparent 9px)",
+                  }}
+                />
+                <div className="absolute bottom-0 left-0 right-0 h-[1.5px] bg-[#c8c0b0]" />
+              </div>
+            ))}
+          </div>
+          <DrawLayer mode={mode} onMount={reg("write")} />
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function SightWordPractice({ words, storyTitle }: { words: string[]; storyTitle?: string }) {
+  const [mode, setMode] = useState<DrawMode>("draw");
   if (!words.length) return null;
 
   function printPracticeSheet() {
@@ -163,15 +256,12 @@ function SightWordPractice({ words, storyTitle }: { words: string[]; storyTitle?
     const cards = words.map(word => `
       <div class="card">
         <div class="word-label">${word.toUpperCase()}</div>
-
         <div class="section-label">✏️ Trace in Print</div>
         <div class="trace-row"><span class="trace-print">${word}</span></div>
         <div class="baseline"></div>
-
         <div class="section-label">✒️ Trace in Cursive</div>
         <div class="trace-row"><span class="trace-cursive">${word}</span></div>
         <div class="baseline"></div>
-
         <div class="section-label">✍️ Write it yourself</div>
         <div class="writing-area">
           <div class="line"></div>
@@ -181,8 +271,7 @@ function SightWordPractice({ words, storyTitle }: { words: string[]; storyTitle?
       </div>`).join("");
 
     win.document.write(`<!DOCTYPE html>
-<html>
-<head>
+<html><head>
   <meta charset="UTF-8">
   <title>Word Practice Sheet${storyTitle ? ` – ${storyTitle}` : ""}</title>
   <link href="https://fonts.googleapis.com/css2?family=Dancing+Script:wght@600&family=Schoolbell&display=swap" rel="stylesheet">
@@ -204,89 +293,60 @@ function SightWordPractice({ words, storyTitle }: { words: string[]; storyTitle?
     .line::before{content:'';position:absolute;top:50%;left:0;right:0;border-top:1px dashed #d1d5db}
     @media print{body{padding:12px}}
   </style>
-</head>
-<body>
+</head><body>
   <h1>✏️ Word Practice Sheet</h1>
   ${storyTitle ? `<div class="subtitle">Story: ${storyTitle}</div>` : ""}
   <div class="grid">${cards}</div>
-</body>
-</html>`);
+</body></html>`);
     win.document.close();
     setTimeout(() => { win.focus(); win.print(); }, 700);
   }
 
   return (
-    <div className="space-y-4">
+    <div className="border-t border-border/50 bg-[#fdf9f4] -mx-4 px-4 pt-8 pb-6 space-y-6">
+      {/* Header */}
       <div className="flex items-center justify-between gap-4 flex-wrap">
-        <h3 className="font-bold text-foreground flex items-center gap-2">
-          <span className="text-xl">✏️</span> Word Practice
-        </h3>
+        <div>
+          <h3 className="font-bold text-[#1c2a3a] flex items-center gap-2 text-lg">
+            <PenLine className="w-5 h-5 text-amber-600 shrink-0" /> ✏️ Word Practice
+          </h3>
+          <p className="text-sm text-[#7c6a5a] mt-1">Trace each word on screen, then write it yourself!</p>
+        </div>
         <button
           onClick={printPracticeSheet}
-          className="flex items-center gap-2 px-4 py-2 border border-border rounded-full text-sm font-semibold text-muted-foreground hover:bg-muted transition-all"
+          className="flex items-center gap-2 px-4 py-2 border border-border rounded-full text-sm font-semibold text-muted-foreground hover:bg-muted transition-all shrink-0"
         >
-          🖨️ Print practice sheet
+          🖨️ Print worksheet
         </button>
       </div>
-      <p className="text-xs text-muted-foreground">
-        Trace each word on screen or click <strong>Print</strong> to get a paper worksheet.
-      </p>
 
+      {/* Floating pen/eraser toolbar */}
+      <div className="fixed z-[60] left-1/2 -translate-x-1/2 bottom-5 flex items-center gap-1 px-2 py-2 rounded-2xl bg-white/90 backdrop-blur-md border border-[#e8dfd5] shadow-xl">
+        <button
+          onClick={() => setMode("draw")}
+          className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-sm font-semibold border transition-all ${
+            mode === "draw"
+              ? "bg-violet-600 text-white border-violet-600 shadow-sm"
+              : "bg-transparent text-muted-foreground border-transparent hover:text-foreground"
+          }`}
+        >
+          <Pen className="w-3.5 h-3.5" /> Pen
+        </button>
+        <button
+          onClick={() => setMode("erase")}
+          className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-sm font-semibold border transition-all ${
+            mode === "erase"
+              ? "bg-orange-500 text-white border-orange-500 shadow-sm"
+              : "bg-transparent text-muted-foreground border-transparent hover:text-foreground"
+          }`}
+        >
+          <Eraser className="w-3.5 h-3.5" /> Eraser
+        </button>
+      </div>
+
+      {/* One card per word */}
       {words.map((word) => (
-        <div key={word} className="border border-border rounded-2xl p-5 space-y-5">
-          <p className="text-xs font-bold uppercase tracking-widest text-primary">{word}</p>
-
-          {/* Trace in print */}
-          <div>
-            <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-1">✏️ Trace in Print</p>
-            <div className="border-b-2 border-dashed border-muted-foreground/30 pb-1">
-              <span style={{
-                fontFamily: "'Schoolbell', 'Comic Sans MS', cursive",
-                fontSize: "3rem",
-                lineHeight: 1.15,
-                color: "rgba(0,0,0,0.10)",
-                WebkitTextStroke: "1.5px rgba(0,0,0,0.22)",
-                letterSpacing: "6px",
-                display: "block",
-              }}>
-                {word}
-              </span>
-            </div>
-          </div>
-
-          {/* Trace in cursive */}
-          <div>
-            <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-1">✒️ Trace in Cursive</p>
-            <div className="border-b-2 border-dashed border-muted-foreground/30 pb-1">
-              <span style={{
-                fontFamily: "'Dancing Script', cursive",
-                fontSize: "3rem",
-                fontWeight: 600,
-                lineHeight: 1.3,
-                color: "rgba(0,0,0,0.10)",
-                WebkitTextStroke: "1px rgba(0,0,0,0.18)",
-                display: "block",
-              }}>
-                {word}
-              </span>
-            </div>
-          </div>
-
-          {/* Writing lines */}
-          <div>
-            <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-2">✍️ Write it yourself</p>
-            <div className="space-y-3">
-              {[0, 1, 2].map((i) => (
-                <div key={i} className="relative h-10">
-                  {/* Midline */}
-                  <div className="absolute top-1/2 left-0 right-0 border-t border-dashed border-muted-foreground/20" />
-                  {/* Baseline */}
-                  <div className="absolute bottom-0 left-0 right-0 border-b-2 border-foreground/30" />
-                </div>
-              ))}
-            </div>
-          </div>
-        </div>
+        <WordDrawCard key={word} word={word} mode={mode} />
       ))}
     </div>
   );
