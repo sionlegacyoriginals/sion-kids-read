@@ -226,6 +226,7 @@ export function useReadAlong(paragraphs: string[]) {
       const utt = new SpeechSynthesisUtterance(text);
       utt.rate = rate;
       utt.pitch = PITCH_MAP[pitchPreset];
+      // Re-fetch the voice object by name at speak-time (Chrome requires a fresh reference)
       const liveVoice = voice
         ? window.speechSynthesis.getVoices().find((v) => v.name === voice.name) ?? null
         : null;
@@ -237,8 +238,12 @@ export function useReadAlong(paragraphs: string[]) {
   );
 
   /**
-   * Queue all sentences from `fromIdx` onward as separate utterances.
-   * Each utterance's onstart fires at exactly the right moment → perfect sync.
+   * Speak sentences one at a time, chaining via onend.
+   *
+   * Chrome has a well-known bug where pre-queueing many utterances at once
+   * causes the speech queue to silently stall after ~15 s. Chaining one
+   * utterance at a time (speak the next inside onend of the current) avoids
+   * this entirely.
    */
   const queueFrom = useCallback(
     (fromIdx: number, rate: number, pitchPreset: PitchPreset, voice: SpeechSynthesisVoice | null) => {
@@ -247,34 +252,72 @@ export function useReadAlong(paragraphs: string[]) {
       const sentences = sentencesRef.current;
       if (fromIdx >= sentences.length) return;
 
-      sentences.slice(fromIdx).forEach((s, relIdx) => {
-        const absIdx = fromIdx + relIdx;
+      function speakIdx(idx: number) {
+        if (stoppedRef.current || idx >= sentences.length) return;
+        const s = sentences[idx];
         const utt = makeUtt(s.text, rate, pitchPreset, voice);
 
         utt.onstart = () => {
           if (stoppedRef.current) return;
-          currentSentenceIdxRef.current = absIdx;
+          currentSentenceIdxRef.current = idx;
           setActiveRange([s.start, s.end]);
-          if (absIdx === fromIdx) setIsPlaying(true);
+          // Mark playing on the very first sentence of this run
+          if (idx === fromIdx) setIsPlaying(true);
         };
 
-        // Only the last sentence needs an onend to clean up
-        if (absIdx === sentences.length - 1) {
-          utt.onend = () => {
-            if (stoppedRef.current) return;
+        utt.onend = () => {
+          if (stoppedRef.current) return;
+          if (idx >= sentences.length - 1) {
+            // All sentences finished
             stoppedRef.current = true;
             setIsPlaying(false);
             setActiveRange(null);
             currentSentenceIdxRef.current = 0;
-          };
-        }
+          } else {
+            // Chain the next sentence
+            speakIdx(idx + 1);
+          }
+        };
 
-        utt.onerror = () => { /* ignore — browser fires this on cancel() too */ };
+        utt.onerror = (e) => {
+          // 'canceled' fires when we call cancel() — safe to ignore
+          if ((e as SpeechSynthesisErrorEvent).error === "canceled") return;
+          // On any other error, stop cleanly
+          if (!stoppedRef.current) {
+            stoppedRef.current = true;
+            setIsPlaying(false);
+            setActiveRange(null);
+          }
+        };
+
         window.speechSynthesis.speak(utt);
-      });
+      }
+
+      speakIdx(fromIdx);
     },
     [makeUtt]
   );
+
+  // Chrome keep-alive: Chrome silently pauses the speech queue when the tab
+  // loses focus or after ~15 s of queued speech. Calling pause()+resume()
+  // every 10 s while actively playing prevents this freeze.
+  const keepAliveRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  useEffect(() => {
+    if (isPlaying) {
+      keepAliveRef.current = setInterval(() => {
+        if (window.speechSynthesis.speaking && !window.speechSynthesis.paused) {
+          window.speechSynthesis.pause();
+          window.speechSynthesis.resume();
+        }
+      }, 10_000);
+    }
+    return () => {
+      if (keepAliveRef.current !== null) {
+        clearInterval(keepAliveRef.current);
+        keepAliveRef.current = null;
+      }
+    };
+  }, [isPlaying]);
 
   const togglePlay = useCallback(() => {
     if (isPlaying) {
