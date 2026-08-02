@@ -15,6 +15,15 @@ import {
 
 const basePath = import.meta.env.BASE_URL.replace(/\/$/, "");
 
+// Convert a raw /ref-photos/{id} path returned by the classroom API into a
+// full URL the browser can load. Parent stories routes do this server-side;
+// classroom routes return the raw path, so we resolve it here.
+function toImgUrl(path: string | null | undefined): string | null {
+  if (!path) return null;
+  if (path.startsWith("/ref-photos/")) return `${basePath}/api${path}`;
+  return path; // already absolute
+}
+
 // ── Points toast ──────────────────────────────────────────────────────────────
 function PointsToast({ points, label, onDone }: { points: number; label: string; onDone: () => void }) {
   useEffect(() => {
@@ -346,7 +355,7 @@ function StoryReader({
 
       {/* Cover */}
       {story.cover_image_url && (
-        <img src={story.cover_image_url} alt={story.title} className="w-full rounded-3xl object-cover max-h-72 shadow-md" />
+        <img src={toImgUrl(story.cover_image_url)!} alt={story.title} className="w-full rounded-3xl object-cover max-h-72 shadow-md" />
       )}
 
       {/* Title */}
@@ -763,7 +772,7 @@ export default function ClassroomHome() {
                 className="group flex flex-col rounded-2xl overflow-hidden border-2 border-border hover:border-primary bg-card transition-all hover:shadow-lg active:scale-95 text-left"
               >
                 {s.cover_image_url ? (
-                  <img src={s.cover_image_url} alt={s.title} className="w-full h-36 object-cover" />
+                  <img src={toImgUrl(s.cover_image_url)!} alt={s.title} className="w-full h-36 object-cover" />
                 ) : (
                   <div className="w-full h-36 bg-primary/10 flex items-center justify-center">
                     <BookOpen className="w-10 h-10 text-primary/40" />
