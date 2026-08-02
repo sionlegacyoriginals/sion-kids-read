@@ -638,9 +638,9 @@ router.get("/share/:id", async (req: any, res): Promise<void> => {
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
-  <title>${(story.title as string ?? "A Story").replace(/</g, "&lt;")} — Sion Legacy Originals</title>
+  <title>${(story.title as string ?? "A Story").replace(/</g, "&lt;")} — Sion Kids Read</title>
   <meta property="og:title" content="${(story.title as string ?? "").replace(/"/g, "&quot;")}">
-  <meta property="og:description" content="A personalized bedtime story for ${(story.childName as string ?? "").replace(/"/g, "&quot;")}, made with Sion Legacy Originals.">
+  <meta property="og:description" content="A personalized bedtime story for ${(story.childName as string ?? "").replace(/"/g, "&quot;")}, made with Sion Kids Read.">
   ${cover ? `<meta property="og:image" content="${cover}">` : ""}
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800&family=Playfair+Display:wght@700;800&display=swap" rel="stylesheet">
@@ -726,7 +726,7 @@ router.get("/share/:id", async (req: any, res): Promise<void> => {
 </head>
 <body>
   <div class="banner">
-    Made with <a href="${appUrl}">Sion Legacy Originals</a> — AI-powered personalized bedtime stories
+    Made with <a href="${appUrl}">Sion Kids Read</a> — AI-powered personalized bedtime stories
   </div>
 
   <div class="page">

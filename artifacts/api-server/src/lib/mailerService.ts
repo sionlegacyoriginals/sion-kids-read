@@ -5,7 +5,7 @@
 
 import { ReplitConnectors } from "@replit/connectors-sdk";
 
-const FROM = "Sion Legacy Originals <orders@sionlegacyoriginals.com>";
+const FROM = "Sion Kids Read <orders@sionlegacyoriginals.com>";
 
 interface EmailAttachment {
   filename: string;
@@ -78,7 +78,7 @@ export async function sendParentStoryPublished(params: {
     <tr><td align="center">
       <table width="560" cellpadding="0" cellspacing="0" style="background:#ffffff;border-radius:16px;overflow:hidden;box-shadow:0 2px 12px rgba(0,0,0,0.08);">
         <tr><td style="background:#7c3aed;padding:28px 40px;text-align:center;">
-          <p style="margin:0;color:#e9d5ff;font-size:12px;letter-spacing:1px;text-transform:uppercase;">Sion Legacy Originals — Classroom</p>
+          <p style="margin:0;color:#e9d5ff;font-size:12px;letter-spacing:1px;text-transform:uppercase;">Sion Kids Read — Classroom</p>
           <h1 style="margin:8px 0 0;color:#ffffff;font-size:24px;font-weight:normal;">${studentAvatar} ${studentName} wrote a story!</h1>
         </td></tr>
         <tr><td style="padding:32px 40px;">
@@ -96,7 +96,7 @@ export async function sendParentStoryPublished(params: {
           <table width="100%" cellpadding="0" cellspacing="0"><tr><td align="center" style="padding:8px 0 24px;">
             <a href="${classPortalUrl}" style="display:inline-block;background:#7c3aed;color:#ffffff;font-size:15px;font-weight:bold;text-decoration:none;border-radius:50px;padding:14px 36px;">Read the full story →</a>
           </td></tr></table>
-          <p style="margin:0;color:#374151;font-size:15px;">— The Sion Legacy Originals team</p>
+          <p style="margin:0;color:#374151;font-size:15px;">— The Sion Kids Read team</p>
         </td></tr>
         <tr><td style="background:#f9fafb;padding:16px 40px;text-align:center;border-top:1px solid #e5e7eb;">
           <p style="margin:0;color:#9ca3af;font-size:12px;">View your parent dashboard at <a href="${classPortalUrl}" style="color:#7c3aed;">sionlegacyoriginals.com/parent</a></p>
@@ -141,7 +141,7 @@ export async function sendParentAnnouncement(params: {
           <table width="100%" cellpadding="0" cellspacing="0"><tr><td align="center" style="padding:8px 0 24px;">
             <a href="${classPortalUrl}" style="display:inline-block;background:#f5a224;color:#ffffff;font-size:15px;font-weight:bold;text-decoration:none;border-radius:50px;padding:14px 36px;">View Parent Dashboard →</a>
           </td></tr></table>
-          <p style="margin:0;color:#374151;font-size:15px;">— The Sion Legacy Originals team</p>
+          <p style="margin:0;color:#374151;font-size:15px;">— The Sion Kids Read team</p>
         </td></tr>
         <tr><td style="background:#f9fafb;padding:16px 40px;text-align:center;border-top:1px solid #e5e7eb;">
           <p style="margin:0;color:#9ca3af;font-size:12px;">Manage your parent account at <a href="${classPortalUrl}" style="color:#7c3aed;">sionlegacyoriginals.com/parent</a></p>
@@ -177,7 +177,7 @@ export async function sendOwnerAlert(params: {
     <tr><td align="center">
       <table width="560" cellpadding="0" cellspacing="0" style="background:#ffffff;border-radius:16px;overflow:hidden;box-shadow:0 2px 12px rgba(0,0,0,0.08);">
         <tr><td style="background:#dc2626;padding:24px 40px;text-align:center;">
-          <p style="margin:0;color:#fecaca;font-size:13px;letter-spacing:1px;text-transform:uppercase;">Sion Legacy Originals — Admin Alert</p>
+          <p style="margin:0;color:#fecaca;font-size:13px;letter-spacing:1px;text-transform:uppercase;">Sion Kids Read — Admin Alert</p>
           <h1 style="margin:8px 0 0;color:#ffffff;font-size:22px;font-weight:normal;">⚠️ ${params.subject}</h1>
         </td></tr>
         <tr><td style="padding:32px 40px;">
@@ -253,7 +253,7 @@ export async function sendOwnerPrintPackage(params: {
 
         <!-- Header -->
         <tr><td style="background:#7c3aed;padding:28px 40px;text-align:center;">
-          <p style="margin:0;color:#e9d5ff;font-size:12px;letter-spacing:1px;text-transform:uppercase;">Sion Legacy Originals — New Order</p>
+          <p style="margin:0;color:#e9d5ff;font-size:12px;letter-spacing:1px;text-transform:uppercase;">Sion Kids Read — New Order</p>
           <h1 style="margin:8px 0 0;color:#ffffff;font-size:26px;font-weight:normal;">📦 Order #${orderId} — Print &amp; Ship</h1>
           <p style="margin:8px 0 0;color:#e9d5ff;font-size:14px;">${storyTitle}</p>
         </td></tr>
@@ -367,7 +367,7 @@ export async function sendPrintOrderConfirmation(params: {
 
         <!-- Header -->
         <tr><td style="background:#7c3aed;padding:32px 40px;text-align:center;">
-          <p style="margin:0;color:#e9d5ff;font-size:13px;letter-spacing:1px;text-transform:uppercase;">Sion Legacy Originals</p>
+          <p style="margin:0;color:#e9d5ff;font-size:13px;letter-spacing:1px;text-transform:uppercase;">Sion Kids Read</p>
           <h1 style="margin:8px 0 0;color:#ffffff;font-size:26px;font-weight:normal;">Your book is on its way! 🎉</h1>
         </td></tr>
 
@@ -407,7 +407,7 @@ export async function sendPrintOrderConfirmation(params: {
           <p style="margin:0 0 28px;color:#374151;font-size:15px;line-height:1.6;">
             Thank you for preserving this story. 💜
           </p>
-          <p style="margin:0;color:#374151;font-size:15px;">— The Sion Legacy Originals team</p>
+          <p style="margin:0;color:#374151;font-size:15px;">— The Sion Kids Read team</p>
         </td></tr>
 
         <!-- Footer -->

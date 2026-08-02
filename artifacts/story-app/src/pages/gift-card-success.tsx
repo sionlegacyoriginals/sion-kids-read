@@ -117,7 +117,7 @@ export default function GiftCardSuccess() {
           <Link href="/">
             <span className="flex items-center justify-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors cursor-pointer">
               <BookOpen className="w-4 h-4" />
-              Sion Legacy Originals
+              Sion Kids Read
             </span>
           </Link>
         </div>

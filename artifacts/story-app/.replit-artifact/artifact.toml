@@ -1,6 +1,6 @@
 kind = "web"
 previewPath = "/"
-title = "StoryBloom – AI Children's Stories"
+title = "Sion Kids Read – AI Children's Stories"
 version = "1.0.0"
 id = "artifacts/story-app"
 router = "path"

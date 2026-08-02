@@ -68,7 +68,7 @@ export default function CheckoutSuccess() {
           <CheckCircle2 className="w-10 h-10 text-green-600" />
         </div>
         <h1 className="text-4xl font-serif font-bold text-foreground mb-3">
-          Welcome to StoryBloom!
+          Welcome to Sion Kids Read!
         </h1>
         <p className="text-muted-foreground text-lg mb-8 leading-relaxed">
           Your membership is now active. Go create your first personalized story — it's waiting for you.

@@ -115,7 +115,7 @@ export default function Subscribe() {
     <div className="max-w-2xl mx-auto py-16 px-4 animate-in fade-in">
       <div className="text-center mb-10">
         <span className="inline-flex items-center gap-2 px-4 py-1.5 bg-primary/10 text-primary font-bold text-sm rounded-full mb-5">
-          <Logo size={16} /> Unlock StoryBloom
+          <Logo size={16} /> Unlock Sion Kids Read
         </span>
         <h1 className="text-4xl font-serif font-bold text-foreground mb-3">Choose your plan</h1>
         <p className="text-muted-foreground">Pay per story, or subscribe for unlimited access.</p>

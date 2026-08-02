@@ -249,9 +249,9 @@ export default function Landing() {
       <footer className="py-10 px-4 border-t border-border text-center text-muted-foreground text-sm">
         <div className="flex items-center justify-center gap-2 mb-2">
           <BookOpen className="w-4 h-4 text-primary" />
-          <span className="font-bold text-foreground">Sion Legacy Originals</span>
+          <span className="font-bold text-foreground">Sion Kids Read</span>
         </div>
-        <p>© {new Date().getFullYear()} Sion Legacy Originals. All rights reserved.</p>
+        <p>© {new Date().getFullYear()} Sion Kids Read. All rights reserved.</p>
         <div className="mt-3">
           <Link href="/gift-card/redeem">
             <span className="text-primary font-semibold hover:underline cursor-pointer">

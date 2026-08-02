@@ -494,7 +494,7 @@ function ClassroomAccessGate({ onUnlocked }: { onUnlocked: () => void }) {
         </button>
       </div>
       <p className="text-xs text-muted-foreground">
-        Don't have a code? Contact <strong>Sion Legacy Originals</strong> to request teacher access.
+        Don't have a code? Contact <strong>Sion Kids Read</strong> to request teacher access.
       </p>
     </div>
   );

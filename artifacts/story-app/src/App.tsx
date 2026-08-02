@@ -200,8 +200,8 @@ function ClerkProviderWithRoutes() {
       afterSignInUrl={`${basePath}/create`}
       afterSignUpUrl={`${basePath}/create`}
       localization={{
-        signIn: { start: { title: "Welcome back to Sion Legacy Originals", subtitle: "Sign in to your account" } },
-        signUp: { start: { title: "Start your Sion Legacy Originals journey", subtitle: "Create your free account" } },
+        signIn: { start: { title: "Welcome back to Sion Kids Read", subtitle: "Sign in to your account" } },
+        signUp: { start: { title: "Start your Sion Kids Read journey", subtitle: "Create your free account" } },
       }}
       routerPush={(to) => setLocation(stripBase(to))}
       routerReplace={(to) => setLocation(stripBase(to), { replace: true })}

@@ -82,7 +82,7 @@ export default function StoryShare() {
       <div className="bg-primary text-white py-3 px-4 text-center text-sm font-semibold">
         <span className="opacity-80">Made with </span>
         <Link href="/" className="underline underline-offset-2 font-bold hover:opacity-80 transition-opacity">
-          Sion Legacy Originals
+          Sion Kids Read
         </Link>
         <span className="opacity-80"> — AI-powered personalized bedtime stories for your child</span>
       </div>

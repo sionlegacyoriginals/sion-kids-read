@@ -59,7 +59,7 @@ router.post("/classroom/unlock", requireAuth, async (req: any, res) => {
     }
     const schoolCode = found.rows[0] as any;
     if (!schoolCode.is_active) {
-      return res.status(403).json({ error: "That access code has been deactivated. Contact Sion Legacy Originals." });
+      return res.status(403).json({ error: "That access code has been deactivated. Contact Sion Kids Read." });
     }
 
     await db.execute(sql`

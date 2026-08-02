@@ -17,7 +17,7 @@ export function ShareDialog({ storyTitle, storyId, childName, onClose }: ShareDi
   const [copied, setCopied] = useState(false);
 
   const url = buildShareUrl(storyId);
-  const text = `✨ I just made a personalized bedtime story for ${childName} on Sion Legacy Originals! Check it out 📖`;
+  const text = `✨ I just made a personalized bedtime story for ${childName} on Sion Kids Read! Check it out 📖`;
 
   const copyLink = async () => {
     await navigator.clipboard.writeText(url);

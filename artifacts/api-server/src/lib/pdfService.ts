@@ -215,7 +215,7 @@ async function buildInteriorPdf(params: {
     });
   doc.rect(MARGIN, PAGE_H - MARGIN * 0.8, contentW, 2).fill("#d4b896");
   doc.font(FONT_REGULAR).fontSize(9).fillColor("#b0a090")
-    .text("Sion Legacy Originals", MARGIN, PAGE_H - MARGIN * 0.7, {
+    .text("Sion Kids Read", MARGIN, PAGE_H - MARGIN * 0.7, {
       width: contentW, align: "center",
     });
 
@@ -225,7 +225,7 @@ async function buildInteriorPdf(params: {
   doc.font(FONT_REGULAR).fontSize(8).fillColor("#b0a090")
     .text(
       `This story was created especially for ${params.childName}.\n` +
-      `© Sion Legacy Originals. All rights reserved.\n` +
+      `© Sion Kids Read. All rights reserved.\n` +
       `Personalised AI-generated children's stories.\n` +
       `sionlegacyoriginals.com`,
       MARGIN, PAGE_H - MARGIN * 2.5,
@@ -318,7 +318,7 @@ async function buildCoverPdf(params: {
   // Brand name + short tagline only (no blurb — customers already know what the book is)
   doc
     .font(FONT_BOLD).fontSize(16).fillColor(GOLD)
-    .text("Sion Legacy Originals", backX + 24, BLEED + 28, { width: TEXT_W });
+    .text("Sion Kids Read", backX + 24, BLEED + 28, { width: TEXT_W });
   doc
     .font(FONT_REGULAR).fontSize(12).fillColor("#c4b5e8")
     .text(`A personalised story made just for ${params.childName} ✨`, backX + 24, BLEED + 56, {
@@ -468,7 +468,7 @@ export async function generateCombinedPdf(params: {
     .text(`A personalised story for ${params.childName}`, MARGIN, doc.y + 14, { width: contentW, align: "center" });
   doc.rect(MARGIN, PAGE_H - MARGIN * 0.8, contentW, 2).fill("#d4b896");
   doc.font(FONT_REGULAR).fontSize(9).fillColor("#b0a090")
-    .text("Sion Legacy Originals", MARGIN, PAGE_H - MARGIN * 0.7, { width: contentW, align: "center" });
+    .text("Sion Kids Read", MARGIN, PAGE_H - MARGIN * 0.7, { width: contentW, align: "center" });
 
   // ── Page 4: Copyright ──────────────────────────────────────────────────────
   doc.addPage({ size: [PAGE_W, PAGE_H] });
@@ -476,7 +476,7 @@ export async function generateCombinedPdf(params: {
   doc.font(FONT_REGULAR).fontSize(8).fillColor("#b0a090")
     .text(
       `This story was created especially for ${params.childName}.\n` +
-      `© Sion Legacy Originals. All rights reserved.\n` +
+      `© Sion Kids Read. All rights reserved.\n` +
       `Personalised AI-generated children's stories.\n` +
       `sionlegacyoriginals.com`,
       MARGIN, PAGE_H - MARGIN * 2.5,
@@ -523,7 +523,7 @@ export async function generateCombinedPdf(params: {
   doc.rect(0, 0, PAGE_W, PAGE_H).fill("#2d1b5e");
   doc.rect(0, 0, PAGE_W, 4).fill("#f5a224");
   doc.font(FONT_BOLD).fontSize(13).fillColor("#f5a224")
-    .text("Sion Legacy Originals", MARGIN, 24, { width: contentW });
+    .text("Sion Kids Read", MARGIN, 24, { width: contentW });
   doc.font(FONT_REGULAR).fontSize(8).fillColor("#c4b5e8")
     .text("Personalised AI-generated children's stories", MARGIN, 44, { width: contentW });
   doc.rect(MARGIN, 64, 40, 1.5).fill("#f5a224");

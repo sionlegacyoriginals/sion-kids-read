@@ -60,7 +60,7 @@ export default function Library() {
 
   const handleShare = async (story: { id: number; title: string; childName: string }) => {
     const url = buildShareUrl(story.id);
-    const text = `✨ I just made a personalized bedtime story for ${story.childName} on Sion Legacy Originals! Check it out 📖`;
+    const text = `✨ I just made a personalized bedtime story for ${story.childName} on Sion Kids Read! Check it out 📖`;
     if (navigator.share) {
       try { await navigator.share({ title: story.title, text, url }); return; } catch {}
     }
