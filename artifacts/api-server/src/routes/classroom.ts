@@ -805,30 +805,41 @@ router.get("/classroom/stories/:storyId/exercises", requireStudentAuth, async (r
     if (!storyRes.rows.length) return res.status(404).json({ error: "Story not found" });
     const story = storyRes.rows[0] as any;
 
-    // Check cache
-    const cached = await db.execute(sql`
-      SELECT exercises_json FROM story_exercises WHERE story_id = ${storyId}
-    `);
-    if (cached.rows.length) {
-      const completions = await db.execute(sql`
-        SELECT exercise_type FROM exercise_completions
-        WHERE student_id = ${studentId} AND story_id = ${storyId}
-      `);
-      return res.json({
-        exercises: JSON.parse((cached.rows[0] as any).exercises_json),
-        completedTypes: (completions.rows as any[]).map(r => r.exercise_type),
-      });
-    }
-
-    // Get class sight words
+    // Get class sight words FIRST — needed to validate cache freshness
     const clsRes = await db.execute(sql`SELECT sight_words FROM classes WHERE id = ${classId}`);
     const sightWordsRaw = (clsRes.rows[0] as any)?.sight_words ?? "";
     const sightWords = sightWordsRaw.split(",").map((w: string) => w.trim()).filter(Boolean);
 
-    // Generate exercises with AI
+    // Check cache — only reuse if the stored sight words match the current class list
+    const cached = await db.execute(sql`
+      SELECT exercises_json FROM story_exercises WHERE story_id = ${storyId}
+    `);
+    if (cached.rows.length) {
+      const cachedEx = JSON.parse((cached.rows[0] as any).exercises_json);
+      const cachedWords: string[] = cachedEx.sightWords ?? [];
+      const wordsMatch =
+        cachedWords.length === sightWords.length &&
+        cachedWords.every((w: string, i: number) => w.toLowerCase() === sightWords[i]?.toLowerCase());
+
+      if (wordsMatch) {
+        const completions = await db.execute(sql`
+          SELECT exercise_type FROM exercise_completions
+          WHERE student_id = ${studentId} AND story_id = ${storyId}
+        `);
+        return res.json({
+          exercises: cachedEx,
+          completedTypes: (completions.rows as any[]).map(r => r.exercise_type),
+        });
+      }
+      // Sight words changed — fall through to regenerate
+    }
+
+    // Build prompt: one fill-in-the-blank per sight word
     const sightWordInstruction = sightWords.length
-      ? `Sight words to use (find sentences in the story that contain these and blank them out): ${sightWords.slice(0, 3).join(", ")}.`
-      : "Pick 3 important words from the story to use as fill-in-the-blank.";
+      ? `Sight words to practice: ${sightWords.join(", ")}. Generate ONE fill-in-the-blank exercise for EACH of these ${sightWords.length} word(s).`
+      : "Pick 3 important words from the story and create one fill-in-the-blank exercise for each.";
+
+    const exampleSightWords = sightWords.length ? sightWords.slice(0, 2) : ["the", "and"];
 
     const prompt = `You are creating reading exercises for an elementary school student who just read this story.
 
@@ -840,11 +851,12 @@ ${sightWordInstruction}
 
 Create exactly this JSON (no other text):
 {
+  "sightWords": ${JSON.stringify(sightWords.length ? sightWords : ["the", "and", "is"])},
   "sightWordExercises": [
     {
       "sentence": "The ___ went to school.",
-      "answer": "dog",
-      "options": ["dog", "cat", "bird", "fish"]
+      "answer": "${exampleSightWords[0] ?? "the"}",
+      "options": ["${exampleSightWords[0] ?? "the"}", "cat", "bird", "fish"]
     }
   ],
   "comprehensionQuestions": [
@@ -857,27 +869,30 @@ Create exactly this JSON (no other text):
 }
 
 Rules:
-- sightWordExercises: exactly 3 items. Use actual sentences from the story with one key word blanked as "___". The answer must match one of the 4 options. Options should be plausible but only one correct.
-- comprehensionQuestions: exactly 3 items. Questions about who/what/where/why. One clearly correct answer.
-- All answers must be findable in the story.
-- Keep language simple for young readers.`;
+- sightWords: copy the exact list of sight words provided above.
+- sightWordExercises: ONE exercise per sight word in the same order. Find a sentence in the story that uses that word (or create a short simple sentence if it doesn't appear). Blank the sight word as "___". The answer is the sight word. Provide exactly 4 options including the answer and 3 plausible distractors (similar common words, age-appropriate).
+- comprehensionQuestions: exactly 3 items. Questions about who/what/where/why from the story. One clearly correct answer.
+- Keep all language simple for young readers.`;
 
     const completion = await openai.chat.completions.create({
       model: "gpt-4o-mini",
       messages: [{ role: "user", content: prompt }],
-      max_tokens: 800,
+      max_tokens: 1400,
       response_format: { type: "json_object" },
     });
 
     const raw = completion.choices[0]?.message?.content ?? "{}";
     let exercises: any;
-    try { exercises = JSON.parse(raw); } catch { exercises = { sightWordExercises: [], comprehensionQuestions: [] }; }
+    try { exercises = JSON.parse(raw); } catch { exercises = { sightWords: [], sightWordExercises: [], comprehensionQuestions: [] }; }
 
-    // Cache it
+    // Ensure sightWords is present in the stored JSON
+    if (!exercises.sightWords || !exercises.sightWords.length) exercises.sightWords = sightWords;
+
+    // Cache — update if sight words changed
     await db.execute(sql`
       INSERT INTO story_exercises (story_id, exercises_json)
       VALUES (${storyId}, ${JSON.stringify(exercises)})
-      ON CONFLICT (story_id) DO NOTHING
+      ON CONFLICT (story_id) DO UPDATE SET exercises_json = EXCLUDED.exercises_json
     `);
 
     const completions = await db.execute(sql`

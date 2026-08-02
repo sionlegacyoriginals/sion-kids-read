@@ -152,6 +152,146 @@ function SightWordExercises({
   );
 }
 
+// ── Sight-word tracing & writing practice ────────────────────────────────────
+function SightWordPractice({ words, storyTitle }: { words: string[]; storyTitle?: string }) {
+  if (!words.length) return null;
+
+  function printPracticeSheet() {
+    const win = window.open("", "_blank", "width=820,height=700");
+    if (!win) return;
+
+    const cards = words.map(word => `
+      <div class="card">
+        <div class="word-label">${word.toUpperCase()}</div>
+
+        <div class="section-label">✏️ Trace in Print</div>
+        <div class="trace-row"><span class="trace-print">${word}</span></div>
+        <div class="baseline"></div>
+
+        <div class="section-label">✒️ Trace in Cursive</div>
+        <div class="trace-row"><span class="trace-cursive">${word}</span></div>
+        <div class="baseline"></div>
+
+        <div class="section-label">✍️ Write it yourself</div>
+        <div class="writing-area">
+          <div class="line"></div>
+          <div class="line"></div>
+          <div class="line"></div>
+        </div>
+      </div>`).join("");
+
+    win.document.write(`<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>Word Practice Sheet${storyTitle ? ` – ${storyTitle}` : ""}</title>
+  <link href="https://fonts.googleapis.com/css2?family=Dancing+Script:wght@600&family=Schoolbell&display=swap" rel="stylesheet">
+  <style>
+    *{box-sizing:border-box;margin:0;padding:0}
+    body{font-family:sans-serif;padding:24px;background:#fff;color:#111}
+    h1{font-size:18px;color:#7c3aed;margin-bottom:4px}
+    .subtitle{font-size:12px;color:#888;margin-bottom:24px}
+    .grid{display:grid;grid-template-columns:repeat(2,1fr);gap:20px}
+    .card{border:1.5px solid #e5e7eb;border-radius:12px;padding:18px;break-inside:avoid}
+    .word-label{font-size:11px;font-weight:700;color:#7c3aed;letter-spacing:3px;text-transform:uppercase;margin-bottom:12px}
+    .section-label{font-size:10px;font-weight:600;color:#9ca3af;text-transform:uppercase;letter-spacing:1px;margin:10px 0 4px}
+    .trace-row{line-height:1}
+    .trace-print{font-family:'Schoolbell','Comic Sans MS',cursive;font-size:52px;color:rgba(0,0,0,0.1);-webkit-text-stroke:1.5px rgba(0,0,0,0.22);letter-spacing:6px}
+    .trace-cursive{font-family:'Dancing Script',cursive;font-weight:600;font-size:52px;color:rgba(0,0,0,0.1);-webkit-text-stroke:1px rgba(0,0,0,0.18)}
+    .baseline{border-bottom:2px dashed #d1d5db;margin-top:4px}
+    .writing-area{margin-top:4px}
+    .line{height:44px;border-bottom:2px solid #374151;position:relative;margin-bottom:4px}
+    .line::before{content:'';position:absolute;top:50%;left:0;right:0;border-top:1px dashed #d1d5db}
+    @media print{body{padding:12px}}
+  </style>
+</head>
+<body>
+  <h1>✏️ Word Practice Sheet</h1>
+  ${storyTitle ? `<div class="subtitle">Story: ${storyTitle}</div>` : ""}
+  <div class="grid">${cards}</div>
+</body>
+</html>`);
+    win.document.close();
+    setTimeout(() => { win.focus(); win.print(); }, 700);
+  }
+
+  return (
+    <div className="space-y-4">
+      <div className="flex items-center justify-between gap-4 flex-wrap">
+        <h3 className="font-bold text-foreground flex items-center gap-2">
+          <span className="text-xl">✏️</span> Word Practice
+        </h3>
+        <button
+          onClick={printPracticeSheet}
+          className="flex items-center gap-2 px-4 py-2 border border-border rounded-full text-sm font-semibold text-muted-foreground hover:bg-muted transition-all"
+        >
+          🖨️ Print practice sheet
+        </button>
+      </div>
+      <p className="text-xs text-muted-foreground">
+        Trace each word on screen or click <strong>Print</strong> to get a paper worksheet.
+      </p>
+
+      {words.map((word) => (
+        <div key={word} className="border border-border rounded-2xl p-5 space-y-5">
+          <p className="text-xs font-bold uppercase tracking-widest text-primary">{word}</p>
+
+          {/* Trace in print */}
+          <div>
+            <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-1">✏️ Trace in Print</p>
+            <div className="border-b-2 border-dashed border-muted-foreground/30 pb-1">
+              <span style={{
+                fontFamily: "'Schoolbell', 'Comic Sans MS', cursive",
+                fontSize: "3rem",
+                lineHeight: 1.15,
+                color: "rgba(0,0,0,0.10)",
+                WebkitTextStroke: "1.5px rgba(0,0,0,0.22)",
+                letterSpacing: "6px",
+                display: "block",
+              }}>
+                {word}
+              </span>
+            </div>
+          </div>
+
+          {/* Trace in cursive */}
+          <div>
+            <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-1">✒️ Trace in Cursive</p>
+            <div className="border-b-2 border-dashed border-muted-foreground/30 pb-1">
+              <span style={{
+                fontFamily: "'Dancing Script', cursive",
+                fontSize: "3rem",
+                fontWeight: 600,
+                lineHeight: 1.3,
+                color: "rgba(0,0,0,0.10)",
+                WebkitTextStroke: "1px rgba(0,0,0,0.18)",
+                display: "block",
+              }}>
+                {word}
+              </span>
+            </div>
+          </div>
+
+          {/* Writing lines */}
+          <div>
+            <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-2">✍️ Write it yourself</p>
+            <div className="space-y-3">
+              {[0, 1, 2].map((i) => (
+                <div key={i} className="relative h-10">
+                  {/* Midline */}
+                  <div className="absolute top-1/2 left-0 right-0 border-t border-dashed border-muted-foreground/20" />
+                  {/* Baseline */}
+                  <div className="absolute bottom-0 left-0 right-0 border-b-2 border-foreground/30" />
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
 // ── Comprehension exercise ────────────────────────────────────────────────────
 function ComprehensionExercises({
   questions,
@@ -437,6 +577,12 @@ function StoryReader({
                 questions={exercises.comprehensionQuestions}
                 alreadyDone={exCompletedTypes.includes("comprehension") || completedTypes.includes("comprehension")}
                 onComplete={(c) => handleExerciseComplete("comprehension", c)}
+              />
+            )}
+            {exercises.sightWords?.length > 0 && (
+              <SightWordPractice
+                words={exercises.sightWords}
+                storyTitle={story?.title}
               />
             )}
           </div>
