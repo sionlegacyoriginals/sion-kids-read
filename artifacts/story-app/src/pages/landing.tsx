@@ -222,11 +222,11 @@ export default function Landing() {
           {/* Safety callout + CTA */}
           <div className="bg-primary rounded-3xl p-8 flex flex-col md:flex-row items-center gap-6 text-center md:text-left">
             <div className="flex-1">
-              <h3 className="font-serif font-bold text-2xl text-white mb-2">School Mode — always free for educators</h3>
+              <h3 className="font-serif font-bold text-2xl text-white mb-2">School Mode included</h3>
               <p className="text-white/80 leading-relaxed">
-                Teachers get classroom tools at no cost. Toggle School Mode on and every story is
-                automatically generated with strict K-5 G-rated, classroom-safe content rules.
-                Lock it with a 4-digit admin PIN so students can't change it.
+                Toggle School Mode on and every story is automatically generated with strict
+                K-5 G-rated, classroom-safe content rules. Lock it with a 4-digit admin PIN
+                so students can't change it.
               </p>
             </div>
             <Link href="/sign-up" className="shrink-0 px-8 py-3.5 bg-white text-primary font-bold rounded-full hover:bg-white/90 transition-all shadow-md text-sm whitespace-nowrap">
