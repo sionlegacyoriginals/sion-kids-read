@@ -119,6 +119,22 @@ globalThis.__dirname = __bannerPath.dirname(globalThis.__filename);
     },
   });
   await copyPdfkitData();
+  await copyAvatars();
+}
+
+async function copyAvatars() {
+  // Avatar PNGs live at repo-root/attached_assets/avatars/.
+  // Copy them into dist/avatars/ so the production server can seed the DB on startup.
+  const workspaceRoot = path.resolve(artifactDir, "../..");
+  const src = path.resolve(workspaceRoot, "attached_assets/avatars");
+  const dest = path.resolve(artifactDir, "dist/avatars");
+  try {
+    await mkdir(dest, { recursive: true });
+    await cp(src, dest, { recursive: true });
+    console.log("✓ Copied avatar images → dist/avatars");
+  } catch {
+    console.warn("⚠️  attached_assets/avatars not found — skipping avatar copy");
+  }
 }
 
 async function copyPdfkitData() {

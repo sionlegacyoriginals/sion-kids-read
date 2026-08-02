@@ -244,8 +244,11 @@ async function runAppMigrations() {
       { id: "avatar_career_004",    name: "Mechanic",        category: "careers",   emoji: "🔧" },
       { id: "avatar_career_005",    name: "Firefighter",     category: "careers",   emoji: "🚒" },
     ];
-    // Avatar PNGs live at repo-root/attached_assets/avatars/ — resolve relative to server entry
-    const avatarDir = resolve(__serverDir, "../../attached_assets/avatars");
+    // Avatar PNGs are copied into dist/avatars/ during the build step (see build.mjs).
+    // Fall back to the workspace source path for local dev runs that skip the build.
+    const distAvatars = resolve(__serverDir, "avatars");
+    const srcAvatars = resolve(__serverDir, "../../attached_assets/avatars");
+    const avatarDir = await access(distAvatars).then(() => distAvatars).catch(() => srcAvatars);
     let seeded = 0;
     for (const [i, a] of AVATARS.entries()) {
       try {
