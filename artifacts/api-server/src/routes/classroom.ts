@@ -952,7 +952,7 @@ router.get("/classroom/parent/class-students", requireAuth, async (req: any, res
     if (!code) return res.status(400).json({ error: "code is required" });
 
     const cls = await db.execute(sql`
-      SELECT id FROM classes WHERE UPPER(class_code) = ${code} AND is_active = TRUE
+      SELECT id FROM classes WHERE UPPER(class_code) = ${code}
     `);
     if (!cls.rows.length) return res.status(404).json({ error: "Class not found. Check the code with the teacher." });
 
