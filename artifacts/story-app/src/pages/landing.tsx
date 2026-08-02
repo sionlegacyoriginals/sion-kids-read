@@ -84,67 +84,6 @@ export default function Landing() {
         </div>
       </section>
 
-      {/* For Teachers */}
-      <section className="py-20 px-4">
-        <div className="max-w-5xl mx-auto">
-          <div className="text-center mb-14">
-            <span className="inline-flex items-center gap-2 px-4 py-1.5 bg-primary/10 text-primary font-bold text-sm rounded-full mb-5">
-              <GraduationCap className="w-4 h-4" /> For Teachers &amp; Schools
-            </span>
-            <h2 className="text-3xl md:text-4xl font-serif font-bold text-foreground mb-4">
-              Bring stories into your classroom
-            </h2>
-            <p className="text-muted-foreground max-w-xl mx-auto leading-relaxed">
-              Create a class, add your students by first name only — no emails, no passwords to manage —
-              and let them log in with a simple class code and 4-digit PIN.
-            </p>
-          </div>
-
-          {/* Steps */}
-          <div className="grid md:grid-cols-4 gap-6 mb-12">
-            {[
-              { icon: GraduationCap, step: "1", title: "Create a class", desc: "Sign up as a teacher and create your class in seconds. You get a unique 5-letter code like SION7." },
-              { icon: Users,         step: "2", title: "Add students", desc: "Type each student's first name. They get an emoji avatar and a 4-digit PIN — no emails required." },
-              { icon: KeyRound,      step: "3", title: "Share the code", desc: "Write your class code on the board. Students tap \"Student Login,\" type the code, and pick their name." },
-              { icon: BookMarked,    step: "4", title: "Read together", desc: "Students see your story library and can read any story you've created — on any device." },
-            ].map(({ icon: Icon, step, title, desc }) => (
-              <div key={step} className="relative bg-card border border-border/60 rounded-2xl p-6 shadow-sm text-center">
-                <div className="w-11 h-11 bg-primary/10 rounded-xl flex items-center justify-center mx-auto mb-4">
-                  <Icon className="w-5 h-5 text-primary" />
-                </div>
-                <span className="absolute top-4 right-4 w-6 h-6 rounded-full bg-primary/10 text-primary text-xs font-bold flex items-center justify-center">{step}</span>
-                <h3 className="font-serif font-bold text-lg text-foreground mb-2">{title}</h3>
-                <p className="text-muted-foreground text-sm leading-relaxed">{desc}</p>
-              </div>
-            ))}
-          </div>
-
-          {/* Safety callout + CTA */}
-          <div className="bg-primary rounded-3xl p-8 flex flex-col md:flex-row items-center gap-6 text-center md:text-left">
-            <div className="flex-1">
-              <h3 className="font-serif font-bold text-2xl text-white mb-2">School Mode included</h3>
-              <p className="text-white/80 leading-relaxed">
-                Toggle School Mode on and every story is automatically generated with strict
-                K-5 G-rated, classroom-safe content rules. Lock it with a 4-digit admin PIN
-                so students can't change it.
-              </p>
-            </div>
-            <Link href="/sign-up" className="shrink-0 px-8 py-3.5 bg-white text-primary font-bold rounded-full hover:bg-white/90 transition-all shadow-md text-sm whitespace-nowrap">
-              Set up your classroom →
-            </Link>
-          </div>
-
-          {/* Student entry point below teacher section */}
-          <div className="mt-6 flex flex-col sm:flex-row items-center justify-center gap-3 text-center">
-            <span className="text-muted-foreground text-sm">Already have a class code from your teacher?</span>
-            <Link href="/student-login" className="inline-flex items-center gap-2 px-6 py-2.5 border-2 border-primary/40 text-primary font-bold rounded-full hover:border-primary hover:bg-primary/5 transition-all text-sm">
-              <GraduationCap className="w-4 h-4" />
-              Student login →
-            </Link>
-          </div>
-        </div>
-      </section>
-
       {/* Pricing */}
       <section className="py-20 px-4">
         <div className="max-w-lg mx-auto text-center">
@@ -241,6 +180,67 @@ export default function Landing() {
                 <p className="text-xs text-primary font-semibold mt-2 opacity-0 group-hover:opacity-100 transition-opacity">Buy →</p>
               </a>
             ))}
+          </div>
+        </div>
+      </section>
+
+      {/* For Teachers */}
+      <section className="py-20 px-4">
+        <div className="max-w-5xl mx-auto">
+          <div className="text-center mb-14">
+            <span className="inline-flex items-center gap-2 px-4 py-1.5 bg-primary/10 text-primary font-bold text-sm rounded-full mb-5">
+              <GraduationCap className="w-4 h-4" /> For Teachers &amp; Schools
+            </span>
+            <h2 className="text-3xl md:text-4xl font-serif font-bold text-foreground mb-4">
+              Bring stories into your classroom
+            </h2>
+            <p className="text-muted-foreground max-w-xl mx-auto leading-relaxed">
+              Create a class, add your students by first name only — no emails, no passwords to manage —
+              and let them log in with a simple class code and 4-digit PIN.
+            </p>
+          </div>
+
+          {/* Steps */}
+          <div className="grid md:grid-cols-4 gap-6 mb-12">
+            {[
+              { icon: GraduationCap, step: "1", title: "Create a class", desc: "Sign up as a teacher and create your class in seconds. You get a unique 5-letter code like SION7." },
+              { icon: Users,         step: "2", title: "Add students", desc: "Type each student's first name. They get an emoji avatar and a 4-digit PIN — no emails required." },
+              { icon: KeyRound,      step: "3", title: "Share the code", desc: "Write your class code on the board. Students tap \"Student Login,\" type the code, and pick their name." },
+              { icon: BookMarked,    step: "4", title: "Read together", desc: "Students see your story library and can read any story you've created — on any device." },
+            ].map(({ icon: Icon, step, title, desc }) => (
+              <div key={step} className="relative bg-card border border-border/60 rounded-2xl p-6 shadow-sm text-center">
+                <div className="w-11 h-11 bg-primary/10 rounded-xl flex items-center justify-center mx-auto mb-4">
+                  <Icon className="w-5 h-5 text-primary" />
+                </div>
+                <span className="absolute top-4 right-4 w-6 h-6 rounded-full bg-primary/10 text-primary text-xs font-bold flex items-center justify-center">{step}</span>
+                <h3 className="font-serif font-bold text-lg text-foreground mb-2">{title}</h3>
+                <p className="text-muted-foreground text-sm leading-relaxed">{desc}</p>
+              </div>
+            ))}
+          </div>
+
+          {/* Safety callout + CTA */}
+          <div className="bg-primary rounded-3xl p-8 flex flex-col md:flex-row items-center gap-6 text-center md:text-left">
+            <div className="flex-1">
+              <h3 className="font-serif font-bold text-2xl text-white mb-2">School Mode — always free for educators</h3>
+              <p className="text-white/80 leading-relaxed">
+                Teachers get classroom tools at no cost. Toggle School Mode on and every story is
+                automatically generated with strict K-5 G-rated, classroom-safe content rules.
+                Lock it with a 4-digit admin PIN so students can't change it.
+              </p>
+            </div>
+            <Link href="/sign-up" className="shrink-0 px-8 py-3.5 bg-white text-primary font-bold rounded-full hover:bg-white/90 transition-all shadow-md text-sm whitespace-nowrap">
+              Set up your classroom →
+            </Link>
+          </div>
+
+          {/* Student entry point below teacher section */}
+          <div className="mt-6 flex flex-col sm:flex-row items-center justify-center gap-3 text-center">
+            <span className="text-muted-foreground text-sm">Already have a class code from your teacher?</span>
+            <Link href="/student-login" className="inline-flex items-center gap-2 px-6 py-2.5 border-2 border-primary/40 text-primary font-bold rounded-full hover:border-primary hover:bg-primary/5 transition-all text-sm">
+              <GraduationCap className="w-4 h-4" />
+              Student login →
+            </Link>
           </div>
         </div>
       </section>
