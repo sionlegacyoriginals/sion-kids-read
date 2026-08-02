@@ -10,7 +10,7 @@ export function Logo({ className = "", size = 28 }: LogoProps) {
       alt="Sion Kids Read"
       width={size}
       height={size}
-      className={`rounded-full object-cover shrink-0 ${className}`}
+      className={`rounded-lg object-contain shrink-0 ${className}`}
     />
   );
 }
