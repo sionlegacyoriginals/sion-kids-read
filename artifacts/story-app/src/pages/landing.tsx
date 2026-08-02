@@ -38,19 +38,17 @@ export default function Landing() {
             ))}
           </ol>
 
-          <Link href="/sign-up">
-            <button className="px-10 py-4 bg-primary text-white font-bold text-lg rounded-full hover:bg-primary/90 transition-all shadow-lg hover:shadow-xl hover:-translate-y-0.5">
-              Create their stories →
-            </button>
+          <Link href="/sign-up" className="inline-block px-10 py-4 bg-primary text-white font-bold text-lg rounded-full hover:bg-primary/90 transition-all shadow-lg hover:shadow-xl hover:-translate-y-0.5">
+            Create their stories →
           </Link>
 
           {/* Student login entry point */}
           <div className="mt-6 flex flex-col items-center gap-2">
             <span className="text-muted-foreground text-sm">Are you a student?</span>
-            <a href="student-login" className="inline-flex items-center gap-2 px-6 py-3 border-2 border-primary/40 text-primary font-bold rounded-full hover:border-primary hover:bg-primary/5 transition-all text-sm">
+            <Link href="/student-login" className="inline-flex items-center gap-2 px-6 py-3 border-2 border-primary/40 text-primary font-bold rounded-full hover:border-primary hover:bg-primary/5 transition-all text-sm">
               <GraduationCap className="w-4 h-4" />
               Enter your class code
-            </a>
+            </Link>
           </div>
         </div>
       </section>
@@ -139,18 +137,18 @@ export default function Landing() {
                 so students can't change it.
               </p>
             </div>
-            <a href="sign-up" className="shrink-0 px-8 py-3.5 bg-white text-primary font-bold rounded-full hover:bg-white/90 transition-all shadow-md text-sm whitespace-nowrap">
+            <Link href="/sign-up" className="shrink-0 px-8 py-3.5 bg-white text-primary font-bold rounded-full hover:bg-white/90 transition-all shadow-md text-sm whitespace-nowrap">
               Set up your classroom →
-            </a>
+            </Link>
           </div>
 
           {/* Student entry point below teacher section */}
           <div className="mt-6 flex flex-col sm:flex-row items-center justify-center gap-3 text-center">
             <span className="text-muted-foreground text-sm">Already have a class code from your teacher?</span>
-            <a href="student-login" className="inline-flex items-center gap-2 px-6 py-2.5 border-2 border-primary/40 text-primary font-bold rounded-full hover:border-primary hover:bg-primary/5 transition-all text-sm">
+            <Link href="/student-login" className="inline-flex items-center gap-2 px-6 py-2.5 border-2 border-primary/40 text-primary font-bold rounded-full hover:border-primary hover:bg-primary/5 transition-all text-sm">
               <GraduationCap className="w-4 h-4" />
               Student login →
-            </a>
+            </Link>
           </div>
         </div>
       </section>
@@ -173,10 +171,8 @@ export default function Landing() {
                 </div>
               </div>
               <p className="text-muted-foreground text-sm mb-4">Pay as you go — no commitment</p>
-              <Link href="/sign-up">
-                <button className="w-full py-2.5 bg-muted border border-border text-foreground font-bold text-sm rounded-full hover:bg-muted/70 transition-all">
-                  Get started
-                </button>
+              <Link href="/sign-up" className="block w-full py-2.5 bg-muted border border-border text-foreground font-bold text-sm rounded-full hover:bg-muted/70 transition-all text-center">
+                Get started
               </Link>
             </div>
 
@@ -187,10 +183,8 @@ export default function Landing() {
                 <span className="text-muted-foreground">/month</span>
               </div>
               <p className="text-muted-foreground text-sm mb-4">Unlimited stories, cancel anytime</p>
-              <Link href="/sign-up">
-                <button className="w-full py-2.5 bg-muted border border-border text-foreground font-bold text-sm rounded-full hover:bg-muted/70 transition-all">
-                  Subscribe monthly
-                </button>
+              <Link href="/sign-up" className="block w-full py-2.5 bg-muted border border-border text-foreground font-bold text-sm rounded-full hover:bg-muted/70 transition-all text-center">
+                Subscribe monthly
               </Link>
             </div>
 
@@ -201,10 +195,8 @@ export default function Landing() {
                 <span className="text-muted-foreground">/6 months</span>
               </div>
               <p className="text-muted-foreground text-sm mb-4">Unlimited stories for 6 months</p>
-              <Link href="/sign-up">
-                <button className="w-full py-2.5 bg-muted border border-border text-foreground font-bold text-sm rounded-full hover:bg-muted/70 transition-all">
-                  Get 6 months
-                </button>
+              <Link href="/sign-up" className="block w-full py-2.5 bg-muted border border-border text-foreground font-bold text-sm rounded-full hover:bg-muted/70 transition-all text-center">
+                Get 6 months
               </Link>
             </div>
 
@@ -216,10 +208,8 @@ export default function Landing() {
                 <span className="text-white/70">/year</span>
               </div>
               <p className="text-white/70 text-sm mb-4">Unlimited stories for a full year</p>
-              <Link href="/sign-up">
-                <button className="w-full py-2.5 bg-white text-primary font-bold text-sm rounded-full hover:bg-white/90 transition-all">
-                  Get 1 year
-                </button>
+              <Link href="/sign-up" className="block w-full py-2.5 bg-white text-primary font-bold text-sm rounded-full hover:bg-white/90 transition-all text-center">
+                Get 1 year
               </Link>
             </div>
           </div>
