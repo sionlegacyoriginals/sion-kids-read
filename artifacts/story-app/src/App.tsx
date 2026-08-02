@@ -120,12 +120,18 @@ function SignInPage() {
 
 function SignUpPage() {
   return (
-    <div className="flex min-h-[100dvh] items-center justify-center bg-background px-4">
+    <div className="flex min-h-[100dvh] flex-col items-center justify-center bg-background px-4 gap-6">
       <SignUp
         routing="path"
         path={`${basePath}/sign-up`}
         signInUrl={`${basePath}/sign-in`}
       />
+      <a
+        href={`${basePath}/student-login`}
+        className="flex items-center gap-2 px-6 py-3 rounded-full bg-muted hover:bg-muted/80 text-foreground font-semibold text-sm transition-colors"
+      >
+        🏫 Student? Log in with your class code
+      </a>
     </div>
   );
 }
