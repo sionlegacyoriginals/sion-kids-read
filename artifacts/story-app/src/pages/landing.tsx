@@ -42,14 +42,6 @@ export default function Landing() {
             Create their stories →
           </Link>
 
-          {/* Student login entry point */}
-          <div className="mt-6 flex flex-col items-center gap-2">
-            <span className="text-muted-foreground text-sm">Are you a student?</span>
-            <Link href="/student-login" className="inline-flex items-center gap-2 px-6 py-3 border-2 border-primary/40 text-primary font-bold rounded-full hover:border-primary hover:bg-primary/5 transition-all text-sm">
-              <GraduationCap className="w-4 h-4" />
-              Enter your class code
-            </Link>
-          </div>
         </div>
       </section>
 
