@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { GameShell, LevelComplete } from "./GameShell";
 import { GAMES, recordLevelComplete, loadProgress } from "./registry";
 import { STORY_ENDING_LEVELS } from "./data/story-ending";
@@ -22,7 +22,7 @@ export default function StoryEnding() {
   const [levelDone, setLevelDone] = useState(false);
 
   const levelData = STORY_ENDING_LEVELS[level - 1];
-  const [shuffledChoices] = useState(() => shuffle([...levelData.choices]));
+  const shuffledChoices = useMemo(() => shuffle([...levelData.choices]), [level]);
 
   function handleChoice(choice: string) {
     if (revealed) return;
