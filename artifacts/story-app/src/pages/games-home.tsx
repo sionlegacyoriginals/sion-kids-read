@@ -1,5 +1,5 @@
 import { useLocation } from "wouter";
-import { Star, Lock } from "lucide-react";
+import { Star, Lock, ArrowLeft } from "lucide-react";
 import { GAMES, loadProgress } from "@/games/registry";
 
 const basePath = import.meta.env.BASE_URL.replace(/\/$/, "");
@@ -14,6 +14,14 @@ export default function GamesHome() {
 
   return (
     <div className="max-w-3xl mx-auto py-6 space-y-8 animate-in fade-in">
+      {/* Back to Home */}
+      <button
+        onClick={() => navigate(`${basePath}/`)}
+        className="flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors"
+      >
+        <ArrowLeft className="w-4 h-4" /> Back to Home
+      </button>
+
       {/* Hero */}
       <div className="text-center space-y-3">
         <div className="w-20 h-20 bg-primary/10 rounded-full flex items-center justify-center mx-auto text-4xl">
