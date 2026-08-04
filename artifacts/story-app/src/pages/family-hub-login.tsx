@@ -4,6 +4,63 @@ import { useAuth } from "@clerk/react";
 import { Loader2, ArrowLeft, Home } from "lucide-react";
 import { useStudentAuth, type StudentSession } from "@/lib/studentAuth";
 
+// ── Step 0: Enter family code (child's own device, no URL code) ───────────────
+function FamilyCodeStep({ onFound }: {
+  onFound: (hubName: string, children: any[]) => void;
+}) {
+  const [code, setCode] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
+
+  async function handleSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    const trimmed = code.trim().toUpperCase();
+    if (!trimmed) { setError("Please enter your family code."); return; }
+    setLoading(true); setError("");
+    try {
+      const r = await fetch(`${basePath}/api/family-hub/roster/${encodeURIComponent(trimmed)}`);
+      const data = await r.json();
+      if (!r.ok) { setError(data.error ?? "Family Hub not found. Check your code and try again."); return; }
+      onFound(data.hubName ?? "Family Hub", data.children ?? []);
+    } catch {
+      setError("Network error. Please try again.");
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  return (
+    <div className="space-y-8">
+      <div className="text-center space-y-2">
+        <div className="w-20 h-20 bg-primary/10 rounded-full flex items-center justify-center mx-auto">
+          <Home className="w-10 h-10 text-primary" />
+        </div>
+        <h1 className="text-3xl font-serif font-bold text-foreground">Family Hub Login</h1>
+        <p className="text-muted-foreground">Ask a parent for your Family Hub code</p>
+      </div>
+
+      <form onSubmit={handleSubmit} className="space-y-4">
+        <input
+          type="text"
+          autoFocus
+          value={code}
+          onChange={e => setCode(e.target.value.toUpperCase().replace(/[^A-Z0-9_]/g, ""))}
+          placeholder="e.g. FAM_ABC12345"
+          className="w-full px-5 py-4 text-center text-2xl font-mono font-bold tracking-wider rounded-2xl border-2 border-border bg-background text-foreground focus:outline-none focus:border-primary transition-colors uppercase"
+        />
+        {error && <p className="text-destructive text-sm text-center">{error}</p>}
+        <button
+          type="submit"
+          disabled={loading || code.length < 3}
+          className="w-full py-3.5 bg-primary text-white font-bold rounded-2xl text-lg hover:bg-primary/90 transition-all disabled:opacity-50 flex items-center justify-center gap-2"
+        >
+          {loading ? <Loader2 className="w-5 h-5 animate-spin" /> : "Find My Family Hub →"}
+        </button>
+      </form>
+    </div>
+  );
+}
+
 const basePath = import.meta.env.BASE_URL.replace(/\/$/, "");
 
 // ── Render a child's avatar (photo, ref-photo, or emoji) ──────────────────────
@@ -147,14 +204,14 @@ export default function FamilyHubLogin() {
       return;
     }
 
-    // Child device (not signed in): must have ?code= in URL
+    // Child device (not signed in): if no ?code= in URL, show the code-entry form
     if (!classCode) {
-      setError("No hub code found. Ask a parent to share the login link.");
       setLoading(false);
-      return;
+      return; // renders FamilyCodeStep below
     }
 
     fetch(`${basePath}/api/family-hub/roster/${encodeURIComponent(classCode)}`)
+
       .then(async r => {
         const data = await r.json();
         if (!r.ok) { setError(data.error ?? "Hub not found."); return; }
@@ -178,6 +235,22 @@ export default function FamilyHubLogin() {
     );
   }
 
+  // Not signed in and no code in URL — show code-entry form
+  if (!isSignedIn && !classCode && children.length === 0 && !error) {
+    return (
+      <div className="min-h-[100dvh] flex flex-col items-center justify-center bg-background px-4">
+        <div className="w-full max-w-md">
+          <FamilyCodeStep
+            onFound={(name, kids) => {
+              setHubName(name);
+              setChildren(kids);
+            }}
+          />
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-[100dvh] flex flex-col items-center justify-center bg-background px-4">
       <div className="w-full max-w-md space-y-8">
@@ -188,6 +261,16 @@ export default function FamilyHubLogin() {
             className="flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors"
           >
             <ArrowLeft className="w-3.5 h-3.5" /> Back to Family Hub
+          </button>
+        )}
+
+        {/* Back to code entry — child's own device, not signed in */}
+        {!isSignedIn && children.length > 0 && (
+          <button
+            onClick={() => { setChildren([]); setHubName(""); }}
+            className="flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors"
+          >
+            <ArrowLeft className="w-3.5 h-3.5" /> Different family code
           </button>
         )}
 

@@ -114,12 +114,20 @@ function SignInPage() {
         path={`${basePath}/sign-in`}
         signUpUrl={`${basePath}/sign-up`}
       />
-      <a
-        href={`${basePath}/student-login`}
-        className="flex items-center gap-2 px-6 py-3 rounded-full bg-muted hover:bg-muted/80 text-foreground font-semibold text-sm transition-colors"
-      >
-        🏫 Student? Log in with your class code
-      </a>
+      <div className="flex flex-col sm:flex-row items-center gap-3">
+        <a
+          href={`${basePath}/student-login`}
+          className="flex items-center gap-2 px-6 py-3 rounded-full bg-muted hover:bg-muted/80 text-foreground font-semibold text-sm transition-colors"
+        >
+          🏫 Student? Log in with your class code
+        </a>
+        <a
+          href={`${basePath}/family-hub/login`}
+          className="flex items-center gap-2 px-6 py-3 rounded-full bg-primary/10 hover:bg-primary/20 text-primary font-semibold text-sm transition-colors border border-primary/20"
+        >
+          🏠 Family Hub child login
+        </a>
+      </div>
     </div>
   );
 }
@@ -132,12 +140,20 @@ function SignUpPage() {
         path={`${basePath}/sign-up`}
         signInUrl={`${basePath}/sign-in`}
       />
-      <a
-        href={`${basePath}/student-login`}
-        className="flex items-center gap-2 px-6 py-3 rounded-full bg-muted hover:bg-muted/80 text-foreground font-semibold text-sm transition-colors"
-      >
-        🏫 Student? Log in with your class code
-      </a>
+      <div className="flex flex-col sm:flex-row items-center gap-3">
+        <a
+          href={`${basePath}/student-login`}
+          className="flex items-center gap-2 px-6 py-3 rounded-full bg-muted hover:bg-muted/80 text-foreground font-semibold text-sm transition-colors"
+        >
+          🏫 Student? Log in with your class code
+        </a>
+        <a
+          href={`${basePath}/family-hub/login`}
+          className="flex items-center gap-2 px-6 py-3 rounded-full bg-primary/10 hover:bg-primary/20 text-primary font-semibold text-sm transition-colors border border-primary/20"
+        >
+          🏠 Family Hub child login
+        </a>
+      </div>
     </div>
   );
 }
