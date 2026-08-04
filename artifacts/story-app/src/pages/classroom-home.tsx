@@ -948,8 +948,8 @@ export default function ClassroomHome({ mode = "classroom" }: { mode?: "classroo
           </div>
         )}
 
-        {/* Write a Story — classroom only */}
-        {mode === "classroom" && (
+        {/* Write a Story */}
+        {(mode === "classroom" || mode === "family") && (
           showWriteForm ? (
             <div className="mb-8">
               <button onClick={() => setShowWriteForm(false)} className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground mb-3 transition-colors">
@@ -987,7 +987,7 @@ export default function ClassroomHome({ mode = "classroom" }: { mode?: "classroo
             <p className="font-medium">No stories yet!</p>
             <p className="text-sm mt-1">
               {mode === "family"
-                ? "No stories have been created yet. Head to your dashboard to write one!"
+                ? "No stories yet — tap \"Write a story\" above to create your first one!"
                 : "Your teacher hasn't added any stories to this class yet."}
             </p>
           </div>
