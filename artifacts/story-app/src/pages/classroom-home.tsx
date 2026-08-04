@@ -841,7 +841,13 @@ export default function ClassroomHome({ mode = "classroom" }: { mode?: "classroo
       .catch(() => {});
     studentFetch(`${basePath}/api/classroom/me`)
       .then((r: any) => r.json())
-      .then((d: any) => { if (d.points != null) setPoints(d.points); })
+      .then((d: any) => {
+        if (d.points != null) setPoints(d.points);
+        // Refresh photoUrl in case parent uploaded a photo after the child last logged in
+        if (d.photoUrl !== undefined && d.photoUrl !== student.photoUrl) {
+          setStudent({ ...student, photoUrl: d.photoUrl ?? undefined });
+        }
+      })
       .catch(() => {});
   }, [student]);
 

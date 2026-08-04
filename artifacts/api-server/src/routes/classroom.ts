@@ -510,12 +510,13 @@ router.get("/classroom/me", requireStudentAuth, async (req: any, res) => {
     const p = req.studentPayload;
     const [cls, me] = await Promise.all([
       db.execute(sql`SELECT class_name, class_code FROM classes WHERE id = ${p.classId}`),
-      db.execute(sql`SELECT points FROM users WHERE id = ${p.studentId}`),
+      db.execute(sql`SELECT points, photo_url FROM users WHERE id = ${p.studentId}`),
     ]);
     res.json({
       id: p.studentId,
       firstName: p.firstName,
       avatar: p.avatar,
+      photoUrl: (me.rows[0] as any)?.photo_url ?? null,
       classId: p.classId,
       className: cls.rows[0]?.class_name ?? "",
       teacherId: p.teacherId,
