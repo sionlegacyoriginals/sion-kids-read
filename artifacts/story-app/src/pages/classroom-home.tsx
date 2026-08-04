@@ -653,11 +653,12 @@ function StoryReader({
 }
 
 // ── Write a Story form ────────────────────────────────────────────────────────
-function WriteStoryForm({ studentFetch, sightWords, onSubmitted }: {
-  studentFetch: any; sightWords: string[]; onSubmitted: () => void;
+function WriteStoryForm({ studentFetch, sightWords, onSubmitted, photoUrl }: {
+  studentFetch: any; sightWords: string[]; onSubmitted: () => void; photoUrl?: string | null;
 }) {
   const [step, setStep] = useState<"avatar" | "prompt">("avatar");
-  const [selectedAvatars, setSelectedAvatars] = useState<string[]>([]);
+  // Pre-select parent-uploaded photo if present
+  const [selectedAvatars, setSelectedAvatars] = useState<string[]>(photoUrl ? [photoUrl] : []);
   const [prompt, setPrompt] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [done, setDone] = useState(false);
@@ -878,7 +879,12 @@ export default function ClassroomHome({ mode = "classroom" }: { mode?: "classroo
       <header className="sticky top-0 z-50 border-b border-border/50 bg-background/80 backdrop-blur-md">
         <div className="container mx-auto px-4 h-16 flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <span className="text-3xl leading-none">{student.avatar}</span>
+            {student.photoUrl
+              ? <img src={`/api${student.photoUrl}`} alt={student.firstName} className="w-10 h-10 rounded-full object-cover border-2 border-primary/20" />
+              : student.avatar?.startsWith("/ref-photos/")
+              ? <img src={`/api${student.avatar}`} alt={student.firstName} className="w-10 h-10 rounded-full object-cover border-2 border-primary/20" />
+              : <span className="text-3xl leading-none">{student.avatar}</span>
+            }
             <div>
               <p className="font-bold text-foreground leading-tight">{student.firstName}</p>
               <p className="text-xs text-muted-foreground leading-tight">{student.className}</p>
@@ -953,6 +959,7 @@ export default function ClassroomHome({ mode = "classroom" }: { mode?: "classroo
                 studentFetch={studentFetch}
                 sightWords={announcement?.sightWords?.split(",").map((w: string) => w.trim()).filter(Boolean) ?? []}
                 onSubmitted={() => { setShowWriteForm(false); }}
+                photoUrl={student.photoUrl}
               />
             </div>
           ) : (

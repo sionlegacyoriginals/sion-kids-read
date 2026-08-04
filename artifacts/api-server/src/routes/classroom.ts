@@ -454,7 +454,7 @@ router.post("/classroom/login", async (req, res) => {
     if (!studentId || !pin) return res.status(400).json({ error: "Student ID and PIN required" });
 
     const result = await db.execute(sql`
-      SELECT u.id, u.first_name, u.avatar, u.pin, u.class_id,
+      SELECT u.id, u.first_name, u.avatar, u.photo_url, u.pin, u.class_id,
              c.teacher_id, c.class_code, c.class_name, c.is_family_hub
       FROM users u
       JOIN classes c ON c.id = u.class_id
@@ -492,6 +492,7 @@ router.post("/classroom/login", async (req, res) => {
         id: row.id,
         firstName: row.first_name,
         avatar: row.avatar,
+        photoUrl: row.photo_url ?? null,
         classId: row.class_id,
         className: row.class_name,
         teacherId: row.teacher_id,
@@ -568,9 +569,10 @@ router.post("/classroom/student-stories", requireStudentAuth, async (req: any, r
     const title = titleMatch?.[1]?.trim() ?? `${p.firstName}'s Story`;
     const content = raw.replace(/^TITLE:\s*.+\n?/m, "").trim();
 
-    // Validated avatar paths — must be /ref-photos/avatar_* to prevent injection
+    // Validated avatar paths — must start with /ref-photos/ (covers both avatar bank
+    // and parent-uploaded child photos stored as reference photos)
     const validAvatarPaths = Array.isArray(avatarPaths)
-      ? (avatarPaths as string[]).filter((p) => typeof p === "string" && p.startsWith("/ref-photos/avatar_"))
+      ? (avatarPaths as string[]).filter((p) => typeof p === "string" && p.startsWith("/ref-photos/"))
       : [];
     const referenceImagePathsJson = validAvatarPaths.length > 0
       ? JSON.stringify(validAvatarPaths)

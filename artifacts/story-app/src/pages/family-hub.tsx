@@ -1,10 +1,11 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useLocation, Link } from "wouter";
 import { useAuth } from "@clerk/react";
 import {
   Home, Plus, Trash2, RefreshCw, Lock, Star, Settings, Users,
-  BookHeart, ChevronRight, Loader2, CheckCircle, X, Pencil, KeyRound, Share2,
+  BookHeart, ChevronRight, Loader2, CheckCircle, X, Pencil, KeyRound, Share2, Camera, Eye, EyeOff,
 } from "lucide-react";
+import { AvatarPicker } from "@/components/avatar-picker";
 
 const basePath = import.meta.env.BASE_URL.replace(/\/$/, "");
 
@@ -16,10 +17,16 @@ const CHARACTER_VALUES = [
   "Respect", "Empathy", "Sharing", "Diligence", "Bravery",
 ];
 
-const AVATARS = [
-  "🐶","🐱","🐭","🐹","🐰","🦊","🐻","🐼","🐨","🐯",
-  "🦁","🐸","🐵","🐔","🐧","🦆","🦉","🦋","🐢","🦄",
-];
+// ── Child avatar display ───────────────────────────────────────────────────────
+function ChildAvatar({
+  avatar, photoUrl, size = "md",
+}: { avatar?: string; photoUrl?: string | null; size?: "sm" | "md" | "lg" }) {
+  const dims = size === "sm" ? "w-10 h-10" : size === "lg" ? "w-16 h-16" : "w-12 h-12";
+  const emoji = size === "sm" ? "text-2xl" : size === "lg" ? "text-5xl" : "text-4xl";
+  const src = photoUrl ?? (avatar?.startsWith("/ref-photos/") ? avatar : null);
+  if (src) return <img src={`/api${src}`} alt="avatar" className={`${dims} rounded-full object-cover border-2 border-primary/20 shrink-0`} />;
+  return <span className={`${emoji} leading-none shrink-0`}>{avatar ?? "🧒"}</span>;
+}
 
 function UpsellCard({ onAccessGranted }: { onAccessGranted: () => void }) {
   const [code, setCode] = useState("");
@@ -172,7 +179,7 @@ function CreateHubForm({ onCreated }: { onCreated: (hub: any) => void }) {
 // ── Add child form ─────────────────────────────────────────────────────────────
 function AddChildForm({ onAdded, onCancel }: { onAdded: (child: any) => void; onCancel: () => void }) {
   const [firstName, setFirstName] = useState("");
-  const [avatar, setAvatar] = useState(AVATARS[0]);
+  const [avatar, setAvatar] = useState<string>("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
@@ -185,7 +192,7 @@ function AddChildForm({ onAdded, onCancel }: { onAdded: (child: any) => void; on
         method: "POST",
         credentials: "include",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ firstName: firstName.trim(), avatar }),
+        body: JSON.stringify({ firstName: firstName.trim(), avatar: avatar || undefined }),
       });
       const data = await r.json();
       if (!r.ok) { setError(data.error ?? "Failed to add child."); return; }
@@ -196,14 +203,14 @@ function AddChildForm({ onAdded, onCancel }: { onAdded: (child: any) => void; on
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm px-4">
-      <div className="bg-card border border-border rounded-3xl p-8 w-full max-w-sm shadow-2xl space-y-5">
+      <div className="bg-card border border-border rounded-3xl p-6 w-full max-w-lg shadow-2xl space-y-5 max-h-[90dvh] overflow-y-auto">
         <div className="flex items-center justify-between">
           <h3 className="font-serif font-bold text-xl text-foreground">Add a child</h3>
           <button onClick={onCancel} className="text-muted-foreground hover:text-foreground transition-colors">
             <X className="w-5 h-5" />
           </button>
         </div>
-        <form onSubmit={handleSubmit} className="space-y-4">
+        <form onSubmit={handleSubmit} className="space-y-5">
           <div>
             <label className="block text-sm font-bold text-foreground mb-1.5">First name</label>
             <input
@@ -217,21 +224,16 @@ function AddChildForm({ onAdded, onCancel }: { onAdded: (child: any) => void; on
             />
           </div>
           <div>
-            <label className="block text-sm font-bold text-foreground mb-2">Avatar</label>
-            <div className="flex flex-wrap gap-2">
-              {AVATARS.map(em => (
-                <button
-                  key={em}
-                  type="button"
-                  onClick={() => setAvatar(em)}
-                  className={`text-2xl w-10 h-10 rounded-xl flex items-center justify-center border-2 transition-all ${
-                    avatar === em ? "border-primary bg-primary/10 scale-110" : "border-border hover:border-primary/50"
-                  }`}
-                >
-                  {em}
-                </button>
-              ))}
-            </div>
+            <label className="block text-sm font-bold text-foreground mb-2">
+              Choose an illustrated avatar
+              <span className="font-normal text-muted-foreground ml-1">(you can add a real photo after saving)</span>
+            </label>
+            <AvatarPicker
+              selected={avatar ? [avatar] : []}
+              onChange={paths => setAvatar(paths[0] ?? "")}
+              maxSelect={1}
+              basePath={basePath}
+            />
           </div>
           {error && <p className="text-destructive text-sm">{error}</p>}
           <button
@@ -253,7 +255,9 @@ function PinDisplay({ child, pin, onClose }: { child: any; pin: string; onClose:
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm px-4">
       <div className="bg-card border border-border rounded-3xl p-8 w-full max-w-xs shadow-2xl text-center space-y-4">
-        <div className="text-6xl">{child.avatar}</div>
+        <div className="flex justify-center">
+          <ChildAvatar avatar={child.avatar} photoUrl={child.photo_url} className="w-16 h-16 text-5xl flex items-center justify-center" />
+        </div>
         <div>
           <h3 className="font-serif font-bold text-xl text-foreground">{child.first_name}'s new PIN</h3>
           <p className="text-muted-foreground text-sm mt-1">Write this down — it won't be shown again.</p>
@@ -380,7 +384,47 @@ function HubDashboard({ hub: initialHub }: { hub: any }) {
   const [removeLoading, setRemoveLoading] = useState<string | null>(null);
   const [resetLoading, setResetLoading] = useState<string | null>(null);
   const [linkCopied, setLinkCopied] = useState(false);
+  const [photoUploadLoading, setPhotoUploadLoading] = useState<string | null>(null);
+  const [pinVisible, setPinVisible] = useState<Record<string, boolean>>({});
   const [, navigate] = useLocation();
+  const photoInputRef = useRef<HTMLInputElement>(null);
+  const photoUploadTargetRef = useRef<string | null>(null);
+
+  function handlePhotoButtonClick(childId: string) {
+    photoUploadTargetRef.current = childId;
+    photoInputRef.current?.click();
+  }
+
+  async function handlePhotoFileChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    e.target.value = "";
+    const childId = photoUploadTargetRef.current;
+    if (!childId) return;
+    setPhotoUploadLoading(childId);
+    try {
+      const data = await new Promise<string>((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(reader.result as string);
+        reader.onerror = reject;
+        reader.readAsDataURL(file);
+      });
+      const r = await fetch(`${basePath}/api/family-hub/children/${childId}/photo`, {
+        method: "PUT",
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ data }),
+      });
+      const result = await r.json();
+      if (r.ok) {
+        setChildren(prev => prev.map(c => c.id === childId ? { ...c, photo_url: result.photoUrl } : c));
+      }
+    } catch {
+      // silent — user can try again
+    } finally {
+      setPhotoUploadLoading(null);
+    }
+  }
 
   function handleShareLink() {
     const code = hub.class_code as string | undefined;
@@ -508,15 +552,35 @@ function HubDashboard({ hub: initialHub }: { hub: any }) {
                 key={child.id}
                 className="flex items-center gap-4 p-4 bg-card border border-border rounded-2xl"
               >
-                <span className="text-4xl leading-none shrink-0">{child.avatar}</span>
+                <ChildAvatar avatar={child.avatar} photoUrl={child.photo_url} size="md" />
                 <div className="flex-1 min-w-0">
                   <p className="font-bold text-foreground">{child.first_name}</p>
-                  <div className="flex items-center gap-1.5 text-sm text-yellow-600 font-semibold mt-0.5">
-                    <Star className="w-3.5 h-3.5 fill-yellow-500 text-yellow-500" />
-                    {child.points ?? 0} {child.points === 1 ? "point" : "points"}
+                  <div className="flex items-center gap-2 mt-0.5 flex-wrap">
+                    <div className="flex items-center gap-1.5 text-sm text-yellow-600 font-semibold">
+                      <Star className="w-3.5 h-3.5 fill-yellow-500 text-yellow-500" />
+                      {child.points ?? 0} {child.points === 1 ? "point" : "points"}
+                    </div>
+                    <button
+                      onClick={() => setPinVisible(v => ({ ...v, [child.id]: !v[child.id] }))}
+                      className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors"
+                      title={pinVisible[child.id] ? "Hide PIN" : "Show PIN"}
+                    >
+                      {pinVisible[child.id]
+                        ? <><EyeOff className="w-3 h-3" /> <span className="font-mono font-bold tracking-widest text-foreground">{child.pin}</span></>
+                        : <><Eye className="w-3 h-3" /> PIN</>}
+                    </button>
                   </div>
                 </div>
                 <div className="flex items-center gap-2 shrink-0">
+                  <button
+                    onClick={() => handlePhotoButtonClick(child.id)}
+                    disabled={photoUploadLoading === child.id}
+                    title={child.photo_url ? "Replace photo" : "Upload real photo"}
+                    className="flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-semibold text-muted-foreground border border-border hover:border-primary hover:text-primary transition-all disabled:opacity-50"
+                  >
+                    {photoUploadLoading === child.id ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Camera className="w-3.5 h-3.5" />}
+                    {child.photo_url ? "Photo" : "Add photo"}
+                  </button>
                   <button
                     onClick={() => handleResetPin(child)}
                     disabled={resetLoading === child.id}
@@ -558,6 +622,15 @@ function HubDashboard({ hub: initialHub }: { hub: any }) {
           />
         )}
       </div>
+
+      {/* Hidden file input for child photo uploads */}
+      <input
+        ref={photoInputRef}
+        type="file"
+        accept="image/*"
+        className="hidden"
+        onChange={handlePhotoFileChange}
+      />
 
       {/* Modals */}
       {showAddChild && (

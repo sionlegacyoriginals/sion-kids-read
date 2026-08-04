@@ -5,6 +5,8 @@ export interface StudentSession {
   id: string;
   firstName: string;
   avatar: string;
+  /** Path to a parent-uploaded real photo, e.g. /ref-photos/<uuid>. Takes precedence over avatar. */
+  photoUrl?: string;
   classId: number;
   className: string;
   teacherId: string;

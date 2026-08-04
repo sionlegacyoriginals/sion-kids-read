@@ -6,13 +6,20 @@ import { useStudentAuth, type StudentSession } from "@/lib/studentAuth";
 
 const basePath = import.meta.env.BASE_URL.replace(/\/$/, "");
 
+// ── Render a child's avatar (photo, ref-photo, or emoji) ──────────────────────
+function ChildAvatar({ avatar, photoUrl, className = "" }: { avatar?: string; photoUrl?: string | null; className?: string }) {
+  const src = photoUrl ?? (avatar?.startsWith("/ref-photos/") ? avatar : null);
+  if (src) return <img src={`/api${src}`} alt="avatar" className={`rounded-full object-cover ${className}`} />;
+  return <span className={className}>{avatar ?? "🧒"}</span>;
+}
+
 // ── PIN modal ─────────────────────────────────────────────────────────────────
 function PinModal({
   child,
   onCancel,
   onSuccess,
 }: {
-  child: { id: string; first_name: string; avatar: string };
+  child: { id: string; first_name: string; avatar: string; photo_url?: string | null };
   onCancel: () => void;
   onSuccess: (session: StudentSession) => void;
 }) {
@@ -43,6 +50,7 @@ function PinModal({
         id: data.student.id,
         firstName: data.student.firstName,
         avatar: data.student.avatar,
+        photoUrl: data.student.photoUrl ?? undefined,
         classId: data.student.classId,
         className: data.student.className,
         teacherId: data.student.teacherId,
@@ -58,7 +66,9 @@ function PinModal({
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm px-4">
       <div className="bg-card border border-border rounded-3xl p-8 w-full max-w-sm shadow-2xl text-center space-y-5">
-        <div className="text-6xl">{child.avatar}</div>
+        <div className="flex justify-center">
+          <ChildAvatar avatar={child.avatar} photoUrl={child.photo_url} className="w-20 h-20 text-6xl flex items-center justify-center" />
+        </div>
         <div>
           <h2 className="text-2xl font-serif font-bold text-foreground">Hi, {child.first_name}!</h2>
           <p className="text-muted-foreground text-sm mt-1">Enter your 4-digit PIN</p>
@@ -208,7 +218,7 @@ export default function FamilyHubLogin() {
                 onClick={() => setSelected(child)}
                 className="flex flex-col items-center gap-2 p-4 rounded-2xl bg-card border-2 border-border hover:border-primary hover:bg-primary/5 transition-all active:scale-95"
               >
-                <span className="text-4xl leading-none">{child.avatar}</span>
+                <ChildAvatar avatar={child.avatar} photoUrl={child.photo_url} className="w-14 h-14 text-4xl flex items-center justify-center" />
                 <span className="text-xs font-bold text-foreground text-center leading-tight break-words w-full">
                   {child.first_name}
                 </span>

@@ -75,7 +75,7 @@ router.get("/family-hub/roster/:classCode", async (req: any, res): Promise<void>
 
     const hub = hubRes.rows[0] as any;
     const childrenRes = await db.execute(sql`
-      SELECT id, first_name, avatar FROM users
+      SELECT id, first_name, avatar, photo_url FROM users
       WHERE class_id = ${hub.id} AND is_student = TRUE
       ORDER BY first_name ASC
     `);
@@ -112,7 +112,7 @@ router.get("/family-hub", requireAuth, async (req: any, res): Promise<void> => {
 
     const hub = hubRes.rows[0] as any;
     const childrenRes = await db.execute(sql`
-      SELECT id, first_name, avatar, pin, points, created_at
+      SELECT id, first_name, avatar, photo_url, pin, points, created_at
       FROM users
       WHERE class_id = ${hub.id} AND is_student = TRUE
       ORDER BY first_name ASC
@@ -285,6 +285,50 @@ router.put("/family-hub/children/:childId/pin", requireAuth, async (req: any, re
     `);
 
     res.json({ ok: true, pin: newPin });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ── PUT /family-hub/children/:childId/photo ──────────────────────────────────
+// Parent uploads a real photo of their child. Stored in reference_photos table;
+// path saved to users.photo_url. Only the owning parent can call this.
+router.put("/family-hub/children/:childId/photo", requireAuth, async (req: any, res): Promise<void> => {
+  try {
+    const hasAccess = await checkFamilyHubAccess(req.userId);
+    if (!hasAccess) {
+      res.status(403).json({ error: "An active subscription is required to manage your Family Hub." });
+      return;
+    }
+
+    const { childId } = req.params;
+    // Verify this child belongs to the authenticated parent's hub
+    const check = await db.execute(sql`
+      SELECT u.id FROM users u
+      JOIN classes c ON c.id = u.class_id
+      WHERE u.id = ${childId}
+        AND c.teacher_id = ${req.userId}
+        AND c.is_family_hub = TRUE
+        AND u.is_student = TRUE
+    `);
+    if (!check.rows.length) {
+      res.status(403).json({ error: "Child not found." });
+      return;
+    }
+
+    const { data } = req.body;
+    if (!data || typeof data !== "string") {
+      res.status(400).json({ error: "Missing data field (base64 data URL)." });
+      return;
+    }
+
+    // Store in reference_photos and link to child
+    const photoId = randomUUID();
+    await db.execute(sql`INSERT INTO reference_photos (id, data_url) VALUES (${photoId}, ${data})`);
+    const photoUrl = `/ref-photos/${photoId}`;
+    await db.execute(sql`UPDATE users SET photo_url = ${photoUrl}, updated_at = NOW() WHERE id = ${childId}`);
+
+    res.json({ ok: true, photoUrl });
   } catch (err: any) {
     res.status(500).json({ error: err.message });
   }
