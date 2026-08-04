@@ -753,6 +753,20 @@ export default function Home() {
         </div>
       )}
 
+      {/* Family Hub promo */}
+      <a href="/family-hub">
+        <div className="flex items-center gap-3 p-4 rounded-2xl bg-amber-50 border border-amber-200 hover:bg-amber-100 hover:border-amber-300 transition-all cursor-pointer group">
+          <div className="w-10 h-10 rounded-xl bg-amber-100 flex items-center justify-center shrink-0 text-xl">
+            🏠
+          </div>
+          <div className="flex-1 min-w-0">
+            <p className="text-sm font-bold text-amber-900 leading-tight">Family Hub — included with your plan</p>
+            <p className="text-xs text-amber-700 mt-0.5">Add child profiles, track reading points &amp; set weekly sight words</p>
+          </div>
+          <ArrowRight className="w-4 h-4 text-amber-600 shrink-0 group-hover:translate-x-0.5 transition-transform" />
+        </div>
+      </a>
+
       {/* Gift card promo */}
       <a href="/gift-cards">
         <div className="flex items-center gap-3 p-4 rounded-2xl bg-primary/5 border border-primary/20 hover:bg-primary/10 hover:border-primary/30 transition-all cursor-pointer group">

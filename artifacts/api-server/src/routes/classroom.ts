@@ -2,7 +2,7 @@ import { Router } from "express";
 import { randomUUID } from "crypto";
 import { db } from "@workspace/db";
 import { sql } from "drizzle-orm";
-import { requireAuth, requireStudentAuth, signStudentToken } from "../lib/auth";
+import { requireAuth, requireStudentAuth, signStudentToken, checkFamilyHubAccess } from "../lib/auth";
 import { openai } from "@workspace/integrations-openai-ai-server";
 import { sendParentStoryPublished, sendParentAnnouncement } from "../lib/mailerService";
 
@@ -175,8 +175,12 @@ router.put("/classroom/classes/:classId/announcement", requireAuth, async (req: 
     const { classId } = req.params;
     const { message, valueOfWeek, sightWords, dueDate, pointValuePerSightWord, pointsForPublished } = req.body;
 
-    const check = await db.execute(sql`SELECT id FROM classes WHERE id = ${Number(classId)} AND teacher_id = ${req.userId}`);
+    const check = await db.execute(sql`SELECT id, is_family_hub FROM classes WHERE id = ${Number(classId)} AND teacher_id = ${req.userId}`);
     if (!check.rows.length) return res.status(403).json({ error: "Not your class." });
+    // Family Hub class settings are managed exclusively via the Family Hub API
+    if ((check.rows[0] as any).is_family_hub) {
+      if (!(await checkFamilyHubAccess(req.userId))) return res.status(403).json({ error: "Active subscription required." });
+    }
 
     await db.execute(sql`
       UPDATE classes SET
@@ -323,9 +327,13 @@ router.post("/classroom/classes/:classId/students", requireAuth, async (req: any
     if (!firstName?.trim()) return res.status(400).json({ error: "First name is required" });
 
     const cls = await db.execute(sql`
-      SELECT * FROM classes WHERE id = ${classId} AND teacher_id = ${req.userId}
+      SELECT *, is_family_hub FROM classes WHERE id = ${classId} AND teacher_id = ${req.userId}
     `);
     if (!cls.rows.length) return res.status(404).json({ error: "Class not found" });
+    const isFamilyHub = !!(cls.rows[0] as any).is_family_hub;
+    if (isFamilyHub) {
+      if (!(await checkFamilyHubAccess(req.userId))) return res.status(403).json({ error: "Active subscription required." });
+    }
 
     const classCode = cls.rows[0].class_code as string;
 
@@ -334,6 +342,12 @@ router.post("/classroom/classes/:classId/students", requireAuth, async (req: any
       SELECT COUNT(*)::int AS cnt FROM users WHERE class_id = ${classId} AND is_student = TRUE
     `);
     const count = (countResult.rows[0]?.cnt as number) ?? 0;
+
+    // Family Hub is limited to 6 children
+    if (isFamilyHub && count >= 6) {
+      return res.status(400).json({ error: "Family Hubs can have up to 6 children." });
+    }
+
     const avatar = AVATARS[count % AVATARS.length];
 
     const studentId = `student_${randomUUID().replace(/-/g, "").slice(0, 12)}`;
@@ -362,9 +376,12 @@ router.delete("/classroom/classes/:classId/students/:studentId", requireAuth, as
     const { studentId } = req.params;
 
     const cls = await db.execute(sql`
-      SELECT id FROM classes WHERE id = ${classId} AND teacher_id = ${req.userId}
+      SELECT id, is_family_hub FROM classes WHERE id = ${classId} AND teacher_id = ${req.userId}
     `);
     if (!cls.rows.length) return res.status(403).json({ error: "Forbidden" });
+    if ((cls.rows[0] as any).is_family_hub) {
+      if (!(await checkFamilyHubAccess(req.userId))) return res.status(403).json({ error: "Active subscription required." });
+    }
 
     await db.execute(sql`
       DELETE FROM users WHERE id = ${studentId} AND class_id = ${classId} AND is_student = TRUE
@@ -382,13 +399,18 @@ router.post("/classroom/classes/:classId/students/:studentId/reset-pin", require
     const { studentId } = req.params;
 
     const cls = await db.execute(sql`
-      SELECT id FROM classes WHERE id = ${classId} AND teacher_id = ${req.userId}
+      SELECT id, is_family_hub FROM classes WHERE id = ${classId} AND teacher_id = ${req.userId}
     `);
     if (!cls.rows.length) return res.status(403).json({ error: "Forbidden" });
+    if ((cls.rows[0] as any).is_family_hub) {
+      if (!(await checkFamilyHubAccess(req.userId))) return res.status(403).json({ error: "Active subscription required." });
+    }
 
     const newPin = genPin();
+    // session_valid_after: invalidates any JWT issued before this moment,
+    // ensuring the child must log in again with the new PIN.
     await db.execute(sql`
-      UPDATE users SET pin = ${newPin}, updated_at = NOW()
+      UPDATE users SET pin = ${newPin}, updated_at = NOW(), session_valid_after = NOW()
       WHERE id = ${studentId} AND class_id = ${classId} AND is_student = TRUE
     `);
     res.json({ ok: true, pin: newPin });
@@ -402,9 +424,16 @@ router.get("/classroom/lookup/:classCode", async (req, res) => {
   try {
     const code = (req.params.classCode ?? "").toUpperCase().trim();
     const cls = await db.execute(sql`
-      SELECT id, class_name, class_code FROM classes WHERE class_code = ${code}
+      SELECT id, class_name, class_code, is_family_hub
+      FROM classes WHERE class_code = ${code}
     `);
     if (!cls.rows.length) return res.status(404).json({ error: "Class not found" });
+
+    // Family Hub classes use a private authenticated login flow — never expose
+    // their roster (child names, IDs, avatars) through the public lookup endpoint.
+    if ((cls.rows[0] as any).is_family_hub) {
+      return res.status(404).json({ error: "Class not found" });
+    }
 
     const students = await db.execute(sql`
       SELECT id, first_name, avatar
@@ -426,7 +455,7 @@ router.post("/classroom/login", async (req, res) => {
 
     const result = await db.execute(sql`
       SELECT u.id, u.first_name, u.avatar, u.pin, u.class_id,
-             c.teacher_id, c.class_code, c.class_name
+             c.teacher_id, c.class_code, c.class_name, c.is_family_hub
       FROM users u
       JOIN classes c ON c.id = u.class_id
       WHERE u.id = ${studentId} AND u.is_student = TRUE
@@ -437,12 +466,24 @@ router.post("/classroom/login", async (req, res) => {
     const row = result.rows[0] as any;
     if (row.pin !== pin) return res.status(401).json({ error: "Incorrect PIN" });
 
+    // Family Hub children require the owning parent to still have an active entitlement
+    if (row.is_family_hub) {
+      const { checkFamilyHubAccess } = await import("../lib/auth");
+      const hasAccess = await checkFamilyHubAccess(row.teacher_id);
+      if (!hasAccess) {
+        return res.status(403).json({
+          error: "This Family Hub requires an active subscription. Please ask a parent to renew.",
+        });
+      }
+    }
+
     const token = signStudentToken({
       studentId: row.id,
       classId: row.class_id,
       teacherId: row.teacher_id,
       firstName: row.first_name,
       avatar: row.avatar,
+      isFamilyHub: !!row.is_family_hub,
     });
 
     res.json({
@@ -454,6 +495,7 @@ router.post("/classroom/login", async (req, res) => {
         classId: row.class_id,
         className: row.class_name,
         teacherId: row.teacher_id,
+        isFamilyHub: !!row.is_family_hub,
       },
     });
   } catch (err: any) {

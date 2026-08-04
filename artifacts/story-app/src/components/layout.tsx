@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { Link, useLocation } from "wouter";
 import { Show, useUser, useClerk } from "@clerk/react";
-import { BookHeart, LogOut, Settings, ChevronDown, GraduationCap, Heart } from "lucide-react";
+import { BookHeart, LogOut, Settings, ChevronDown, GraduationCap, Heart, Home } from "lucide-react";
 import { Logo } from "@/components/logo";
 
 function UserMenu() {
@@ -137,6 +137,12 @@ export function Layout({ children }: { children: React.ReactNode }) {
                 className={`px-3 py-1.5 rounded-full font-medium text-sm flex items-center gap-1.5 transition-colors ${location.startsWith("/classroom-setup") ? "bg-primary/10 text-primary" : "text-muted-foreground hover:text-foreground hover:bg-muted/50"}`}
               >
                 <GraduationCap className="w-3.5 h-3.5" /> Classroom
+              </Link>
+              <Link
+                href="/family-hub"
+                className={`px-3 py-1.5 rounded-full font-medium text-sm flex items-center gap-1.5 transition-colors ${location.startsWith("/family-hub") ? "bg-primary/10 text-primary" : "text-muted-foreground hover:text-foreground hover:bg-muted/50"}`}
+              >
+                <Home className="w-3.5 h-3.5" /> Family Hub
               </Link>
               <Link
                 href="/parent"

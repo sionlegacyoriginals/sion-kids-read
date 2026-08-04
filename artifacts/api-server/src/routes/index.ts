@@ -7,6 +7,7 @@ import accessCodeRouter from "./access-code";
 import giftCardsRouter from "./gift-cards";
 import classroomRouter from "./classroom";
 import avatarsRouter from "./avatars";
+import familyHubRouter from "./family-hub";
 
 const router: IRouter = Router();
 
@@ -18,5 +19,6 @@ router.use(accessCodeRouter);
 router.use(giftCardsRouter);
 router.use(classroomRouter);
 router.use(avatarsRouter);
+router.use(familyHubRouter);
 
 export default router;

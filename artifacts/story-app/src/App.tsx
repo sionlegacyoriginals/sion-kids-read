@@ -27,6 +27,9 @@ import ClassroomSetup from "@/pages/classroom-setup";
 import AdminSchoolCodes from "@/pages/admin-school-codes";
 import ParentPortal from "@/pages/parent-portal";
 import ClassroomRead from "@/pages/classroom-read";
+import FamilyHub from "@/pages/family-hub";
+import FamilyHubLogin from "@/pages/family-hub-login";
+import FamilyHubHome from "@/pages/family-hub-home";
 import { StudentAuthProvider } from "@/lib/studentAuth";
 
 // ── Clerk config ──────────────────────────────────────────────────────────────
@@ -235,6 +238,9 @@ function ClerkProviderWithRoutes() {
             <Route path="/classroom/class-read/:storyId" component={() => <ProtectedRoute component={ClassroomRead} />} />
             <Route path="/classroom-setup" component={() => <ProtectedRoute component={ClassroomSetup} />} />
             <Route path="/parent" component={() => <ProtectedRoute component={ParentPortal} />} />
+            <Route path="/family-hub" component={() => <ProtectedRoute component={FamilyHub} />} />
+            <Route path="/family-hub/login" component={FamilyHubLogin} />
+            <Route path="/family-hub/home" component={FamilyHubHome} />
             <Route path="/admin/school-codes" component={() => (
               <Layout><AdminSchoolCodes /></Layout>
             )} />

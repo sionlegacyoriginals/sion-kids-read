@@ -8,6 +8,8 @@ export interface StudentSession {
   classId: number;
   className: string;
   teacherId: string;
+  /** True when this student belongs to a Family Hub rather than a school classroom. */
+  isFamilyHub?: boolean;
 }
 
 interface StudentAuthContextValue {

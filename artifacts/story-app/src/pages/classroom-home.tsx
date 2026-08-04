@@ -799,7 +799,7 @@ function WriteStoryForm({ studentFetch, sightWords, onSubmitted }: {
 }
 
 // ── Classroom home ─────────────────────────────────────────────────────────────
-export default function ClassroomHome() {
+export default function ClassroomHome({ mode = "classroom" }: { mode?: "classroom" | "family" }) {
   const { student, studentFetch, signOutStudent } = useStudentAuth();
   const [, navigate] = useLocation();
   const [stories, setStories] = useState<any[]>([]);
@@ -810,8 +810,15 @@ export default function ClassroomHome() {
   const [points, setPoints] = useState<number>(0);
   const [toast, setToast] = useState<{ pts: number; label: string } | null>(null);
 
+  const loginPath = mode === "family" ? "/family-hub/login" : "/student-login";
+
   useEffect(() => {
-    if (!student) { navigate("/student-login"); }
+    if (!student) { navigate(loginPath); return; }
+    // If a Family Hub student somehow lands on the generic /classroom route,
+    // redirect them to their Family Hub home where their session is valid.
+    if (mode !== "family" && student.isFamilyHub) {
+      navigate("/family-hub/home");
+    }
   }, [student]);
 
   useEffect(() => {
@@ -883,7 +890,7 @@ export default function ClassroomHome() {
               {points} {points === 1 ? "point" : "points"}
             </div>
             <button
-              onClick={() => { signOutStudent(); navigate("/student-login"); }}
+              onClick={() => { signOutStudent(); navigate(loginPath); }}
               className="text-sm text-muted-foreground hover:text-foreground transition-colors font-medium"
             >
               Sign out
@@ -935,29 +942,33 @@ export default function ClassroomHome() {
           </div>
         )}
 
-        {/* Write a Story */}
-        {showWriteForm ? (
-          <div className="mb-8">
-            <button onClick={() => setShowWriteForm(false)} className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground mb-3 transition-colors">
-              <X className="w-3 h-3" /> Cancel
+        {/* Write a Story — classroom only */}
+        {mode === "classroom" && (
+          showWriteForm ? (
+            <div className="mb-8">
+              <button onClick={() => setShowWriteForm(false)} className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground mb-3 transition-colors">
+                <X className="w-3 h-3" /> Cancel
+              </button>
+              <WriteStoryForm
+                studentFetch={studentFetch}
+                sightWords={announcement?.sightWords?.split(",").map((w: string) => w.trim()).filter(Boolean) ?? []}
+                onSubmitted={() => { setShowWriteForm(false); }}
+              />
+            </div>
+          ) : (
+            <button
+              onClick={() => setShowWriteForm(true)}
+              className="mb-8 w-full flex items-center justify-center gap-2 py-4 border-2 border-dashed border-primary/40 text-primary font-bold rounded-2xl hover:bg-primary/5 hover:border-primary transition-all"
+            >
+              <PenLine className="w-5 h-5" /> Write a story
             </button>
-            <WriteStoryForm
-              studentFetch={studentFetch}
-              sightWords={announcement?.sightWords?.split(",").map((w: string) => w.trim()).filter(Boolean) ?? []}
-              onSubmitted={() => { setShowWriteForm(false); }}
-            />
-          </div>
-        ) : (
-          <button
-            onClick={() => setShowWriteForm(true)}
-            className="mb-8 w-full flex items-center justify-center gap-2 py-4 border-2 border-dashed border-primary/40 text-primary font-bold rounded-2xl hover:bg-primary/5 hover:border-primary transition-all"
-          >
-            <PenLine className="w-5 h-5" /> Write a story
-          </button>
+          )
         )}
 
         <div className="mb-6">
-          <h2 className="font-serif font-bold text-lg text-foreground">Class Stories</h2>
+          <h2 className="font-serif font-bold text-lg text-foreground">
+            {mode === "family" ? "Family Stories" : "Class Stories"}
+          </h2>
           <p className="text-muted-foreground text-sm mt-0.5">Tap a story to read, listen, and earn points! 🌟</p>
         </div>
 
@@ -967,7 +978,11 @@ export default function ClassroomHome() {
           <div className="text-center py-16 text-muted-foreground">
             <BookOpen className="w-12 h-12 mx-auto mb-3 opacity-30" />
             <p className="font-medium">No stories yet!</p>
-            <p className="text-sm mt-1">Your teacher hasn't added any stories to this class yet.</p>
+            <p className="text-sm mt-1">
+              {mode === "family"
+                ? "No stories have been created yet. Head to your dashboard to write one!"
+                : "Your teacher hasn't added any stories to this class yet."}
+            </p>
           </div>
         ) : (
           <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">

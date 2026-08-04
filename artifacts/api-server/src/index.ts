@@ -31,6 +31,10 @@ async function runAppMigrations() {
   await db.execute(sql`
     ALTER TABLE users ADD COLUMN IF NOT EXISTS has_access_code BOOLEAN NOT NULL DEFAULT FALSE
   `);
+  // Per-student session invalidation: updated on PIN reset to block previously issued JWTs
+  await db.execute(sql`
+    ALTER TABLE users ADD COLUMN IF NOT EXISTS session_valid_after TIMESTAMPTZ
+  `);
   await db.execute(sql`
     ALTER TABLE users ADD COLUMN IF NOT EXISTS story_credits INTEGER NOT NULL DEFAULT 0
   `);
@@ -207,6 +211,10 @@ async function runAppMigrations() {
       UNIQUE(student_id, story_id, exercise_type)
     )
   `);
+  // ── Family Hub feature ──────────────────────────────────────────────────────
+  await db.execute(sql`ALTER TABLE classes ADD COLUMN IF NOT EXISTS is_family_hub BOOLEAN NOT NULL DEFAULT FALSE`);
+  await db.execute(sql`ALTER TABLE users ADD COLUMN IF NOT EXISTS family_hub_enabled BOOLEAN NOT NULL DEFAULT FALSE`);
+
   // Avatar bank — pre-seeded character illustrations for story art
   await db.execute(sql`
     CREATE TABLE IF NOT EXISTS avatar_bank (
