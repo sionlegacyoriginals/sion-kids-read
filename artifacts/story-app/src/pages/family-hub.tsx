@@ -516,32 +516,31 @@ function HubDashboard({ hub: initialHub }: { hub: any }) {
             <Home className="w-3.5 h-3.5" /> Family Hub
           </div>
           <h1 className="text-3xl font-serif font-bold text-foreground">{hub.class_name}</h1>
+          {hub.class_code && (
+            <div className="mt-1.5 flex items-center gap-2">
+              <span className="text-xs text-muted-foreground">Family code:</span>
+              <span className="font-mono font-bold text-sm text-primary tracking-widest bg-primary/10 px-2 py-0.5 rounded-lg">{hub.class_code}</span>
+            </div>
+          )}
         </div>
         <div className="flex flex-col gap-2 items-end shrink-0">
-          <div className="flex gap-2">
-            {hub.class_code && (
-              <button
-                onClick={handleShareLink}
-                title="Copy child login link"
-                className="flex items-center gap-1.5 px-3 py-2 rounded-xl border border-border text-sm font-semibold text-muted-foreground hover:text-primary hover:border-primary transition-all"
-              >
-                {linkCopied
-                  ? <><CheckCircle className="w-4 h-4 text-green-600" /> Copied!</>
-                  : <><Share2 className="w-4 h-4" /> Share Link</>}
-              </button>
-            )}
-            <button
-              onClick={() => navigate("/family-hub/login")}
-              className="flex items-center gap-2 px-4 py-2 bg-primary text-white font-bold rounded-xl hover:bg-primary/90 transition-all text-sm shadow-sm"
-            >
-              Log in as child <ChevronRight className="w-4 h-4" />
-            </button>
-          </div>
           {hub.class_code && (
-            <p className="text-xs text-muted-foreground">
-              Family code: <span className="font-mono font-bold text-foreground tracking-wider">{hub.class_code}</span>
-            </p>
+            <button
+              onClick={handleShareLink}
+              title="Copy child login link"
+              className="flex items-center gap-1.5 px-3 py-2 rounded-xl border border-border text-sm font-semibold text-muted-foreground hover:text-primary hover:border-primary transition-all"
+            >
+              {linkCopied
+                ? <><CheckCircle className="w-4 h-4 text-green-600" /> Copied!</>
+                : <><Share2 className="w-4 h-4" /> Share Link</>}
+            </button>
           )}
+          <button
+            onClick={() => navigate("/family-hub/login")}
+            className="flex items-center gap-2 px-4 py-2 bg-primary text-white font-bold rounded-xl hover:bg-primary/90 transition-all text-sm shadow-sm"
+          >
+            Log in as child <ChevronRight className="w-4 h-4" />
+          </button>
         </div>
       </div>
 
