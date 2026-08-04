@@ -653,8 +653,8 @@ function StoryReader({
 }
 
 // ── Write a Story form ────────────────────────────────────────────────────────
-function WriteStoryForm({ studentFetch, sightWords, onSubmitted, photoUrl }: {
-  studentFetch: any; sightWords: string[]; onSubmitted: () => void; photoUrl?: string | null;
+function WriteStoryForm({ studentFetch, sightWords, onSubmitted, photoUrl, mode }: {
+  studentFetch: any; sightWords: string[]; onSubmitted: () => void; photoUrl?: string | null; mode?: "classroom" | "family";
 }) {
   const [step, setStep] = useState<"avatar" | "prompt">("avatar");
   // Pre-select parent-uploaded photo if present
@@ -688,8 +688,12 @@ function WriteStoryForm({ studentFetch, sightWords, onSubmitted, photoUrl }: {
     <div className="bg-green-50 border border-green-200 rounded-2xl p-5 flex items-center gap-3">
       <CheckCircle className="w-6 h-6 text-green-500 shrink-0" />
       <div>
-        <p className="font-bold text-green-800">Story submitted!</p>
-        <p className="text-green-700 text-sm">Your teacher will review it soon.</p>
+        <p className="font-bold text-green-800">Story created! 🎉</p>
+        <p className="text-green-700 text-sm">
+          {mode === "family"
+            ? "Your story will appear in Family Stories shortly!"
+            : "Your teacher will review it soon."}
+        </p>
       </div>
     </div>
   );
@@ -960,6 +964,7 @@ export default function ClassroomHome({ mode = "classroom" }: { mode?: "classroo
                 sightWords={announcement?.sightWords?.split(",").map((w: string) => w.trim()).filter(Boolean) ?? []}
                 onSubmitted={() => { setShowWriteForm(false); }}
                 photoUrl={student.photoUrl}
+                mode={mode}
               />
             </div>
           ) : (

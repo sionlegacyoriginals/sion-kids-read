@@ -534,9 +534,9 @@ router.post("/classroom/student-stories", requireStudentAuth, async (req: any, r
 
     const p = req.studentPayload;
 
-    // Get class info (sight words, value, teacher)
+    // Get class info (sight words, value, teacher, family hub flag)
     const clsRes = await db.execute(sql`
-      SELECT sight_words, value_of_week, teacher_id FROM classes WHERE id = ${p.classId}
+      SELECT sight_words, value_of_week, teacher_id, is_family_hub FROM classes WHERE id = ${p.classId}
     `);
     const cls = clsRes.rows[0] as any;
     const sightWords: string[] = cls?.sight_words
@@ -578,7 +578,8 @@ router.post("/classroom/student-stories", requireStudentAuth, async (req: any, r
       ? JSON.stringify(validAvatarPaths)
       : null;
 
-    // Save to stories table, linked to teacher's account, marked pending
+    // Save to stories table, linked to teacher/parent's account, marked pending.
+    // The parent (Family Hub) or teacher (Classroom) reviews and approves before publishing.
     const saved = await db.execute(sql`
       INSERT INTO stories (user_id, child_name, child_age, child_gender, theme, title, content,
         submitted_by_student_id, story_status, reference_image_paths, created_at, updated_at)

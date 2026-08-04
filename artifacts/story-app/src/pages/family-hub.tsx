@@ -4,6 +4,7 @@ import { useAuth } from "@clerk/react";
 import {
   Home, Plus, Trash2, RefreshCw, Lock, Star, Settings, Users,
   BookHeart, ChevronRight, Loader2, CheckCircle, X, Pencil, KeyRound, Share2, Camera, Eye, EyeOff,
+  ThumbsUp, ThumbsDown, BookOpen,
 } from "lucide-react";
 import { AvatarPicker } from "@/components/avatar-picker";
 
@@ -386,6 +387,10 @@ function HubDashboard({ hub: initialHub }: { hub: any }) {
   const [linkCopied, setLinkCopied] = useState(false);
   const [photoUploadLoading, setPhotoUploadLoading] = useState<string | null>(null);
   const [pinVisible, setPinVisible] = useState<Record<string, boolean>>({});
+  const [pendingStories, setPendingStories] = useState<any[]>([]);
+  const [pendingLoading, setPendingLoading] = useState(true);
+  const [approveLoading, setApproveLoading] = useState<number | null>(null);
+  const [rejectLoading, setRejectLoading] = useState<number | null>(null);
   const [, navigate] = useLocation();
   const photoInputRef = useRef<HTMLInputElement>(null);
   const photoUploadTargetRef = useRef<string | null>(null);
@@ -437,6 +442,38 @@ function HubDashboard({ hub: initialHub }: { hub: any }) {
       // Fallback: show the URL in a prompt if clipboard API unavailable
       window.prompt("Copy this link for your children:", url);
     });
+  }
+
+  // Load pending stories on mount
+  useEffect(() => {
+    fetch(`${basePath}/api/classroom/pending-stories`, { credentials: "include" })
+      .then(r => r.json())
+      .then(d => setPendingStories(d.stories ?? []))
+      .catch(() => {})
+      .finally(() => setPendingLoading(false));
+  }, []);
+
+  async function handleApprove(storyId: number) {
+    setApproveLoading(storyId);
+    try {
+      const r = await fetch(`${basePath}/api/classroom/pending-stories/${storyId}/approve`, {
+        method: "POST",
+        credentials: "include",
+      });
+      if (r.ok) setPendingStories(prev => prev.filter(s => s.id !== storyId));
+    } finally { setApproveLoading(null); }
+  }
+
+  async function handleReject(storyId: number) {
+    if (!confirm("Remove this story? The child can write a new one.")) return;
+    setRejectLoading(storyId);
+    try {
+      const r = await fetch(`${basePath}/api/classroom/pending-stories/${storyId}/reject`, {
+        method: "POST",
+        credentials: "include",
+      });
+      if (r.ok) setPendingStories(prev => prev.filter(s => s.id !== storyId));
+    } finally { setRejectLoading(null); }
   }
 
   function handleChildAdded(child: any) {
@@ -518,6 +555,67 @@ function HubDashboard({ hub: initialHub }: { hub: any }) {
                   <span key={w} className="px-2 py-0.5 bg-primary text-white text-xs font-bold rounded-lg">{w}</span>
                 ))}
               </div>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Pending Stories — parent approval queue */}
+      {(pendingLoading || pendingStories.length > 0) && (
+        <div>
+          <h2 className="font-serif font-bold text-xl text-foreground flex items-center gap-2 mb-4">
+            <BookOpen className="w-5 h-5 text-primary" /> Stories to Review
+            {pendingStories.length > 0 && (
+              <span className="ml-1 px-2 py-0.5 bg-primary text-white text-xs font-bold rounded-full">{pendingStories.length}</span>
+            )}
+          </h2>
+
+          {pendingLoading ? (
+            <div className="flex justify-center py-6"><Loader2 className="w-6 h-6 animate-spin text-primary" /></div>
+          ) : (
+            <div className="space-y-4">
+              {pendingStories.map(story => (
+                <div key={story.id} className="border-2 border-amber-200 bg-amber-50 rounded-2xl p-4 space-y-3">
+                  {/* Story header */}
+                  <div className="flex items-start justify-between gap-3">
+                    <div>
+                      <p className="font-bold text-foreground">{story.title}</p>
+                      <p className="text-xs text-muted-foreground mt-0.5">
+                        by {story.student_name} · {new Date(story.created_at).toLocaleDateString("en-US", { month: "short", day: "numeric" })}
+                      </p>
+                    </div>
+                  </div>
+
+                  {/* Story preview */}
+                  <p className="text-sm text-foreground leading-relaxed line-clamp-4 whitespace-pre-line">
+                    {story.content}
+                  </p>
+
+                  {/* Actions */}
+                  <div className="flex items-center gap-2 pt-1">
+                    <button
+                      onClick={() => handleApprove(story.id)}
+                      disabled={approveLoading === story.id || rejectLoading === story.id}
+                      className="flex items-center gap-1.5 px-4 py-2 bg-green-600 text-white font-bold rounded-xl hover:bg-green-700 transition-all text-sm disabled:opacity-50"
+                    >
+                      {approveLoading === story.id
+                        ? <Loader2 className="w-4 h-4 animate-spin" />
+                        : <ThumbsUp className="w-4 h-4" />}
+                      Approve & publish
+                    </button>
+                    <button
+                      onClick={() => handleReject(story.id)}
+                      disabled={approveLoading === story.id || rejectLoading === story.id}
+                      className="flex items-center gap-1.5 px-4 py-2 bg-card border border-border text-muted-foreground font-semibold rounded-xl hover:border-destructive hover:text-destructive transition-all text-sm disabled:opacity-50"
+                    >
+                      {rejectLoading === story.id
+                        ? <Loader2 className="w-4 h-4 animate-spin" />
+                        : <ThumbsDown className="w-4 h-4" />}
+                      Remove
+                    </button>
+                  </div>
+                </div>
+              ))}
             </div>
           )}
         </div>
