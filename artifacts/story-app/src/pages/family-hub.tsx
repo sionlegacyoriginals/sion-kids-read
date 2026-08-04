@@ -550,15 +550,57 @@ function HubDashboard({ hub: initialHub }: { hub: any }) {
             {children.map(child => (
               <div
                 key={child.id}
-                className="flex items-center gap-4 p-4 bg-card border border-border rounded-2xl"
+                className="flex items-center gap-3 p-4 bg-card border border-border rounded-2xl"
               >
+                {/* Avatar */}
                 <ChildAvatar avatar={child.avatar} photoUrl={child.photo_url} size="md" />
+
+                {/* Name + stats + actions */}
                 <div className="flex-1 min-w-0">
-                  <p className="font-bold text-foreground">{child.first_name}</p>
-                  <div className="flex items-center gap-2 mt-0.5 flex-wrap">
-                    <div className="flex items-center gap-1.5 text-sm text-yellow-600 font-semibold">
+                  {/* Row 1: name + action icons */}
+                  <div className="flex items-center justify-between gap-2">
+                    <p className="font-bold text-foreground truncate">{child.first_name}</p>
+                    <div className="flex items-center gap-1.5 shrink-0">
+                      <button
+                        onClick={() => handlePhotoButtonClick(child.id)}
+                        disabled={photoUploadLoading === child.id}
+                        title={child.photo_url ? "Replace photo" : "Upload photo"}
+                        className="flex items-center gap-1 px-2 py-1 rounded-lg text-xs font-semibold text-muted-foreground border border-border hover:border-primary hover:text-primary transition-all disabled:opacity-50"
+                      >
+                        {photoUploadLoading === child.id
+                          ? <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                          : <Camera className="w-3.5 h-3.5" />}
+                        <span className="hidden sm:inline">{child.photo_url ? "Photo" : "Photo"}</span>
+                      </button>
+                      <button
+                        onClick={() => handleResetPin(child)}
+                        disabled={resetLoading === child.id}
+                        title="Reset PIN"
+                        className="flex items-center gap-1 px-2 py-1 rounded-lg text-xs font-semibold text-muted-foreground border border-border hover:border-primary hover:text-primary transition-all disabled:opacity-50"
+                      >
+                        {resetLoading === child.id
+                          ? <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                          : <RefreshCw className="w-3.5 h-3.5" />}
+                        <span className="hidden sm:inline">Reset PIN</span>
+                      </button>
+                      <button
+                        onClick={() => handleRemove(child.id)}
+                        disabled={removeLoading === child.id}
+                        title="Remove child"
+                        className="p-1.5 rounded-lg text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-all disabled:opacity-50"
+                      >
+                        {removeLoading === child.id
+                          ? <Loader2 className="w-4 h-4 animate-spin" />
+                          : <Trash2 className="w-4 h-4" />}
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Row 2: points + PIN reveal */}
+                  <div className="flex items-center gap-3 mt-1">
+                    <div className="flex items-center gap-1 text-sm text-yellow-600 font-semibold">
                       <Star className="w-3.5 h-3.5 fill-yellow-500 text-yellow-500" />
-                      {child.points ?? 0} {child.points === 1 ? "point" : "points"}
+                      {child.points ?? 0} pts
                     </div>
                     <button
                       onClick={() => setPinVisible(v => ({ ...v, [child.id]: !v[child.id] }))}
@@ -566,38 +608,10 @@ function HubDashboard({ hub: initialHub }: { hub: any }) {
                       title={pinVisible[child.id] ? "Hide PIN" : "Show PIN"}
                     >
                       {pinVisible[child.id]
-                        ? <><EyeOff className="w-3 h-3" /> <span className="font-mono font-bold tracking-widest text-foreground">{child.pin}</span></>
-                        : <><Eye className="w-3 h-3" /> PIN</>}
+                        ? <><EyeOff className="w-3.5 h-3.5" /><span className="font-mono font-bold tracking-widest text-foreground ml-0.5">{child.pin}</span></>
+                        : <><Eye className="w-3.5 h-3.5" /><span className="ml-0.5">PIN</span></>}
                     </button>
                   </div>
-                </div>
-                <div className="flex items-center gap-2 shrink-0">
-                  <button
-                    onClick={() => handlePhotoButtonClick(child.id)}
-                    disabled={photoUploadLoading === child.id}
-                    title={child.photo_url ? "Replace photo" : "Upload real photo"}
-                    className="flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-semibold text-muted-foreground border border-border hover:border-primary hover:text-primary transition-all disabled:opacity-50"
-                  >
-                    {photoUploadLoading === child.id ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Camera className="w-3.5 h-3.5" />}
-                    {child.photo_url ? "Photo" : "Add photo"}
-                  </button>
-                  <button
-                    onClick={() => handleResetPin(child)}
-                    disabled={resetLoading === child.id}
-                    title="Reset PIN"
-                    className="flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-semibold text-muted-foreground border border-border hover:border-primary hover:text-primary transition-all disabled:opacity-50"
-                  >
-                    {resetLoading === child.id ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <RefreshCw className="w-3.5 h-3.5" />}
-                    Reset PIN
-                  </button>
-                  <button
-                    onClick={() => handleRemove(child.id)}
-                    disabled={removeLoading === child.id}
-                    title="Remove child"
-                    className="p-1.5 rounded-lg text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-all disabled:opacity-50"
-                  >
-                    {removeLoading === child.id ? <Loader2 className="w-4 h-4 animate-spin" /> : <Trash2 className="w-4 h-4" />}
-                  </button>
                 </div>
               </div>
             ))}
