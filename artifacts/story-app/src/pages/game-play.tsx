@@ -17,6 +17,7 @@ const gameComponents: Record<string, React.LazyExoticComponent<() => JSX.Element
   "missing-letter":     lazy(() => import("@/games/MissingLetter")),
   "story-ending":       lazy(() => import("@/games/StoryEnding")),
   "word-families":      lazy(() => import("@/games/WordFamilies")),
+  "word-search":        lazy(() => import("@/games/WordSearch")),
 };
 
 export default function GamePlay() {

@@ -74,18 +74,19 @@ export default function MissingLetter() {
         </p>
         <div className="flex-1 flex flex-col items-center justify-center gap-8">
           {/* Word display */}
-          <div className="bg-card border border-border rounded-3xl p-8 w-full text-center shadow-sm">
-            <p className="text-muted-foreground text-sm mb-4">Fill in the missing letter:</p>
-            <p className="text-5xl font-mono font-bold text-foreground tracking-[0.3em]">
-              {question.word.split("").map((letter, i) =>
-                i === question.blankIndex
-                  ? <span key={i} className="text-primary border-b-4 border-primary px-1">_</span>
-                  : <span key={i}>{letter}</span>
-              )}
-            </p>
-            <p className="text-xs text-muted-foreground mt-4">
-              {question.word.length}-letter word
-            </p>
+          <div className="bg-card border border-border rounded-3xl p-8 w-full text-center shadow-sm space-y-4">
+            {/* Hint clue — shown first so child knows which word is intended */}
+            <p className="text-base font-semibold text-foreground leading-snug">{question.hint}</p>
+            <div className="border-t border-border/50 pt-4">
+              <p className="text-muted-foreground text-xs mb-3 uppercase tracking-wide font-bold">Fill in the missing letter</p>
+              <p className="text-5xl font-mono font-bold text-foreground tracking-[0.3em]">
+                {question.word.split("").map((letter, i) =>
+                  i === question.blankIndex
+                    ? <span key={i} className="text-primary border-b-4 border-primary px-1">_</span>
+                    : <span key={i}>{letter}</span>
+                )}
+              </p>
+            </div>
           </div>
 
           {/* Letter choices */}

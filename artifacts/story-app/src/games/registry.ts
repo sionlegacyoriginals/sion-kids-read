@@ -110,6 +110,16 @@ export const GAMES: GameMeta[] = [
     accentColor: "text-lime-600",
     totalLevels: 20,
   },
+  {
+    id: "word-search",
+    title: "Word Search",
+    description: "Drag to find hidden words in the grid!",
+    emoji: "🔍",
+    category: "literacy",
+    color: "bg-cyan-50",
+    accentColor: "text-cyan-600",
+    totalLevels: 20,
+  },
 ];
 
 // ── localStorage helpers ──────────────────────────────────────────────────────
