@@ -139,21 +139,21 @@ export function Layout({ children }: { children: React.ReactNode }) {
                 <GraduationCap className="w-3.5 h-3.5" /> Classroom
               </Link>
               <Link
+                href="/parent"
+                className={`px-3 py-1.5 rounded-full font-medium text-sm flex items-center gap-1.5 transition-colors ${location.startsWith("/parent") ? "bg-primary/10 text-primary" : "text-muted-foreground hover:text-foreground hover:bg-muted/50"}`}
+              >
+                <Heart className="w-3.5 h-3.5" /> Parent Hub
+              </Link>
+              <Link
                 href="/family-hub"
                 className={`px-3 py-1.5 rounded-full font-medium text-sm flex items-center gap-1.5 transition-colors ${location.startsWith("/family-hub") ? "bg-primary/10 text-primary" : "text-muted-foreground hover:text-foreground hover:bg-muted/50"}`}
               >
                 <Home className="w-3.5 h-3.5" /> Family Hub
               </Link>
-              <Link
-                href="/parent"
-                className={`px-3 py-1.5 rounded-full font-medium text-sm flex items-center gap-1.5 transition-colors ${location.startsWith("/parent") ? "bg-primary/10 text-primary" : "text-muted-foreground hover:text-foreground hover:bg-muted/50"}`}
-              >
-                <Heart className="w-3.5 h-3.5" /> Parent
-              </Link>
               <UserMenu />
             </Show>
 
-            {/* Games — visible to everyone */}
+            {/* Games — visible to everyone, sits after the profile image */}
             <Link
               href="/games"
               className={`px-3 py-1.5 rounded-full font-medium text-sm flex items-center gap-1.5 transition-colors ${location.startsWith("/games") ? "bg-primary/10 text-primary" : "text-muted-foreground hover:text-foreground hover:bg-muted/50"}`}
