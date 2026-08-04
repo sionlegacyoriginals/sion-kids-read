@@ -26,6 +26,10 @@ interface AvatarPickerProps {
   /** Optional base path prefix for API calls */
   basePath?: string;
   className?: string;
+  /** The child's own uploaded photo URL (raw path). If provided, shows as a "Me!" tile. */
+  childPhotoUrl?: string | null;
+  /** Display name shown under the child's photo tile */
+  childPhotoName?: string;
 }
 
 export function AvatarPicker({
@@ -34,6 +38,8 @@ export function AvatarPicker({
   maxSelect = 2,
   basePath = "",
   className = "",
+  childPhotoUrl,
+  childPhotoName = "Me!",
 }: AvatarPickerProps) {
   const [avatars, setAvatars] = useState<Avatar[]>([]);
   const [loading, setLoading] = useState(true);
@@ -52,6 +58,9 @@ export function AvatarPicker({
 
   const categories = ["all", ...Array.from(new Set(avatars.map((a) => a.category)))];
   const visible = category === "all" ? avatars : avatars.filter((a) => a.category === category);
+
+  // Displayable URL for the child's own photo
+  const childPhotoDisplayUrl = childPhotoUrl ? `${basePath}/api${childPhotoUrl}` : null;
 
   function toggle(path: string) {
     if (selected.includes(path)) {
@@ -106,6 +115,41 @@ export function AvatarPicker({
 
       {/* Grid */}
       <div className="grid grid-cols-4 sm:grid-cols-5 gap-2">
+        {/* Child's own photo — always first, not filtered by category */}
+        {childPhotoDisplayUrl && childPhotoUrl && (() => {
+          const isSelected = selected.includes(childPhotoUrl);
+          const isDisabled = !isSelected && selected.length >= maxSelect;
+          return (
+            <button
+              key="child-photo"
+              type="button"
+              onClick={() => toggle(childPhotoUrl)}
+              disabled={isDisabled}
+              title={childPhotoName}
+              className={`relative aspect-square rounded-2xl border-2 overflow-hidden transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary ${
+                isSelected
+                  ? "border-primary ring-2 ring-primary/30 scale-105"
+                  : isDisabled
+                  ? "border-transparent opacity-40 cursor-not-allowed"
+                  : "border-transparent hover:border-primary/40 hover:scale-105"
+              }`}
+            >
+              <img src={childPhotoDisplayUrl} alt={childPhotoName} className="w-full h-full object-cover" />
+              {/* "Me!" badge */}
+              <div className="absolute top-1 left-1 bg-primary text-white text-[8px] font-black px-1.5 py-0.5 rounded-full leading-none shadow">
+                Me!
+              </div>
+              {isSelected && (
+                <div className="absolute inset-0 bg-primary/20 flex items-end justify-end p-1">
+                  <span className="w-5 h-5 bg-primary rounded-full flex items-center justify-center shadow">
+                    <Check className="w-3 h-3 text-white stroke-[3]" />
+                  </span>
+                </div>
+              )}
+            </button>
+          );
+        })()}
+
         {visible.map((avatar) => {
           const isSelected = selected.includes(avatar.refPhotoPath);
           const isDisabled = !isSelected && selected.length >= maxSelect;
@@ -130,7 +174,6 @@ export function AvatarPicker({
                 className="w-full h-full object-cover"
                 loading="lazy"
               />
-              {/* Selected checkmark overlay */}
               {isSelected && (
                 <div className="absolute inset-0 bg-primary/20 flex items-end justify-end p-1">
                   <span className="w-5 h-5 bg-primary rounded-full flex items-center justify-center shadow">
@@ -138,7 +181,6 @@ export function AvatarPicker({
                   </span>
                 </div>
               )}
-              {/* Name tooltip on hover (shown as caption on mobile) */}
               <div className="absolute bottom-0 left-0 right-0 bg-black/50 text-white text-[9px] font-semibold text-center py-0.5 leading-tight opacity-0 hover:opacity-100 transition-opacity pointer-events-none truncate px-1">
                 {avatar.name}
               </div>
@@ -151,6 +193,16 @@ export function AvatarPicker({
       {selected.length > 0 && (
         <div className="flex flex-wrap gap-1.5 pt-1">
           {selected.map((path) => {
+            // Child's own photo chip
+            if (childPhotoUrl && path === childPhotoUrl && childPhotoDisplayUrl) {
+              return (
+                <span key={path} className="inline-flex items-center gap-1.5 pl-1 pr-2.5 py-1 bg-primary/10 border border-primary/30 text-primary text-xs font-bold rounded-full">
+                  <img src={childPhotoDisplayUrl} alt={childPhotoName} className="w-5 h-5 rounded-full object-cover" />
+                  {childPhotoName}
+                  <button type="button" onClick={() => toggle(path)} className="ml-0.5 text-primary/60 hover:text-primary leading-none" aria-label={`Remove ${childPhotoName}`}>×</button>
+                </span>
+              );
+            }
             const av = avatars.find((a) => a.refPhotoPath === path);
             if (!av) return null;
             return (

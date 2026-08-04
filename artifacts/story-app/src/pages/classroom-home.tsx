@@ -653,8 +653,8 @@ function StoryReader({
 }
 
 // ── Write a Story form ────────────────────────────────────────────────────────
-function WriteStoryForm({ studentFetch, sightWords, onSubmitted, photoUrl, mode }: {
-  studentFetch: any; sightWords: string[]; onSubmitted: () => void; photoUrl?: string | null; mode?: "classroom" | "family";
+function WriteStoryForm({ studentFetch, sightWords, onSubmitted, photoUrl, childName, mode }: {
+  studentFetch: any; sightWords: string[]; onSubmitted: () => void; photoUrl?: string | null; childName?: string; mode?: "classroom" | "family";
 }) {
   const [step, setStep] = useState<"avatar" | "prompt">("avatar");
   // Pre-select parent-uploaded photo if present
@@ -739,6 +739,8 @@ function WriteStoryForm({ studentFetch, sightWords, onSubmitted, photoUrl, mode 
             onChange={setSelectedAvatars}
             maxSelect={2}
             basePath={basePath}
+            childPhotoUrl={photoUrl}
+            childPhotoName={childName ?? "Me!"}
           />
           <button
             type="button"
@@ -964,6 +966,7 @@ export default function ClassroomHome({ mode = "classroom" }: { mode?: "classroo
                 sightWords={announcement?.sightWords?.split(",").map((w: string) => w.trim()).filter(Boolean) ?? []}
                 onSubmitted={() => { setShowWriteForm(false); }}
                 photoUrl={student.photoUrl}
+                childName={student.firstName}
                 mode={mode}
               />
             </div>
