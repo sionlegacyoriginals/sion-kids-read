@@ -916,8 +916,14 @@ Create exactly this JSON (no other text):
 
 Rules:
 - sightWords: copy the exact list of sight words provided above.
-- sightWordExercises: ONE exercise per sight word in the same order. Find a sentence in the story that uses that word (or create a short simple sentence if it doesn't appear). Blank the sight word as "___". The answer is the sight word. Provide exactly 4 options including the answer and 3 plausible distractors (similar common words, age-appropriate).
-- comprehensionQuestions: exactly 3 items. Questions about who/what/where/why from the story. One clearly correct answer.
+- sightWordExercises: ONE exercise per sight word in the same order.
+  * Prefer a real sentence taken directly from the story that contains that sight word. If no sentence contains it, write a SHORT, SIMPLE new sentence (5–8 words) about the story's main character or topic.
+  * Blank ONLY the target sight word as "___".
+  * CRITICAL — the blank must have EXACTLY ONE correct answer. Test this before writing: try replacing ___ with each of the 4 options. If more than one option sounds natural or grammatically correct in that sentence, choose a different sentence or rewrite it so only the sight word fits.
+  * For articles (the/a/an) and pronouns (he/she/they/it/we), avoid blanking them mid-sentence where any article or pronoun could fit. Instead, use a sentence where the target word is clearly the only right choice (e.g. a name like "the ___ went…" where only "dog" not "cat" works because the story is about a dog).
+  * The 3 distractors must be clearly wrong in the context of that specific sentence — not just different words of the same type.
+  * Provide exactly 4 options including the correct answer.
+- comprehensionQuestions: exactly 3 items. Questions about who/what/where/why from the story. One clearly correct answer. The 3 wrong options must be clearly incorrect based on the story.
 - Keep all language simple for young readers.`;
 
     const completion = await openai.chat.completions.create({
