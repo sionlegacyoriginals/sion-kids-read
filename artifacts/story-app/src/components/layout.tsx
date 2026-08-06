@@ -3,7 +3,7 @@ import { Link, useLocation } from "wouter";
 import { Show, useUser, useClerk } from "@clerk/react";
 import { BookHeart, LogOut, Settings, ChevronDown, GraduationCap, Heart, Home, Gamepad2, Music2 } from "lucide-react";
 import { Logo } from "@/components/logo";
-import { MiniMusicPlayer } from "@/components/mini-music-player";
+
 
 function UserMenu() {
   const { user } = useUser();
@@ -198,7 +198,6 @@ export function Layout({ children }: { children: React.ReactNode }) {
         {children}
       </main>
 
-      <MiniMusicPlayer />
     </div>
   );
 }

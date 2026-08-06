@@ -466,14 +466,16 @@ export function PracticeSection({ content, childName, audioBarVisible }: Practic
         }}
       >
         <button
-          onPointerDown={(e) => { e.preventDefault(); scrollPage("up"); }}
+          onClick={() => scrollPage("up")}
+          style={{ touchAction: "manipulation" }}
           className="w-12 h-12 rounded-2xl bg-white/90 backdrop-blur-md border border-[#e8dfd5] shadow-lg flex items-center justify-center text-violet-600 active:bg-violet-50 transition-colors"
           aria-label="Scroll up"
         >
           <ChevronUp className="w-6 h-6" />
         </button>
         <button
-          onPointerDown={(e) => { e.preventDefault(); scrollPage("down"); }}
+          onClick={() => scrollPage("down")}
+          style={{ touchAction: "manipulation" }}
           className="w-12 h-12 rounded-2xl bg-white/90 backdrop-blur-md border border-[#e8dfd5] shadow-lg flex items-center justify-center text-violet-600 active:bg-violet-50 transition-colors"
           aria-label="Scroll down"
         >

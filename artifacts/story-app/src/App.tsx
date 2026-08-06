@@ -35,6 +35,7 @@ import GamePlay from "@/pages/game-play";
 import Privacy from "@/pages/privacy";
 import { StudentAuthProvider } from "@/lib/studentAuth";
 import { MusicProvider } from "@/lib/musicContext";
+import { MiniMusicPlayer } from "@/components/mini-music-player";
 import MusicPage from "@/pages/music";
 
 // ── Clerk config ──────────────────────────────────────────────────────────────
@@ -234,6 +235,7 @@ function ClerkProviderWithRoutes() {
         <ClerkQueryCacheInvalidator />
         <TooltipProvider>
           <MusicProvider>
+          <MiniMusicPlayer />
           <Switch>
             <Route path="/" component={HomeRedirect} />
             {/* REQUIRED — /*? is the only wouter syntax matching Clerk OAuth sub-paths */}
