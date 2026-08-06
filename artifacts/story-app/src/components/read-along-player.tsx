@@ -273,6 +273,8 @@ export function useReadAlong(paragraphs: string[]) {
     (fromIdx: number, rate: number, pitchPreset: PitchPreset, voice: SpeechSynthesisVoice | null) => {
       window.speechSynthesis.cancel();
       stoppedRef.current = false;
+      // Signal music player to stop so read-along audio isn't competing
+      window.dispatchEvent(new CustomEvent("sion:readalong-start"));
       const sentences = sentencesRef.current;
       if (fromIdx >= sentences.length) return;
 

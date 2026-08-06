@@ -33,6 +33,8 @@ import FamilyHubHome from "@/pages/family-hub-home";
 import GamesHome from "@/pages/games-home";
 import GamePlay from "@/pages/game-play";
 import { StudentAuthProvider } from "@/lib/studentAuth";
+import { MusicProvider } from "@/lib/musicContext";
+import MusicPage from "@/pages/music";
 
 // ── Clerk config ──────────────────────────────────────────────────────────────
 // REQUIRED — copy verbatim. Resolves key from hostname for custom-domain support.
@@ -230,6 +232,7 @@ function ClerkProviderWithRoutes() {
       <QueryClientProvider client={queryClient}>
         <ClerkQueryCacheInvalidator />
         <TooltipProvider>
+          <MusicProvider>
           <Switch>
             <Route path="/" component={HomeRedirect} />
             {/* REQUIRED — /*? is the only wouter syntax matching Clerk OAuth sub-paths */}
@@ -261,6 +264,7 @@ function ClerkProviderWithRoutes() {
             <Route path="/family-hub/home" component={FamilyHubHome} />
             <Route path="/games" component={GamesHome} />
             <Route path="/games/:gameId" component={GamePlay} />
+            <Route path="/music" component={() => <Layout><MusicPage /></Layout>} />
             <Route path="/admin/school-codes" component={() => (
               <Layout><AdminSchoolCodes /></Layout>
             )} />
@@ -274,6 +278,7 @@ function ClerkProviderWithRoutes() {
             />
             <Route component={NotFound} />
           </Switch>
+          </MusicProvider>
           <Toaster />
         </TooltipProvider>
       </QueryClientProvider>
