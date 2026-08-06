@@ -20,9 +20,36 @@ const MusicContext = createContext<MusicContextValue>({
   stop: () => {},
 });
 
+const STORAGE_KEY = "sion:music";
+
 export function MusicProvider({ children }: { children: ReactNode }) {
   const [current, setCurrent] = useState<MusicVideo | null>(null);
   const [queue, setQueue] = useState<MusicVideo[]>([]);
+
+  // Restore last-playing song from localStorage on first load
+  useEffect(() => {
+    try {
+      const saved = localStorage.getItem(STORAGE_KEY);
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (parsed.current) {
+          setCurrent(parsed.current);
+          setQueue(parsed.queue ?? []);
+        }
+      }
+    } catch {}
+  }, []);
+
+  // Persist to localStorage whenever the playing song changes
+  useEffect(() => {
+    try {
+      if (current) {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify({ current, queue }));
+      } else {
+        localStorage.removeItem(STORAGE_KEY);
+      }
+    } catch {}
+  }, [current, queue]);
 
   function play(video: MusicVideo, newQueue?: MusicVideo[]) {
     setCurrent(video);

@@ -1,6 +1,6 @@
 import { useParams, useLocation } from "wouter";
 import { GAMES } from "@/games/registry";
-import { lazy, Suspense } from "react";
+import { lazy, Suspense, useEffect } from "react";
 import { Loader2, ArrowLeft } from "lucide-react";
 
 const basePath = import.meta.env.BASE_URL.replace(/\/$/, "");
@@ -23,6 +23,9 @@ const gameComponents: Record<string, React.LazyExoticComponent<() => JSX.Element
 export default function GamePlay() {
   const { gameId } = useParams<{ gameId: string }>();
   const [, navigate] = useLocation();
+
+  // Always start at the top when navigating into a game
+  useEffect(() => { window.scrollTo(0, 0); }, [gameId]);
 
   const meta = GAMES.find(g => g.id === gameId);
   const GameComponent = gameId ? gameComponents[gameId] : null;
