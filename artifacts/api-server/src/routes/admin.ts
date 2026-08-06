@@ -59,4 +59,39 @@ router.post("/admin/create-test-user", async (req, res) => {
   });
 });
 
+/**
+ * POST /api/admin/clerk-settings
+ * Reads or patches Clerk instance settings.
+ * Body: { masterCode, patch? }
+ */
+router.post("/admin/clerk-settings", async (req, res) => {
+  const masterCode = (process.env.MASTER_TEST_CODE ?? "").trim();
+  const provided   = (req.body?.masterCode ?? "").trim();
+  if (!masterCode || provided !== masterCode) {
+    return res.status(403).json({ error: "Forbidden" });
+  }
+
+  const clerkKey = process.env.CLERK_SECRET_KEY;
+  if (!clerkKey) return res.status(500).json({ error: "CLERK_SECRET_KEY not configured" });
+
+  const { patch } = req.body;
+
+  if (patch) {
+    const r = await fetch("https://api.clerk.com/v1/instance", {
+      method: "PATCH",
+      headers: { "Authorization": `Bearer ${clerkKey}`, "Content-Type": "application/json" },
+      body: JSON.stringify(patch),
+    });
+    const data = await r.json();
+    return res.status(r.status).json(data);
+  }
+
+  // GET current settings
+  const r = await fetch("https://api.clerk.com/v1/instance", {
+    headers: { "Authorization": `Bearer ${clerkKey}` },
+  });
+  const data = await r.json();
+  res.status(r.status).json(data);
+});
+
 export default router;
