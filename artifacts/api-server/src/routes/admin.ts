@@ -82,16 +82,18 @@ router.post("/admin/clerk-settings", async (req, res) => {
       headers: { "Authorization": `Bearer ${clerkKey}`, "Content-Type": "application/json" },
       body: JSON.stringify(patch),
     });
-    const data = await r.json();
-    return res.status(r.status).json(data);
+    const text = await r.text();
+    try { return res.status(r.status).json(JSON.parse(text)); }
+    catch { return res.status(r.status).json({ raw: text, status: r.status }); }
   }
 
   // GET current settings
   const r = await fetch("https://api.clerk.com/v1/instance", {
     headers: { "Authorization": `Bearer ${clerkKey}` },
   });
-  const data = await r.json();
-  res.status(r.status).json(data);
+  const text = await r.text();
+  try { res.status(r.status).json(JSON.parse(text)); }
+  catch { res.status(r.status).json({ raw: text, status: r.status }); }
 });
 
 export default router;
