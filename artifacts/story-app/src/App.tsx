@@ -32,6 +32,7 @@ import FamilyHubLogin from "@/pages/family-hub-login";
 import FamilyHubHome from "@/pages/family-hub-home";
 import GamesHome from "@/pages/games-home";
 import GamePlay from "@/pages/game-play";
+import Privacy from "@/pages/privacy";
 import { StudentAuthProvider } from "@/lib/studentAuth";
 import { MusicProvider } from "@/lib/musicContext";
 import MusicPage from "@/pages/music";
@@ -254,6 +255,7 @@ function ClerkProviderWithRoutes() {
             <Route path="/stories/:id" component={() => <ProtectedRoute component={StoryViewer} />} />
             <Route path="/subscribe" component={() => <ProtectedRoute component={Subscribe} />} />
             <Route path="/account" component={() => <ProtectedRoute component={Account} />} />
+            <Route path="/privacy" component={Privacy} />
             <Route path="/student-login" component={StudentLogin} />
             <Route path="/classroom" component={ClassroomHome} />
             <Route path="/classroom/class-read/:storyId" component={() => <ProtectedRoute component={ClassroomRead} />} />
