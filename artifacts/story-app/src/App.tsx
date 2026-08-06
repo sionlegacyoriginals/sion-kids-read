@@ -129,7 +129,7 @@ function SignInPage() {
           href={`${basePath}/family-hub/login`}
           className="flex items-center gap-2 px-6 py-3 rounded-full bg-primary/10 hover:bg-primary/20 text-primary font-semibold text-sm transition-colors border border-primary/20"
         >
-          🏠 Family Hub child login
+          🏠 Homeschool Hub child login
         </a>
       </div>
     </div>
@@ -155,7 +155,7 @@ function SignUpPage() {
           href={`${basePath}/family-hub/login`}
           className="flex items-center gap-2 px-6 py-3 rounded-full bg-primary/10 hover:bg-primary/20 text-primary font-semibold text-sm transition-colors border border-primary/20"
         >
-          🏠 Family Hub child login
+          🏠 Homeschool Hub child login
         </a>
       </div>
     </div>

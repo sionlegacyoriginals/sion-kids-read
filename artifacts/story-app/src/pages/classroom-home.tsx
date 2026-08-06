@@ -3,7 +3,7 @@ import { useEffect, useRef, useState, useCallback } from "react";
 import {
   Loader2, BookOpen, Star, Calendar, PenLine, Send, X,
   CheckCircle, Sparkles, ChevronLeft, Play, Pause, Square, Volume2,
-  Pen, Eraser, Trash2,
+  Pen, Eraser, Trash2, ChevronUp, ChevronDown,
 } from "lucide-react";
 import { AvatarPicker } from "@/components/avatar-picker";
 import { DrawLayer, useDrawCanvas, type DrawMode } from "@/components/practice-section";
@@ -341,6 +341,26 @@ function SightWordPractice({ words, storyTitle }: { words: string[]; storyTitle?
           }`}
         >
           <Eraser className="w-3.5 h-3.5" /> Eraser
+        </button>
+      </div>
+
+      {/* Scroll buttons — right side of screen so kids don't draw accidentally */}
+      <div className="fixed z-[55] flex flex-col gap-2" style={{ right: "12px", top: "50%", transform: "translateY(-50%)" }}>
+        <button
+          onClick={() => window.scrollBy({ top: -220, behavior: "smooth" })}
+          style={{ touchAction: "manipulation" }}
+          className="w-12 h-12 rounded-2xl bg-white/90 backdrop-blur-md border border-[#e8dfd5] shadow-lg flex items-center justify-center text-violet-600 active:bg-violet-50 transition-colors"
+          aria-label="Scroll up"
+        >
+          <ChevronUp className="w-6 h-6" />
+        </button>
+        <button
+          onClick={() => window.scrollBy({ top: 220, behavior: "smooth" })}
+          style={{ touchAction: "manipulation" }}
+          className="w-12 h-12 rounded-2xl bg-white/90 backdrop-blur-md border border-[#e8dfd5] shadow-lg flex items-center justify-center text-violet-600 active:bg-violet-50 transition-colors"
+          aria-label="Scroll down"
+        >
+          <ChevronDown className="w-6 h-6" />
         </button>
       </div>
 

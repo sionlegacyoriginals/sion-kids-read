@@ -49,7 +49,7 @@ function UpsellCard({ onAccessGranted }: { onAccessGranted: () => void }) {
       });
       const data = await r.json();
       if (!r.ok) { setError(data.error ?? "Failed to redeem code."); return; }
-      setSuccess("Access granted! Setting up your Family Hub…");
+      setSuccess("Access granted! Setting up your Homeschool Hub…");
       setTimeout(onAccessGranted, 1200);
     } catch {
       setError("Network error — please try again.");
@@ -65,7 +65,7 @@ function UpsellCard({ onAccessGranted }: { onAccessGranted: () => void }) {
         <div className="w-20 h-20 bg-primary/10 rounded-full flex items-center justify-center mx-auto">
           <Lock className="w-10 h-10 text-primary" />
         </div>
-        <h2 className="text-2xl font-serif font-bold text-foreground">Unlock Family Hub</h2>
+        <h2 className="text-2xl font-serif font-bold text-foreground">Unlock Homeschool Hub</h2>
         <p className="text-muted-foreground text-sm leading-relaxed">
           Add child profiles, set weekly sight words and character values, track reading points, and enjoy the full classroom experience at home.
         </p>
@@ -110,7 +110,7 @@ function UpsellCard({ onAccessGranted }: { onAccessGranted: () => void }) {
 
       {/* Subscribe CTA */}
       <div className="text-center space-y-3">
-        <p className="text-sm text-muted-foreground">Start a subscription to get Family Hub plus unlimited stories.</p>
+        <p className="text-sm text-muted-foreground">Start a subscription to get Homeschool Hub plus unlimited stories.</p>
         <Link href="/subscribe">
           <a className="inline-flex items-center gap-2 px-8 py-3.5 bg-primary text-white font-bold rounded-2xl hover:bg-primary/90 transition-all shadow-sm">
             <Star className="w-5 h-5" /> View subscription plans
@@ -122,7 +122,7 @@ function UpsellCard({ onAccessGranted }: { onAccessGranted: () => void }) {
 }
 
 function CreateHubForm({ onCreated }: { onCreated: (hub: any) => void }) {
-  const [name, setName] = useState("Our Family Hub");
+  const [name, setName] = useState("Our Homeschool Hub");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
@@ -147,7 +147,7 @@ function CreateHubForm({ onCreated }: { onCreated: (hub: any) => void }) {
     <div className="max-w-md mx-auto py-16 px-6 space-y-8">
       <div className="text-center space-y-3">
         <div className="text-6xl">🏠</div>
-        <h2 className="text-2xl font-serif font-bold text-foreground">Create your Family Hub</h2>
+        <h2 className="text-2xl font-serif font-bold text-foreground">Create your Homeschool Hub</h2>
         <p className="text-muted-foreground text-sm">Give your hub a name, then add your children to get started.</p>
       </div>
       <form onSubmit={handleCreate} className="space-y-4">
@@ -159,7 +159,7 @@ function CreateHubForm({ onCreated }: { onCreated: (hub: any) => void }) {
             onChange={e => setName(e.target.value)}
             maxLength={60}
             className="w-full px-4 py-3 rounded-2xl border-2 border-border bg-background text-foreground focus:outline-none focus:border-primary transition-colors text-lg font-semibold"
-            placeholder="Our Family Hub"
+            placeholder="Our Homeschool Hub"
             autoFocus
           />
         </div>
@@ -170,7 +170,7 @@ function CreateHubForm({ onCreated }: { onCreated: (hub: any) => void }) {
           className="w-full py-3.5 bg-primary text-white font-bold rounded-2xl text-base hover:bg-primary/90 transition-all disabled:opacity-50 flex items-center justify-center gap-2"
         >
           {loading ? <Loader2 className="w-5 h-5 animate-spin" /> : <Plus className="w-5 h-5" />}
-          {loading ? "Creating…" : "Create Family Hub"}
+          {loading ? "Creating…" : "Create Homeschool Hub"}
         </button>
       </form>
     </div>
@@ -496,7 +496,7 @@ function HubDashboard({ hub: initialHub }: { hub: any }) {
   }
 
   async function handleRemove(childId: string) {
-    if (!confirm("Remove this child from your Family Hub? Their reading progress will be lost.")) return;
+    if (!confirm("Remove this child from your Homeschool Hub? Their reading progress will be lost.")) return;
     setRemoveLoading(childId);
     try {
       const r = await fetch(`${basePath}/api/family-hub/children/${childId}`, {
@@ -513,7 +513,7 @@ function HubDashboard({ hub: initialHub }: { hub: any }) {
       <div className="flex items-start justify-between gap-4">
         <div>
           <div className="flex items-center gap-2 text-xs font-bold text-primary uppercase tracking-wider mb-1">
-            <Home className="w-3.5 h-3.5" /> Family Hub
+            <Home className="w-3.5 h-3.5" /> Homeschool Hub
           </div>
           <h1 className="text-3xl font-serif font-bold text-foreground">{hub.class_name}</h1>
           {hub.class_code && (

@@ -137,7 +137,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
                 href="/classroom-setup"
                 className={`px-3 py-1.5 rounded-full font-medium text-sm flex items-center gap-1.5 transition-colors ${location.startsWith("/classroom-setup") ? "bg-primary/10 text-primary" : "text-muted-foreground hover:text-foreground hover:bg-muted/50"}`}
               >
-                <GraduationCap className="w-3.5 h-3.5" /> Classroom
+                <GraduationCap className="w-3.5 h-3.5" /> School Hub
               </Link>
               <Link
                 href="/parent"
@@ -149,7 +149,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
                 href="/family-hub"
                 className={`px-3 py-1.5 rounded-full font-medium text-sm flex items-center gap-1.5 transition-colors ${location.startsWith("/family-hub") ? "bg-primary/10 text-primary" : "text-muted-foreground hover:text-foreground hover:bg-muted/50"}`}
               >
-                <Home className="w-3.5 h-3.5" /> Family Hub
+                <Home className="w-3.5 h-3.5" /> Homeschool Hub
               </Link>
               <UserMenu />
             </Show>
@@ -176,7 +176,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
               </Link>
               <Link href="/family-hub/login">
                 <button className="hidden sm:inline-flex items-center gap-1.5 px-3 py-1.5 text-sm font-semibold text-primary border border-primary/30 rounded-full hover:bg-primary/5 transition-all">
-                  🏠 Family login
+                  🏠 Homeschool login
                 </button>
               </Link>
               <Link href="/sign-in">

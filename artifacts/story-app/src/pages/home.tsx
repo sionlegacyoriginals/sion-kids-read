@@ -760,7 +760,7 @@ export default function Home() {
             🏠
           </div>
           <div className="flex-1 min-w-0">
-            <p className="text-sm font-bold text-amber-900 leading-tight">Family Hub — included with your plan</p>
+            <p className="text-sm font-bold text-amber-900 leading-tight">Homeschool Hub — included with your plan</p>
             <p className="text-xs text-amber-700 mt-0.5">Add child profiles, track reading points &amp; set weekly sight words</p>
           </div>
           <ArrowRight className="w-4 h-4 text-amber-600 shrink-0 group-hover:translate-x-0.5 transition-transform" />

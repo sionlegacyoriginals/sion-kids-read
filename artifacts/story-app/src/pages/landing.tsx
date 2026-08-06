@@ -242,7 +242,7 @@ export default function Landing() {
               Student login →
             </Link>
             <Link href="/family-hub/login" className="inline-flex items-center gap-2 px-6 py-2.5 border-2 border-primary/40 text-primary font-bold rounded-full hover:border-primary hover:bg-primary/5 transition-all text-sm">
-              🏠 Family Hub child login →
+              🏠 Homeschool Hub child login →
             </Link>
           </div>
         </div>

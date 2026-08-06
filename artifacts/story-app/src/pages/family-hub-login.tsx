@@ -20,8 +20,8 @@ function FamilyCodeStep({ onFound }: {
     try {
       const r = await fetch(`${basePath}/api/family-hub/roster/${encodeURIComponent(trimmed)}`);
       const data = await r.json();
-      if (!r.ok) { setError(data.error ?? "Family Hub not found. Check your code and try again."); return; }
-      onFound(data.hubName ?? "Family Hub", data.children ?? []);
+      if (!r.ok) { setError(data.error ?? "Homeschool Hub not found. Check your code and try again."); return; }
+      onFound(data.hubName ?? "Homeschool Hub", data.children ?? []);
     } catch {
       setError("Network error. Please try again.");
     } finally {
@@ -35,8 +35,8 @@ function FamilyCodeStep({ onFound }: {
         <div className="w-20 h-20 bg-primary/10 rounded-full flex items-center justify-center mx-auto">
           <Home className="w-10 h-10 text-primary" />
         </div>
-        <h1 className="text-3xl font-serif font-bold text-foreground">Family Hub Login</h1>
-        <p className="text-muted-foreground">Ask a parent for your Family Hub code</p>
+        <h1 className="text-3xl font-serif font-bold text-foreground">Homeschool Hub Login</h1>
+        <p className="text-muted-foreground">Ask a parent for your Homeschool Hub code</p>
       </div>
 
       <form onSubmit={handleSubmit} className="space-y-4">
@@ -54,7 +54,7 @@ function FamilyCodeStep({ onFound }: {
           disabled={loading || code.length < 3}
           className="w-full py-3.5 bg-primary text-white font-bold rounded-2xl text-lg hover:bg-primary/90 transition-all disabled:opacity-50 flex items-center justify-center gap-2"
         >
-          {loading ? <Loader2 className="w-5 h-5 animate-spin" /> : "Find My Family Hub →"}
+          {loading ? <Loader2 className="w-5 h-5 animate-spin" /> : "Find My Homeschool Hub →"}
         </button>
       </form>
     </div>
@@ -199,7 +199,7 @@ export default function FamilyHubLogin() {
           setHubName(data.hub.class_name ?? "Family Hub");
           setChildren(data.hub.children ?? []);
         })
-        .catch(() => setError("Could not load Family Hub. Please try again."))
+        .catch(() => setError("Could not load Homeschool Hub. Please try again."))
         .finally(() => setLoading(false));
       return;
     }
@@ -215,10 +215,10 @@ export default function FamilyHubLogin() {
       .then(async r => {
         const data = await r.json();
         if (!r.ok) { setError(data.error ?? "Hub not found."); return; }
-        setHubName(data.hubName ?? "Family Hub");
+        setHubName(data.hubName ?? "Homeschool Hub");
         setChildren(data.children ?? []);
       })
-      .catch(() => setError("Could not load Family Hub. Please try again."))
+      .catch(() => setError("Could not load Homeschool Hub. Please try again."))
       .finally(() => setLoading(false));
   }, [isLoaded, isSignedIn, classCode]);
 
@@ -260,7 +260,7 @@ export default function FamilyHubLogin() {
             onClick={() => navigate("/family-hub")}
             className="flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors"
           >
-            <ArrowLeft className="w-3.5 h-3.5" /> Back to Family Hub
+            <ArrowLeft className="w-3.5 h-3.5" /> Back to Homeschool Hub
           </button>
         )}
 
@@ -279,7 +279,7 @@ export default function FamilyHubLogin() {
           <div className="w-20 h-20 bg-primary/10 rounded-full flex items-center justify-center mx-auto">
             <Home className="w-10 h-10 text-primary" />
           </div>
-          <h1 className="text-3xl font-serif font-bold text-foreground">{hubName || "Family Hub"}</h1>
+          <h1 className="text-3xl font-serif font-bold text-foreground">{hubName || "Homeschool Hub"}</h1>
           <p className="text-muted-foreground">Tap your name to log in</p>
         </div>
 
@@ -291,7 +291,7 @@ export default function FamilyHubLogin() {
           <div className="text-center py-12 text-muted-foreground">
             <p className="text-5xl mb-3">👧👦</p>
             <p className="font-medium">No children added yet.</p>
-            <p className="text-sm mt-1">Ask a parent to add you in the Family Hub.</p>
+            <p className="text-sm mt-1">Ask a parent to add you in the Homeschool Hub.</p>
           </div>
         ) : (
           <div className="grid grid-cols-3 gap-3">

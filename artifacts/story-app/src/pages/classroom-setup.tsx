@@ -7,7 +7,7 @@ export default function ClassroomSetup() {
       <div className="flex items-center gap-3">
         <GraduationCap className="w-8 h-8 text-primary" />
         <div>
-          <h1 className="text-3xl font-serif font-bold text-foreground">Classroom Setup</h1>
+          <h1 className="text-3xl font-serif font-bold text-foreground">School Hub Setup</h1>
           <p className="text-muted-foreground text-sm mt-0.5">
             Create classes, add students by first name, and share class codes — no student emails needed.
           </p>
