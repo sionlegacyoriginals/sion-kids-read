@@ -26,7 +26,13 @@ export default function MusicPage() {
 
   function handlePlay(v: VideoItem) {
     const video: MusicVideo = { id: v.id, title: v.title, thumbnail: v.thumbnail };
-    play(video);
+    // Pass full queue so the player can autoplay through all songs
+    const fullQueue: MusicVideo[] = videos.map((vid) => ({
+      id: vid.id,
+      title: vid.title,
+      thumbnail: vid.thumbnail,
+    }));
+    play(video, fullQueue);
   }
 
   return (

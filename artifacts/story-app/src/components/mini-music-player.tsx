@@ -3,12 +3,25 @@ import { X, Music2 } from "lucide-react";
 import { useLocation } from "wouter";
 
 export function MiniMusicPlayer() {
-  const { current, stop } = useMusic();
+  const { current, queue, stop } = useMusic();
   const [, navigate] = useLocation();
 
   if (!current) return null;
 
-  const embedUrl = `https://www.youtube.com/embed/${current.id}?autoplay=1&rel=0&modestbranding=1`;
+  // Build a playlist so YouTube autoplays through all songs.
+  // Current video plays first; remaining videos follow in order, then loop.
+  const currentIndex = queue.findIndex((v) => v.id === current.id);
+  const afterCurrent = currentIndex >= 0
+    ? [...queue.slice(currentIndex + 1), ...queue.slice(0, currentIndex)]
+    : [];
+
+  const playlistParam = afterCurrent.length > 0
+    ? `&playlist=${afterCurrent.map((v) => v.id).join(",")}`
+    : "";
+
+  const embedUrl =
+    `https://www.youtube.com/embed/${current.id}` +
+    `?autoplay=1&rel=0&modestbranding=1${playlistParam}`;
 
   return (
     <div className="fixed bottom-0 left-0 right-0 z-[70] bg-white border-t border-purple-100 shadow-[0_-4px_20px_rgba(109,40,217,0.10)]">

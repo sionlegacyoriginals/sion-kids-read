@@ -8,21 +8,25 @@ export interface MusicVideo {
 
 interface MusicContextValue {
   current: MusicVideo | null;
-  play: (video: MusicVideo) => void;
+  queue: MusicVideo[];
+  play: (video: MusicVideo, queue?: MusicVideo[]) => void;
   stop: () => void;
 }
 
 const MusicContext = createContext<MusicContextValue>({
   current: null,
+  queue: [],
   play: () => {},
   stop: () => {},
 });
 
 export function MusicProvider({ children }: { children: ReactNode }) {
   const [current, setCurrent] = useState<MusicVideo | null>(null);
+  const [queue, setQueue] = useState<MusicVideo[]>([]);
 
-  function play(video: MusicVideo) {
+  function play(video: MusicVideo, newQueue?: MusicVideo[]) {
     setCurrent(video);
+    if (newQueue && newQueue.length > 0) setQueue(newQueue);
   }
 
   function stop() {
@@ -37,7 +41,7 @@ export function MusicProvider({ children }: { children: ReactNode }) {
   }, []);
 
   return (
-    <MusicContext.Provider value={{ current, play, stop }}>
+    <MusicContext.Provider value={{ current, queue, play, stop }}>
       {children}
     </MusicContext.Provider>
   );
