@@ -9,6 +9,7 @@ import classroomRouter from "./classroom";
 import avatarsRouter from "./avatars";
 import familyHubRouter from "./family-hub";
 import musicRouter from "./music";
+import adminRouter from "./admin";
 
 const router: IRouter = Router();
 
@@ -22,5 +23,6 @@ router.use(classroomRouter);
 router.use(avatarsRouter);
 router.use(familyHubRouter);
 router.use(musicRouter);
+router.use(adminRouter);
 
 export default router;
