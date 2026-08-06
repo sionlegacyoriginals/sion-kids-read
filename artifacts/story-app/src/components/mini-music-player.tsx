@@ -1,15 +1,14 @@
 import { useMusic } from "@/lib/musicContext";
-import { X, Music2 } from "lucide-react";
+import { X, Music2, Play } from "lucide-react";
 import { useLocation } from "wouter";
 
 export function MiniMusicPlayer() {
-  const { current, queue, stop } = useMusic();
+  const { current, queue, isRestored, resume, stop } = useMusic();
   const [, navigate] = useLocation();
 
   if (!current) return null;
 
   // Build a playlist so YouTube autoplays through all songs.
-  // Current video plays first; remaining videos follow in order, then loop.
   const currentIndex = queue.findIndex((v) => v.id === current.id);
   const afterCurrent = currentIndex >= 0
     ? [...queue.slice(currentIndex + 1), ...queue.slice(0, currentIndex)]
@@ -27,26 +26,47 @@ export function MiniMusicPlayer() {
     <div className="fixed bottom-0 left-0 right-0 z-[70] bg-white border-t border-purple-100 shadow-[0_-4px_20px_rgba(109,40,217,0.10)]">
       <div className="flex items-center gap-3 px-3 py-2 max-w-3xl mx-auto">
 
-        {/* Small visible YouTube iframe — this drives the audio */}
+        {/* Thumbnail / player area */}
         <div className="relative shrink-0 rounded-xl overflow-hidden bg-black"
              style={{ width: 112, height: 63 }}>
-          <iframe
-            key={current.id}
-            src={embedUrl}
-            width="112"
-            height="63"
-            allow="autoplay; encrypted-media; picture-in-picture"
-            allowFullScreen
-            className="block"
-            title={current.title}
-          />
+          {isRestored ? (
+            /* After a page refresh, browsers block autoplay.
+               Show a tap-to-resume button instead of a silent iframe. */
+            <button
+              onClick={resume}
+              className="absolute inset-0 flex items-center justify-center bg-black/70 hover:bg-black/60 transition-colors"
+              aria-label="Resume music"
+            >
+              <img
+                src={current.thumbnail}
+                alt={current.title}
+                className="absolute inset-0 w-full h-full object-cover opacity-50"
+              />
+              <div className="relative z-10 w-9 h-9 rounded-full bg-violet-600 flex items-center justify-center shadow-lg">
+                <Play className="w-5 h-5 text-white fill-white" />
+              </div>
+            </button>
+          ) : (
+            <iframe
+              key={current.id}
+              src={embedUrl}
+              width="112"
+              height="63"
+              allow="autoplay; encrypted-media; picture-in-picture"
+              allowFullScreen
+              className="block"
+              title={current.title}
+            />
+          )}
         </div>
 
         {/* Info */}
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-1.5 mb-0.5">
             <Music2 className="w-3 h-3 text-violet-500 shrink-0" />
-            <span className="text-[10px] font-bold text-violet-500 uppercase tracking-wider">Now playing</span>
+            <span className="text-[10px] font-bold text-violet-500 uppercase tracking-wider">
+              {isRestored ? "Paused" : "Now playing"}
+            </span>
           </div>
           <p className="text-sm font-semibold text-foreground truncate leading-tight">{current.title}</p>
           <p className="text-xs text-muted-foreground">Sion Kids Life</p>
