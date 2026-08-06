@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { GameShell, FeedbackBanner, LevelComplete } from "./GameShell";
 import { GAMES, recordLevelComplete, loadProgress } from "./registry";
 import { KINDNESS_QUEST_LEVELS } from "./data/kindness-quest";
@@ -22,7 +22,7 @@ export default function KindnessQuest() {
   const [selected, setSelected] = useState<string | null>(null);
 
   const levelData = KINDNESS_QUEST_LEVELS[level - 1];
-  const [shuffledChoices] = useState(() => shuffle(levelData.choices));
+  const shuffledChoices = useMemo(() => shuffle(levelData.choices), [level]);
 
   function handleChoice(choice: string) {
     if (feedback) return;

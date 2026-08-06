@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect, useCallback } from "react";
-import { Eraser, Pen, ChevronLeft, ChevronRight, PenLine, Trash2, GripHorizontal } from "lucide-react";
+import { Eraser, Pen, ChevronLeft, ChevronRight, PenLine, Trash2, GripHorizontal, ChevronUp, ChevronDown } from "lucide-react";
 
 // ─── helpers ────────────────────────────────────────────────────────────────
 
@@ -273,6 +273,10 @@ export function PracticeSection({ content, childName, audioBarVisible }: Practic
   const sentence = sentences[current];
   if (sentences.length === 0) return null;
 
+  function scrollPage(dir: "up" | "down") {
+    window.scrollBy({ top: dir === "down" ? 220 : -220, behavior: "smooth" });
+  }
+
   return (
     <div className="border-t border-border/50 bg-[#fdf9f4]">
       {/* Header */}
@@ -449,6 +453,31 @@ export function PracticeSection({ content, childName, audioBarVisible }: Practic
           className="inline-flex items-center gap-2 px-4 py-2 rounded-xl border border-border text-sm font-semibold text-muted-foreground hover:text-foreground disabled:opacity-30 disabled:cursor-not-allowed transition-all"
         >
           Next <ChevronRight className="w-4 h-4" />
+        </button>
+      </div>
+
+      {/* Fixed scroll buttons — right side of screen so kids don't have to drag on the writing area */}
+      <div
+        className="fixed z-[55] flex flex-col gap-2"
+        style={{
+          right: "12px",
+          top: "50%",
+          transform: "translateY(-50%)",
+        }}
+      >
+        <button
+          onPointerDown={(e) => { e.preventDefault(); scrollPage("up"); }}
+          className="w-12 h-12 rounded-2xl bg-white/90 backdrop-blur-md border border-[#e8dfd5] shadow-lg flex items-center justify-center text-violet-600 active:bg-violet-50 transition-colors"
+          aria-label="Scroll up"
+        >
+          <ChevronUp className="w-6 h-6" />
+        </button>
+        <button
+          onPointerDown={(e) => { e.preventDefault(); scrollPage("down"); }}
+          className="w-12 h-12 rounded-2xl bg-white/90 backdrop-blur-md border border-[#e8dfd5] shadow-lg flex items-center justify-center text-violet-600 active:bg-violet-50 transition-colors"
+          aria-label="Scroll down"
+        >
+          <ChevronDown className="w-6 h-6" />
         </button>
       </div>
     </div>

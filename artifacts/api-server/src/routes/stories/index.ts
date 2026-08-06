@@ -206,6 +206,46 @@ async function generateStoryImages(params: {
 
 // ─── Story text generation ────────────────────────────────────────────────────
 
+/**
+ * Proofreads a generated story, fixing grammar, punctuation, and sentence
+ * structure without changing the plot, names, or vocabulary level.
+ * This is a literacy app — every story must be grammatically correct.
+ */
+async function proofreadStory(title: string, content: string): Promise<{ title: string; content: string }> {
+  try {
+    const response = await openai.chat.completions.create({
+      model: "gpt-4o-mini",
+      messages: [
+        {
+          role: "system",
+          content: `You are a meticulous copy-editor for a children's literacy app. Your ONLY job is to fix grammar, punctuation, and sentence structure errors in the story provided. Do NOT change the plot, character names, vocabulary level, tone, or length. Do NOT add or remove sentences. Fix things like: missing or wrong punctuation (commas, periods, apostrophes), sentence fragments, run-on sentences, subject-verb agreement, and inconsistent tense. Return ONLY the corrected text, preserving paragraph breaks (blank lines between paragraphs).`,
+        },
+        {
+          role: "user",
+          content: `TITLE: ${title}\n\n${content}`,
+        },
+      ],
+      max_tokens: 1600,
+    });
+
+    const corrected = response.choices[0]?.message?.content?.trim() ?? "";
+    if (!corrected) return { title, content };
+
+    const lines = corrected.split("\n");
+    const firstLine = lines[0] ?? "";
+    if (firstLine.startsWith("TITLE: ")) {
+      const newTitle = firstLine.slice(7).trim() || title;
+      const newContent = lines.slice(1).join("\n").trim() || content;
+      return { title: newTitle, content: newContent };
+    }
+    // If the model didn't echo the TITLE line, keep original title
+    return { title, content: corrected || content };
+  } catch {
+    // Proofreading is best-effort — if it fails, return the original
+    return { title, content };
+  }
+}
+
 async function generateStory(params: {
   childName: string;
   childAge: number;
@@ -229,8 +269,10 @@ async function generateStory(params: {
   const title = titleLine.startsWith("TITLE: ")
     ? titleLine.slice(7).trim()
     : `${params.childName}'s Story of ${params.theme}`;
-  const content = lines.slice(1).join("\n").trim();
-  return { title, content };
+  const rawContent = lines.slice(1).join("\n").trim();
+
+  // Proofread before returning — this is a literacy app
+  return proofreadStory(title, rawContent);
 }
 
 // ─── Subscription gate helper ─────────────────────────────────────────────────

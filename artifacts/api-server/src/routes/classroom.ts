@@ -567,8 +567,35 @@ router.post("/classroom/student-stories", requireStudentAuth, async (req: any, r
 
     const raw = completion.choices[0]?.message?.content ?? "";
     const titleMatch = raw.match(/^TITLE:\s*(.+)/m);
-    const title = titleMatch?.[1]?.trim() ?? `${p.firstName}'s Story`;
-    const content = raw.replace(/^TITLE:\s*.+\n?/m, "").trim();
+    const rawTitle = titleMatch?.[1]?.trim() ?? `${p.firstName}'s Story`;
+    const rawContent = raw.replace(/^TITLE:\s*.+\n?/m, "").trim();
+
+    // Proofread before saving — this is a literacy app; grammar must be correct
+    let title = rawTitle;
+    let content = rawContent;
+    try {
+      const proofed = await openai.chat.completions.create({
+        model: "gpt-4o-mini",
+        messages: [
+          {
+            role: "system",
+            content: `You are a meticulous copy-editor for a children's literacy app. Your ONLY job is to fix grammar, punctuation, and sentence structure errors. Do NOT change the plot, character names, vocabulary level, tone, or length. Fix things like: missing or wrong punctuation, sentence fragments, run-on sentences, subject-verb agreement, and inconsistent tense. Return ONLY the corrected story text, preserving paragraph breaks.`,
+          },
+          { role: "user", content: `TITLE: ${rawTitle}\n\n${rawContent}` },
+        ],
+        max_tokens: 700,
+      });
+      const corrected = proofed.choices[0]?.message?.content?.trim() ?? "";
+      if (corrected) {
+        const cLines = corrected.split("\n");
+        if (cLines[0]?.startsWith("TITLE: ")) {
+          title = cLines[0].slice(7).trim() || rawTitle;
+          content = cLines.slice(1).join("\n").trim() || rawContent;
+        } else {
+          content = corrected;
+        }
+      }
+    } catch { /* proofreading is best-effort */ }
 
     // Validated avatar paths — must start with /ref-photos/ (covers both avatar bank
     // and parent-uploaded child photos stored as reference photos)

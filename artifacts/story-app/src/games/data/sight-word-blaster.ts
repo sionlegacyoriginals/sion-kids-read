@@ -48,7 +48,7 @@ export const SIGHT_WORD_LEVELS: SWBLevel[] = [
     level: 4,
     questions: [
       { target: "run", sentence: 'The kids run fast.', choices: ["run", "rub", "fun", "sun"] },
-      { target: "not", sentence: 'I am not tired.', choices: ["not", "hot", "not", "dot"] },
+      { target: "not", sentence: 'I am not tired.', choices: ["not", "hot", "nod", "dot"] },
       { target: "you", sentence: 'Can you help me?', choices: ["you", "your", "our", "out"] },
       { target: "she", sentence: 'She has a red bag.', choices: ["she", "the", "he", "see"] },
       { target: "he", sentence: 'He is my friend.', choices: ["he", "me", "we", "be"] },
@@ -109,7 +109,7 @@ export const SIGHT_WORD_LEVELS: SWBLevel[] = [
     questions: [
       { target: "your", sentence: 'Is this your pencil?', choices: ["your", "you", "four", "pour"] },
       { target: "from", sentence: 'A letter from grandma.', choices: ["from", "form", "firm", "farm"] },
-      { target: "they", sentence: 'They walked to school.', choices: ["they", "the", "these", "then"] },
+      { target: "their", sentence: 'Their dog is very friendly.', choices: ["their", "there", "they", "them"] },
       { target: "went", sentence: 'She went to the store.', choices: ["went", "dent", "bent", "lent"] },
       { target: "this", sentence: 'This book is great.', choices: ["this", "that", "thin", "with"] },
     ],
@@ -118,7 +118,7 @@ export const SIGHT_WORD_LEVELS: SWBLevel[] = [
     level: 11,
     questions: [
       { target: "after", sentence: 'After lunch we rest.', choices: ["after", "often", "actor", "other"] },
-      { target: "again", sentence: 'Read the story again.', choices: ["again", "began", "again", "chain"] },
+      { target: "again", sentence: 'Read the story again.', choices: ["again", "began", "gain", "chain"] },
       { target: "every", sentence: 'Every dog loves walks.', choices: ["every", "even", "ever", "very"] },
       { target: "round", sentence: 'The earth is round.', choices: ["round", "found", "sound", "mound"] },
       { target: "think", sentence: 'I think it will rain.', choices: ["think", "thing", "drink", "thank"] },

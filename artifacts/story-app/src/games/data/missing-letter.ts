@@ -75,7 +75,7 @@ export const MISSING_LETTER_LEVELS: MLLevel[] = [
   { level: 12, questions: [
     { word: "planet", blankIndex: 1, choices: ["l","r","n","m"],  hint: "Earth is one — it travels around the sun 🌍" },
     { word: "flight", blankIndex: 3, choices: ["g","k","c","q"],  hint: "A trip on an airplane ✈️" },
-    { word: "spring", blankIndex: 5, choices: ["n","m","r","l"],  hint: "The season after winter when flowers bloom 🌸" },
+    { word: "spring", blankIndex: 4, choices: ["n","m","r","l"],  hint: "The season after winter when flowers bloom 🌸" },
   ]},
   { level: 13, questions: [
     { word: "candle", blankIndex: 4, choices: ["l","r","d","n"],  hint: "A wax stick with a flame on top 🕯️" },
@@ -90,7 +90,7 @@ export const MISSING_LETTER_LEVELS: MLLevel[] = [
   { level: 15, questions: [
     { word: "cricket", blankIndex: 5, choices: ["e","a","i","o"], hint: "A small insect that chirps at night 🦗" },
     { word: "lantern", blankIndex: 3, choices: ["t","d","n","p"], hint: "A light in a glass case you carry 🏮" },
-    { word: "compass", blankIndex: 4, choices: ["p","b","d","t"], hint: "A tool that always points north 🧭" },
+    { word: "compass", blankIndex: 3, choices: ["p","b","d","t"], hint: "A tool that always points north 🧭" },
   ]},
   { level: 16, questions: [
     { word: "dolphin", blankIndex: 3, choices: ["p","b","f","v"], hint: "A smart ocean animal that leaps and plays 🐬" },
