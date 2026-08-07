@@ -1,23 +1,15 @@
 import React, { useEffect, useState } from 'react';
-import { ActivityIndicator, Text, View } from 'react-native';
+import { ActivityIndicator, View } from 'react-native';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { ErrorBoundary } from '@/components/ErrorBoundary';
-import {
-  Inter_400Regular,
-  Inter_500Medium,
-  Inter_600SemiBold,
-  Inter_700Bold,
-  useFonts,
-} from '@expo-google-fonts/inter';
 import { Redirect, Stack } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
 import { AuthProvider, useAuth } from '@/contexts/AuthContext';
 
 // expo-router/entry already calls SplashScreen.preventAutoHideAsync() internally.
-// Calling it a second time here throws in Expo SDK 52+ and crashes before React mounts.
-// DO NOT call SplashScreen.preventAutoHideAsync() here.
+// Do NOT call it here — a second call throws in Expo SDK 52+ before React mounts.
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -26,12 +18,9 @@ const queryClient = new QueryClient({
 });
 
 function hideSplash() {
-  // hideAsync is deprecated in newer expo-splash-screen; fall back gracefully.
   try {
-    const result = SplashScreen.hideAsync();
-    if (result && typeof result.catch === 'function') {
-      result.catch(() => {});
-    }
+    const result = (SplashScreen as any).hide?.() ?? (SplashScreen as any).hideAsync?.();
+    if (result && typeof result.catch === 'function') result.catch(() => {});
   } catch (_) {}
 }
 
@@ -59,63 +48,38 @@ function RootLayoutNav() {
   );
 }
 
-export default function RootLayout() {
-  const [appIsReady, setAppIsReady] = useState(false);
-
-  const [fontsLoaded, fontError] = useFonts({
-    Inter_400Regular,
-    Inter_500Medium,
-    Inter_600SemiBold,
-    Inter_700Bold,
-  });
+// Inner app — ErrorBoundary in the parent catches any crash here.
+function AppInner() {
+  const [ready, setReady] = useState(false);
 
   useEffect(() => {
-    if (fontsLoaded || fontError) {
-      setAppIsReady(true);
-      hideSplash();
-    }
-  }, [fontsLoaded, fontError]);
-
-  // Hard timeout — always mount within 2s even if fonts never resolve
-  useEffect(() => {
-    const t = setTimeout(() => {
-      setAppIsReady(true);
-      hideSplash();
-    }, 2000);
-    return () => clearTimeout(t);
+    // No font loading — use system fonts to eliminate that crash source.
+    // Fonts can be added back once the app is stable.
+    setReady(true);
+    hideSplash();
   }, []);
 
-  if (!appIsReady) return <Loader />;
+  if (!ready) return <Loader />;
 
   return (
-    // ErrorBoundary is outermost so it catches crashes in any provider below
+    <SafeAreaProvider>
+      <QueryClientProvider client={queryClient}>
+        <GestureHandlerRootView style={{ flex: 1 }}>
+          <AuthProvider>
+            <RootLayoutNav />
+          </AuthProvider>
+        </GestureHandlerRootView>
+      </QueryClientProvider>
+    </SafeAreaProvider>
+  );
+}
+
+// ErrorBoundary is the OUTERMOST wrapper so it catches crashes anywhere below,
+// including inside AppInner's hooks and effects.
+export default function RootLayout() {
+  return (
     <ErrorBoundary>
-      <SafeAreaProvider>
-        <QueryClientProvider client={queryClient}>
-          <GestureHandlerRootView style={{ flex: 1 }}>
-            <AuthProvider>
-              <RootLayoutNav />
-              {!fontsLoaded && !!fontError && (
-                <View
-                  pointerEvents="none"
-                  style={{
-                    position: 'absolute',
-                    top: 60, left: 16, right: 16,
-                    backgroundColor: 'rgba(0,0,0,0.8)',
-                    borderRadius: 8,
-                    padding: 12,
-                    zIndex: 9999,
-                  }}
-                >
-                  <Text style={{ color: '#F2A800', fontWeight: '700', fontSize: 13 }}>
-                    ⚠ Font error: {fontError?.message}
-                  </Text>
-                </View>
-              )}
-            </AuthProvider>
-          </GestureHandlerRootView>
-        </QueryClientProvider>
-      </SafeAreaProvider>
+      <AppInner />
     </ErrorBoundary>
   );
 }
