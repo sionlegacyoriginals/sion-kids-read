@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useMusic, MUSIC_STORAGE_KEY, MusicVideo } from "@/lib/musicContext";
-import { X, Music2, Play } from "lucide-react";
+import { X, Music2, Play, SkipBack, SkipForward } from "lucide-react";
 import { useLocation } from "wouter";
 
 interface SavedMusic {
@@ -35,6 +35,17 @@ export function MiniMusicPlayer() {
       setSaved(found);
     }
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Stop music automatically when Read Aloud is opened.
+  useEffect(() => {
+    function onReadAlongStart() {
+      setSaved(null);
+      setResumed(false);
+      stop();
+    }
+    window.addEventListener("sion:readalong-start", onReadAlongStart);
+    return () => window.removeEventListener("sion:readalong-start", onReadAlongStart);
+  }, [stop]);
 
   // Once play() is called on context, we no longer need the localStorage copy.
   useEffect(() => {
@@ -82,6 +93,20 @@ export function MiniMusicPlayer() {
     setSaved(null);
     setResumed(false);
     stop();
+  }
+
+  function handleSkip(direction: "prev" | "next") {
+    if (!video || videoQueue.length === 0) return;
+    const idx = videoQueue.findIndex((v) => v.id === video.id);
+    let nextIdx: number;
+    if (direction === "next") {
+      nextIdx = idx >= 0 ? (idx + 1) % videoQueue.length : 0;
+    } else {
+      nextIdx = idx > 0 ? idx - 1 : videoQueue.length - 1;
+    }
+    const nextVideo = videoQueue[nextIdx];
+    setResumed(true);
+    play(nextVideo, videoQueue);
   }
 
   return (
@@ -140,6 +165,24 @@ export function MiniMusicPlayer() {
 
         {/* Actions */}
         <div className="flex items-center gap-1 shrink-0">
+          {videoQueue.length > 1 && (
+            <button
+              onClick={() => handleSkip("prev")}
+              className="p-2 rounded-lg text-muted-foreground hover:text-violet-600 hover:bg-violet-50 transition-colors"
+              aria-label="Previous song"
+            >
+              <SkipBack className="w-4 h-4" />
+            </button>
+          )}
+          {videoQueue.length > 1 && (
+            <button
+              onClick={() => handleSkip("next")}
+              className="p-2 rounded-lg text-muted-foreground hover:text-violet-600 hover:bg-violet-50 transition-colors"
+              aria-label="Next song"
+            >
+              <SkipForward className="w-4 h-4" />
+            </button>
+          )}
           <button
             onClick={() => navigate("/music")}
             className="px-2.5 py-1.5 text-xs font-semibold text-violet-600 border border-violet-200 rounded-lg hover:bg-violet-50 transition-colors"

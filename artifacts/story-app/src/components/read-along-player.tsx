@@ -360,7 +360,10 @@ export function useReadAlong(paragraphs: string[]) {
     [isPlaying, queueFrom]
   );
 
-  const open = useCallback(() => setVisible(true), []);
+  const open = useCallback(() => {
+    setVisible(true);
+    window.dispatchEvent(new CustomEvent("sion:readalong-start"));
+  }, []);
   const close = useCallback(() => { stop(); setVisible(false); }, [stop]);
 
   useEffect(() => () => { window.speechSynthesis.cancel(); }, []);
