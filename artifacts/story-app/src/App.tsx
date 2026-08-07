@@ -113,14 +113,28 @@ const clerkAppearance = {
 };
 
 // ── Pages ─────────────────────────────────────────────────────────────────────
+function SpamNotice() {
+  return (
+    <div className="flex items-start gap-3 max-w-sm w-full rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
+      <span className="text-lg leading-none mt-0.5">📬</span>
+      <p className="leading-snug">
+        <strong>Didn't get your verification email?</strong> Check your{" "}
+        <strong>spam or junk folder</strong> and mark it as "Not Spam" — this
+        helps future emails land in your inbox.
+      </p>
+    </div>
+  );
+}
+
 function SignInPage() {
   return (
-    <div className="flex min-h-[100dvh] flex-col items-center justify-center bg-background px-4 gap-6">
+    <div className="flex min-h-[100dvh] flex-col items-center justify-center bg-background px-4 gap-4">
       <SignIn
         routing="path"
         path={`${basePath}/sign-in`}
         signUpUrl={`${basePath}/sign-up`}
       />
+      <SpamNotice />
       <div className="flex flex-col sm:flex-row items-center gap-3">
         <a
           href={`${basePath}/student-login`}
@@ -141,12 +155,13 @@ function SignInPage() {
 
 function SignUpPage() {
   return (
-    <div className="flex min-h-[100dvh] flex-col items-center justify-center bg-background px-4 gap-6">
+    <div className="flex min-h-[100dvh] flex-col items-center justify-center bg-background px-4 gap-4">
       <SignUp
         routing="path"
         path={`${basePath}/sign-up`}
         signInUrl={`${basePath}/sign-in`}
       />
+      <SpamNotice />
       <div className="flex flex-col sm:flex-row items-center gap-3">
         <a
           href={`${basePath}/student-login`}
