@@ -10,6 +10,7 @@ import avatarsRouter from "./avatars";
 import familyHubRouter from "./family-hub";
 import musicRouter from "./music";
 import adminRouter from "./admin";
+import reviewerRouter from "./reviewer";
 
 const router: IRouter = Router();
 
@@ -24,5 +25,6 @@ router.use(avatarsRouter);
 router.use(familyHubRouter);
 router.use(musicRouter);
 router.use(adminRouter);
+router.use(reviewerRouter);
 
 export default router;

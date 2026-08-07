@@ -5,10 +5,28 @@ import type { Request, Response, NextFunction } from "express";
 import jwt from "jsonwebtoken";
 
 /**
- * Express middleware: requires a valid Clerk session.
- * Attaches `req.userId` (Clerk user ID) on success.
+ * Express middleware: requires a valid Clerk session OR a reviewer JWT.
+ * Attaches `req.userId` (Clerk user ID or reviewer ID) on success.
  */
 export function requireAuth(req: Request, res: Response, next: NextFunction): void {
+  // Check for reviewer JWT in Authorization header first.
+  const authHeader = req.headers.authorization;
+  if (authHeader?.startsWith("Bearer ")) {
+    const token = authHeader.slice(7);
+    try {
+      const payload = jwt.verify(token, process.env.SESSION_SECRET!) as any;
+      if (payload.type === "reviewer" && payload.userId) {
+        (req as any).userId = payload.userId;
+        (req as any).isReviewer = true;
+        next();
+        return;
+      }
+    } catch {
+      // Not a valid reviewer token — fall through to Clerk.
+    }
+  }
+
+  // Standard Clerk session auth.
   const auth = getAuth(req);
   const userId = (auth?.sessionClaims?.userId as string | undefined) ?? auth?.userId;
   if (!userId) {

@@ -1,5 +1,7 @@
 import { useEffect, useRef } from "react";
 import { ClerkProvider, SignIn, SignUp, Show, useClerk, useAuth } from "@clerk/react";
+import { ReviewerAuthProvider, useReviewerAuth } from "@/lib/reviewerAuth";
+import ReviewerAccess from "@/pages/reviewer-access";
 import { publishableKeyFromHost } from "@clerk/react/internal";
 import { shadcn } from "@clerk/themes";
 import { Switch, Route, Redirect, useLocation, Router as WouterRouter } from "wouter";
@@ -165,6 +167,9 @@ function SignUpPage() {
 /** Public home: Landing for logged-out users, redirect to /create for logged-in. */
 function HomeRedirect() {
   const { isLoaded, isSignedIn } = useAuth();
+  const { isReviewer } = useReviewerAuth();
+
+  if (isReviewer) return <Redirect to="/create" />;
 
   // While Clerk is still initialising, render the landing page (unauthenticated view).
   // Once loaded, signed-in users are silently redirected to /create.
@@ -180,6 +185,17 @@ function HomeRedirect() {
 }
 
 function ProtectedRoute({ component: Page }: { component: React.ComponentType }) {
+  const { isReviewer } = useReviewerAuth();
+
+  // Reviewer sessions bypass Clerk's auth gate entirely.
+  if (isReviewer) {
+    return (
+      <Layout>
+        <Page />
+      </Layout>
+    );
+  }
+
   return (
     <>
       <Show when="signed-in">
@@ -269,6 +285,7 @@ function ClerkProviderWithRoutes() {
             <Route path="/games" component={GamesHome} />
             <Route path="/games/:gameId" component={GamePlay} />
             <Route path="/music" component={() => <Layout><MusicPage /></Layout>} />
+            <Route path="/reviewer-access" component={ReviewerAccess} />
             <Route path="/admin/school-codes" component={() => (
               <Layout><AdminSchoolCodes /></Layout>
             )} />
@@ -317,9 +334,11 @@ function App() {
 
   return (
     <WouterRouter base={basePath}>
-      <StudentAuthProvider>
-        <ClerkProviderWithRoutes />
-      </StudentAuthProvider>
+      <ReviewerAuthProvider>
+        <StudentAuthProvider>
+          <ClerkProviderWithRoutes />
+        </StudentAuthProvider>
+      </ReviewerAuthProvider>
     </WouterRouter>
   );
 }

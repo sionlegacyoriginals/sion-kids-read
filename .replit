@@ -23,6 +23,8 @@ timeoutMs = 20000
 
 [userenv.shared]
 ACCESS_CODES = "SION 26"
+REVIEWER_EMAIL = "reviewer@sionkidsread.com"
+REVIEWER_PASSWORD = "TestPassword123!"
 
 [nix]
 channel = "stable-25_05"
