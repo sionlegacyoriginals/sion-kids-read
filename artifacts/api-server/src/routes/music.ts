@@ -5,7 +5,9 @@ const router = Router();
 const CHANNEL_ID = "UCgNtVOshd55p2h6_-phDimA"; // @sionkidslife
 const RSS_FEED   = `https://www.youtube.com/feeds/videos.xml?channel_id=${CHANNEL_ID}`;
 // rss2json works around Replit's server IP being blocked by YouTube's RSS endpoint
-const RSS2JSON   = `https://api.rss2json.com/v1/api.json?rss_url=${encodeURIComponent(RSS_FEED)}`;
+// _t param busts rss2json's own server-side cache so stale/deleted videos don't linger
+const rss2jsonUrl = () =>
+  `https://api.rss2json.com/v1/api.json?rss_url=${encodeURIComponent(RSS_FEED)}&_t=${Date.now()}`;
 const CACHE_TTL  = 10 * 60 * 1000; // 10 minutes — short enough to pick up new uploads quickly
 
 interface VideoItem {
@@ -20,7 +22,7 @@ interface VideoItem {
 let cache: { videos: VideoItem[]; fetchedAt: number } | null = null;
 
 async function fetchVideos(): Promise<VideoItem[]> {
-  const res = await fetch(RSS2JSON, {
+  const res = await fetch(rss2jsonUrl(), {
     headers: { "User-Agent": "SionKidsRead/1.0" },
     // No-cache so rss2json doesn't serve a stale copy either
     cache: "no-store",

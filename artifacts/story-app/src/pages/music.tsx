@@ -1,5 +1,5 @@
-import { useEffect, useState } from "react";
-import { Music2, PlayCircle, Loader2 } from "lucide-react";
+import { useCallback, useEffect, useState } from "react";
+import { Music2, PlayCircle, Loader2, RefreshCw } from "lucide-react";
 import { useMusic, type MusicVideo } from "@/lib/musicContext";
 
 interface VideoItem {
@@ -14,15 +14,22 @@ const BASE = import.meta.env.BASE_URL.replace(/\/$/, "");
 export default function MusicPage() {
   const [videos, setVideos] = useState<VideoItem[]>([]);
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const { current, play } = useMusic();
 
-  useEffect(() => {
-    fetch(`${BASE}/api/music/videos`)
+  const loadVideos = useCallback((forceRefresh = false) => {
+    const url = `${BASE}/api/music/videos${forceRefresh ? "?refresh=1" : ""}`;
+    if (forceRefresh) setRefreshing(true); else setLoading(true);
+    setError(null);
+    fetch(url)
       .then((r) => r.json())
-      .then((data) => { setVideos(data.videos ?? []); setLoading(false); })
-      .catch(() => { setError("Couldn't load videos. Please try again."); setLoading(false); });
+      .then((data) => { setVideos(data.videos ?? []); })
+      .catch(() => { setError("Couldn't load videos. Please try again."); })
+      .finally(() => { setLoading(false); setRefreshing(false); });
   }, []);
+
+  useEffect(() => { loadVideos(); }, [loadVideos]);
 
   function handlePlay(v: VideoItem) {
     const video: MusicVideo = { id: v.id, title: v.title, thumbnail: v.thumbnail };
@@ -42,7 +49,7 @@ export default function MusicPage() {
         <div className="w-14 h-14 rounded-2xl bg-violet-100 flex items-center justify-center shrink-0">
           <Music2 className="w-7 h-7 text-violet-600" />
         </div>
-        <div>
+        <div className="flex-1 min-w-0">
           <h1 className="text-3xl font-bold text-foreground">Sion Kids Music</h1>
           <p className="text-muted-foreground mt-0.5">
             Songs and videos from{" "}
@@ -57,6 +64,14 @@ export default function MusicPage() {
             — music keeps playing while you use the rest of the app!
           </p>
         </div>
+        <button
+          onClick={() => loadVideos(true)}
+          disabled={refreshing}
+          title="Refresh video list"
+          className="shrink-0 p-2.5 rounded-xl text-muted-foreground hover:text-violet-600 hover:bg-violet-50 transition-colors disabled:opacity-40"
+        >
+          <RefreshCw className={`w-5 h-5 ${refreshing ? "animate-spin" : ""}`} />
+        </button>
       </div>
 
       {/* Loading */}

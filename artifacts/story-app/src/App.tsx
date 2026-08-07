@@ -128,13 +128,13 @@ function SpamNotice() {
 
 function SignInPage() {
   return (
-    <div className="flex min-h-[100dvh] flex-col items-center justify-center bg-background px-4 gap-4">
+    <div className="flex min-h-[100dvh] flex-col items-center justify-center bg-background px-4 gap-4 py-8">
+      <SpamNotice />
       <SignIn
         routing="path"
         path={`${basePath}/sign-in`}
         signUpUrl={`${basePath}/sign-up`}
       />
-      <SpamNotice />
       <div className="flex flex-col sm:flex-row items-center gap-3">
         <a
           href={`${basePath}/student-login`}
@@ -155,13 +155,13 @@ function SignInPage() {
 
 function SignUpPage() {
   return (
-    <div className="flex min-h-[100dvh] flex-col items-center justify-center bg-background px-4 gap-4">
+    <div className="flex min-h-[100dvh] flex-col items-center justify-center bg-background px-4 gap-4 py-8">
+      <SpamNotice />
       <SignUp
         routing="path"
         path={`${basePath}/sign-up`}
         signInUrl={`${basePath}/sign-in`}
       />
-      <SpamNotice />
       <div className="flex flex-col sm:flex-row items-center gap-3">
         <a
           href={`${basePath}/student-login`}
