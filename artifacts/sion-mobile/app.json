@@ -1,0 +1,49 @@
+{
+  "expo": {
+    "name": "Sion Kids Read",
+    "slug": "sion-kids-read5",
+    "version": "1.0.4",
+    "orientation": "portrait",
+    "icon": "./assets/images/icon.png",
+    "scheme": "sionkidsread",
+    "userInterfaceStyle": "light",
+    "newArchEnabled": false,
+    "splash": {
+      "image": "./assets/images/icon.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#7B26B8"
+    },
+    "ios": {
+      "supportsTablet": false,
+      "bundleIdentifier": "com.sionkidsread.app"
+    },
+    "android": {
+      "package": "com.sionkidsread.app",
+      "versionCode": 13,
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/images/icon.png",
+        "backgroundColor": "#ffffff"
+      },
+      "blockedPermissions": [
+        "android.permission.ACCESS_FINE_LOCATION",
+        "android.permission.ACCESS_COARSE_LOCATION"
+      ]
+    },
+    "web": {
+      "favicon": "./assets/images/icon.png"
+    },
+    "plugins": [
+      "expo-router",
+      "expo-font",
+      "expo-web-browser"
+    ],
+    "experiments": {
+      "typedRoutes": true
+    },
+    "extra": {
+      "eas": {
+        "projectId": "0f696401-a11a-4f6e-aa8f-364dcc0508f5"
+      }
+    }
+  }
+}

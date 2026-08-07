@@ -1,0 +1,20 @@
+kind = "mobile"
+previewPath = "/sion-mobile/"
+title = "Sion Kids Read – Mobile"
+description = "AI-powered children's literacy mobile app for Sion Kids Read. Lets children and parents create personalized AI storybooks, browse a library of stories, and listen to educational music videos from @sionkidslife — all in a beautiful, kid-friendly native mobile experience."
+version = "1.0.0"
+id = "artifacts/sion-mobile"
+router = "expo-domain"
+
+[[services]]
+name = "expo"
+ensurePreviewReachable = "/status"
+paths = [ "/sion-mobile/" ]
+localPort = 19622
+
+[services.development]
+run = "pnpm --filter @workspace/sion-mobile run dev"
+
+[services.env]
+PORT = "19622"
+BASE_PATH = "/sion-mobile/"
