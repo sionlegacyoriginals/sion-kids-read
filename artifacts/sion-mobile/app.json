@@ -7,7 +7,7 @@
     "icon": "./assets/images/icon.png",
     "scheme": "sionkidsread",
     "userInterfaceStyle": "light",
-    "newArchEnabled": false,
+    "newArchEnabled": true,
     "splash": {
       "image": "./assets/images/icon.png",
       "resizeMode": "contain",
@@ -19,7 +19,7 @@
     },
     "android": {
       "package": "com.sionkidsread.app",
-      "versionCode": 18,
+      "versionCode": 19,
       "adaptiveIcon": {
         "foregroundImage": "./assets/images/icon.png",
         "backgroundColor": "#ffffff"
