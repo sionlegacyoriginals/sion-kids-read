@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { Link, useLocation } from "wouter";
 import { Show, useUser, useClerk } from "@clerk/react";
-import { BookHeart, LogOut, Settings, ChevronDown, GraduationCap, Heart, Home, Gamepad2, Music2 } from "lucide-react";
+import { BookHeart, LogOut, Settings, ChevronDown, GraduationCap, Heart, Home, Gamepad2, Music2, Sparkles } from "lucide-react";
 import { Logo } from "@/components/logo";
 
 
@@ -114,61 +114,90 @@ export function Layout({ children }: { children: React.ReactNode }) {
     <div className="min-h-[100dvh] flex flex-col font-sans selection:bg-primary/20 selection:text-primary">
       <header className="sticky top-0 z-50 w-full border-b border-border/50 bg-background/80 backdrop-blur-md">
         <div className="container mx-auto px-4 h-16 flex items-center justify-between">
-          <Link href="/" className="flex items-center gap-2 text-primary hover:opacity-80 transition-opacity">
+          <Link href="/" className="flex items-center gap-2 text-primary hover:opacity-80 transition-opacity shrink-0">
             <Logo size={28} />
-            <span className="font-serif text-2xl font-bold tracking-tight">Sion Kids Read</span>
+            <span className="hidden sm:block font-serif text-2xl font-bold tracking-tight">Sion Kids Read</span>
           </Link>
 
-          <nav className="flex items-center gap-1">
+          <nav className="flex items-center gap-0.5">
             <Show when="signed-in">
               <Link
                 href="/create"
-                className={`px-3 py-1.5 rounded-full font-medium text-sm transition-colors ${location === "/create" ? "bg-primary/10 text-primary" : "text-muted-foreground hover:text-foreground hover:bg-muted/50"}`}
+                className={`px-2 sm:px-3 py-1.5 rounded-full font-medium text-sm flex items-center gap-1.5 transition-colors ${location === "/create" ? "bg-primary/10 text-primary" : "text-muted-foreground hover:text-foreground hover:bg-muted/50"}`}
+                title="Create"
               >
-                Create
+                <Sparkles className="w-3.5 h-3.5 shrink-0" />
+                <span className="hidden sm:inline">Create</span>
               </Link>
               <Link
                 href="/stories"
-                className={`px-3 py-1.5 rounded-full font-medium text-sm flex items-center gap-1.5 transition-colors ${location.startsWith("/stories") ? "bg-primary/10 text-primary" : "text-muted-foreground hover:text-foreground hover:bg-muted/50"}`}
+                className={`px-2 sm:px-3 py-1.5 rounded-full font-medium text-sm flex items-center gap-1.5 transition-colors ${location.startsWith("/stories") ? "bg-primary/10 text-primary" : "text-muted-foreground hover:text-foreground hover:bg-muted/50"}`}
+                title="Library"
               >
-                <BookHeart className="w-3.5 h-3.5" /> Library
+                <BookHeart className="w-3.5 h-3.5 shrink-0" />
+                <span className="hidden sm:inline">Library</span>
               </Link>
               <Link
                 href="/classroom-setup"
-                className={`px-3 py-1.5 rounded-full font-medium text-sm flex items-center gap-1.5 transition-colors ${location.startsWith("/classroom-setup") ? "bg-primary/10 text-primary" : "text-muted-foreground hover:text-foreground hover:bg-muted/50"}`}
+                className={`px-2 sm:px-3 py-1.5 rounded-full font-medium text-sm flex items-center gap-1.5 transition-colors ${location.startsWith("/classroom-setup") ? "bg-primary/10 text-primary" : "text-muted-foreground hover:text-foreground hover:bg-muted/50"}`}
+                title="School Hub"
               >
-                <GraduationCap className="w-3.5 h-3.5" /> School Hub
+                <GraduationCap className="w-3.5 h-3.5 shrink-0" />
+                <span className="hidden sm:inline">School Hub</span>
               </Link>
               <Link
                 href="/parent"
-                className={`px-3 py-1.5 rounded-full font-medium text-sm flex items-center gap-1.5 transition-colors ${location.startsWith("/parent") ? "bg-primary/10 text-primary" : "text-muted-foreground hover:text-foreground hover:bg-muted/50"}`}
+                className={`px-2 sm:px-3 py-1.5 rounded-full font-medium text-sm flex items-center gap-1.5 transition-colors ${location.startsWith("/parent") ? "bg-primary/10 text-primary" : "text-muted-foreground hover:text-foreground hover:bg-muted/50"}`}
+                title="Parent Hub"
               >
-                <Heart className="w-3.5 h-3.5" /> Parent Hub
+                <Heart className="w-3.5 h-3.5 shrink-0" />
+                <span className="hidden sm:inline">Parent Hub</span>
               </Link>
               <Link
                 href="/family-hub"
-                className={`px-3 py-1.5 rounded-full font-medium text-sm flex items-center gap-1.5 transition-colors ${location.startsWith("/family-hub") ? "bg-primary/10 text-primary" : "text-muted-foreground hover:text-foreground hover:bg-muted/50"}`}
+                className={`px-2 sm:px-3 py-1.5 rounded-full font-medium text-sm flex items-center gap-1.5 transition-colors ${location.startsWith("/family-hub") ? "bg-primary/10 text-primary" : "text-muted-foreground hover:text-foreground hover:bg-muted/50"}`}
+                title="Homeschool Hub"
               >
-                <Home className="w-3.5 h-3.5" /> Homeschool Hub
+                <Home className="w-3.5 h-3.5 shrink-0" />
+                <span className="hidden sm:inline">Homeschool Hub</span>
+              </Link>
+              <Link
+                href="/games"
+                className={`px-2 sm:px-3 py-1.5 rounded-full font-medium text-sm flex items-center gap-1.5 transition-colors ${location.startsWith("/games") ? "bg-primary/10 text-primary" : "text-muted-foreground hover:text-foreground hover:bg-muted/50"}`}
+                title="Games"
+              >
+                <Gamepad2 className="w-3.5 h-3.5 shrink-0" />
+                <span className="hidden sm:inline">Games</span>
+              </Link>
+              <Link
+                href="/music"
+                className={`px-2 sm:px-3 py-1.5 rounded-full font-medium text-sm flex items-center gap-1.5 transition-colors ${location.startsWith("/music") ? "bg-primary/10 text-primary" : "text-muted-foreground hover:text-foreground hover:bg-muted/50"}`}
+                title="Music"
+              >
+                <Music2 className="w-3.5 h-3.5 shrink-0" />
+                <span className="hidden sm:inline">Music</span>
               </Link>
               <UserMenu />
             </Show>
 
-            {/* Games & Music — visible to everyone */}
-            <Link
-              href="/games"
-              className={`px-3 py-1.5 rounded-full font-medium text-sm flex items-center gap-1.5 transition-colors ${location.startsWith("/games") ? "bg-primary/10 text-primary" : "text-muted-foreground hover:text-foreground hover:bg-muted/50"}`}
-            >
-              <Gamepad2 className="w-3.5 h-3.5" /> Games
-            </Link>
-            <Link
-              href="/music"
-              className={`px-3 py-1.5 rounded-full font-medium text-sm flex items-center gap-1.5 transition-colors ${location.startsWith("/music") ? "bg-primary/10 text-primary" : "text-muted-foreground hover:text-foreground hover:bg-muted/50"}`}
-            >
-              <Music2 className="w-3.5 h-3.5" /> Music
-            </Link>
-
+            {/* Games & Music — visible to signed-out users too */}
             <Show when="signed-out">
+              <Link
+                href="/games"
+                className={`px-2 sm:px-3 py-1.5 rounded-full font-medium text-sm flex items-center gap-1.5 transition-colors ${location.startsWith("/games") ? "bg-primary/10 text-primary" : "text-muted-foreground hover:text-foreground hover:bg-muted/50"}`}
+                title="Games"
+              >
+                <Gamepad2 className="w-3.5 h-3.5 shrink-0" />
+                <span className="hidden sm:inline">Games</span>
+              </Link>
+              <Link
+                href="/music"
+                className={`px-2 sm:px-3 py-1.5 rounded-full font-medium text-sm flex items-center gap-1.5 transition-colors ${location.startsWith("/music") ? "bg-primary/10 text-primary" : "text-muted-foreground hover:text-foreground hover:bg-muted/50"}`}
+                title="Music"
+              >
+                <Music2 className="w-3.5 h-3.5 shrink-0" />
+                <span className="hidden sm:inline">Music</span>
+              </Link>
               <Link href="/student-login">
                 <button className="hidden sm:inline-flex items-center gap-1.5 px-3 py-1.5 text-sm font-semibold text-primary border border-primary/30 rounded-full hover:bg-primary/5 transition-all">
                   <GraduationCap className="w-3.5 h-3.5" /> Student login
@@ -180,13 +209,14 @@ export function Layout({ children }: { children: React.ReactNode }) {
                 </button>
               </Link>
               <Link href="/sign-in">
-                <button className="px-4 py-1.5 text-sm font-semibold text-muted-foreground hover:text-foreground transition-colors">
+                <button className="px-3 py-1.5 text-sm font-semibold text-muted-foreground hover:text-foreground transition-colors">
                   Sign in
                 </button>
               </Link>
               <Link href="/sign-up">
-                <button className="px-4 py-1.5 bg-primary text-white text-sm font-bold rounded-full hover:bg-primary/90 transition-all">
-                  Get started
+                <button className="px-3 py-1.5 bg-primary text-white text-sm font-bold rounded-full hover:bg-primary/90 transition-all">
+                  <span className="hidden sm:inline">Get started</span>
+                  <span className="sm:hidden">Join</span>
                 </button>
               </Link>
             </Show>
