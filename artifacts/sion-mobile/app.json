@@ -2,7 +2,7 @@
   "expo": {
     "name": "Sion Kids Read",
     "slug": "sion-kids-read5",
-    "version": "1.0.6",
+    "version": "1.0.7",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
     "scheme": "sionkidsread",
@@ -19,7 +19,7 @@
     },
     "android": {
       "package": "com.sionkidsread.app",
-      "versionCode": 15,
+      "versionCode": 17,
       "adaptiveIcon": {
         "foregroundImage": "./assets/images/icon.png",
         "backgroundColor": "#ffffff"
