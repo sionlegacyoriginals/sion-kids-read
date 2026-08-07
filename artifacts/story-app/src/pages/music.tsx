@@ -29,7 +29,9 @@ export default function MusicPage() {
       .finally(() => { setLoading(false); setRefreshing(false); });
   }, []);
 
-  useEffect(() => { loadVideos(); }, [loadVideos]);
+  // Always force-refresh on mount so deleted videos vanish immediately
+  // (the server rate-limits rss2json calls to once/min, so this is safe)
+  useEffect(() => { loadVideos(true); }, [loadVideos]);
 
   function handlePlay(v: VideoItem) {
     const video: MusicVideo = { id: v.id, title: v.title, thumbnail: v.thumbnail };

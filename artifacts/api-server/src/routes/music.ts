@@ -20,6 +20,9 @@ interface VideoItem {
 }
 
 let cache: { videos: VideoItem[]; fetchedAt: number } | null = null;
+// Prevent ?refresh=1 from calling rss2json more than once per minute under load
+const MIN_FORCE_REFRESH_MS = 60 * 1000;
+let lastForceRefreshAt = 0;
 
 async function fetchVideos(): Promise<VideoItem[]> {
   const res = await fetch(rss2jsonUrl(), {
@@ -54,13 +57,17 @@ async function fetchVideos(): Promise<VideoItem[]> {
 
 router.get("/music/videos", async (req, res) => {
   try {
-    const forceRefresh = req.query.refresh === "1" || req.query.refresh === "true";
+    const wantsRefresh = req.query.refresh === "1" || req.query.refresh === "true";
+    // Rate-limit forced refreshes — don't hit rss2json more than once per minute
+    const canForceRefresh = wantsRefresh && Date.now() - lastForceRefreshAt > MIN_FORCE_REFRESH_MS;
+    const forceRefresh = canForceRefresh;
 
     if (!forceRefresh && cache && Date.now() - cache.fetchedAt < CACHE_TTL) {
       res.setHeader("X-Cache", "HIT");
       return res.json({ videos: cache.videos });
     }
 
+    if (forceRefresh) lastForceRefreshAt = Date.now();
     const videos = await fetchVideos();
     cache = { videos, fetchedAt: Date.now() };
     res.setHeader("X-Cache", "MISS");
