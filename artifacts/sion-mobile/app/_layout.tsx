@@ -15,10 +15,9 @@ import { Redirect, Stack } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
 import { AuthProvider, useAuth } from '@/contexts/AuthContext';
 
-// KeyboardProvider from react-native-keyboard-controller is removed —
-// it requires extra native setup and can crash silently on some Android versions.
-
-SplashScreen.preventAutoHideAsync();
+// expo-router/entry already calls SplashScreen.preventAutoHideAsync() internally.
+// Calling it a second time here throws in Expo SDK 52+ and crashes before React mounts.
+// DO NOT call SplashScreen.preventAutoHideAsync() here.
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -27,7 +26,13 @@ const queryClient = new QueryClient({
 });
 
 function hideSplash() {
-  SplashScreen.hideAsync().catch(() => {});
+  // hideAsync is deprecated in newer expo-splash-screen; fall back gracefully.
+  try {
+    const result = SplashScreen.hideAsync();
+    if (result && typeof result.catch === 'function') {
+      result.catch(() => {});
+    }
+  } catch (_) {}
 }
 
 function Loader() {
@@ -71,7 +76,7 @@ export default function RootLayout() {
     }
   }, [fontsLoaded, fontError]);
 
-  // Hard timeout — always mount within 2s
+  // Hard timeout — always mount within 2s even if fonts never resolve
   useEffect(() => {
     const t = setTimeout(() => {
       setAppIsReady(true);
@@ -83,8 +88,9 @@ export default function RootLayout() {
   if (!appIsReady) return <Loader />;
 
   return (
-    <SafeAreaProvider>
-      <ErrorBoundary>
+    // ErrorBoundary is outermost so it catches crashes in any provider below
+    <ErrorBoundary>
+      <SafeAreaProvider>
         <QueryClientProvider client={queryClient}>
           <GestureHandlerRootView style={{ flex: 1 }}>
             <AuthProvider>
@@ -109,7 +115,7 @@ export default function RootLayout() {
             </AuthProvider>
           </GestureHandlerRootView>
         </QueryClientProvider>
-      </ErrorBoundary>
-    </SafeAreaProvider>
+      </SafeAreaProvider>
+    </ErrorBoundary>
   );
 }
