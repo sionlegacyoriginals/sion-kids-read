@@ -3,7 +3,7 @@ import { ActivityIndicator, Pressable, ScrollView, Text, View } from 'react-nati
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
-import { Stack, router } from 'expo-router';
+import { Redirect, Stack } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { AuthProvider, useAuth } from '@/contexts/AuthContext';
@@ -98,15 +98,11 @@ class RootErrorBoundary extends React.Component<
 function RootLayoutNav() {
   const { token, isLoading } = useAuth();
 
-  // Use router.replace in effect instead of <Redirect> to avoid navigation loops
-  useEffect(() => {
-    if (!isLoading && !token) {
-      router.replace('/sign-in');
-    }
-  }, [isLoading, token]);
-
+  // Wait for AuthContext to finish loading before deciding where to go.
+  // Using <Redirect> (not router.replace) because expo-router's Redirect
+  // integrates with the navigation container properly at render time.
   if (isLoading) return <Loader />;
-  if (!token) return <Loader />; // show loader while redirect fires
+  if (!token) return <Redirect href="/sign-in" />;
 
   return (
     <Stack screenOptions={{ headerShown: false }}>
