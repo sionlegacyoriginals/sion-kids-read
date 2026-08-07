@@ -96,4 +96,74 @@ router.post("/admin/clerk-settings", async (req, res) => {
   catch { res.status(r.status).json({ raw: text, status: r.status }); }
 });
 
+/**
+ * DELETE /api/admin/users/:userId
+ * Permanently deletes a user's Clerk account and all associated app data.
+ * Protected by ?master=<MASTER_TEST_CODE>.
+ */
+router.delete("/admin/users/:userId", async (req, res) => {
+  const masterCode = (process.env.MASTER_TEST_CODE ?? "").trim();
+  const provided   = (String(req.query.master ?? "")).trim();
+  if (!masterCode || provided !== masterCode) {
+    return res.status(403).json({ error: "Forbidden" });
+  }
+
+  const { userId } = req.params;
+  if (!userId) return res.status(400).json({ error: "userId is required" });
+
+  const clerkKey = process.env.CLERK_SECRET_KEY;
+
+  try {
+    // 1. Erase app data
+    await eraseUserData(userId);
+
+    // 2. Delete from Clerk (best-effort — may already be gone)
+    if (clerkKey) {
+      const r = await fetch(`https://api.clerk.com/v1/users/${userId}`, {
+        method: "DELETE",
+        headers: { "Authorization": `Bearer ${clerkKey}` },
+      });
+      if (!r.ok && r.status !== 404) {
+        const body = await r.json().catch(() => ({}));
+        return res.status(r.status).json({ error: "Clerk deletion failed", detail: body });
+      }
+    }
+
+    res.json({ success: true, userId });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+import { db } from "@workspace/db";
+import { sql } from "drizzle-orm";
+
+/** Wipe all rows that belong to this user from the app database. */
+async function eraseUserData(userId: string) {
+  // Students / children created by this user (teacher rows)
+  await db.execute(sql`
+    DELETE FROM users
+    WHERE class_id IN (SELECT id FROM classes WHERE teacher_id = ${userId})
+      AND is_student = TRUE
+  `);
+  // Classes owned by this user
+  await db.execute(sql`DELETE FROM classes WHERE teacher_id = ${userId}`);
+  // Parent links
+  await db.execute(sql`DELETE FROM parent_links WHERE parent_user_id = ${userId}`);
+  // Story reads & exercises
+  await db.execute(sql`DELETE FROM story_reads WHERE user_id = ${userId}`);
+  // Stories
+  await db.execute(sql`DELETE FROM stories WHERE user_id = ${userId}`);
+  // Reference photos
+  await db.execute(sql`DELETE FROM reference_photos WHERE user_id = ${userId}`);
+  // Print orders (anonymise — keep for record-keeping)
+  await db.execute(sql`
+    UPDATE print_orders SET customer_email = NULL, customer_name = NULL
+    WHERE user_id = ${userId}
+  `);
+  // User row itself
+  await db.execute(sql`DELETE FROM users WHERE id = ${userId}`);
+}
+
+export { eraseUserData };
 export default router;

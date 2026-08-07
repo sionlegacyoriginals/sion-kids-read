@@ -2,6 +2,7 @@ import { useEffect, useRef } from "react";
 import { ClerkProvider, SignIn, SignUp, Show, useClerk, useAuth } from "@clerk/react";
 import { ReviewerAuthProvider, useReviewerAuth } from "@/lib/reviewerAuth";
 import ReviewerAccess from "@/pages/reviewer-access";
+import DeleteAccountPage from "@/pages/delete-account";
 import { publishableKeyFromHost } from "@clerk/react/internal";
 import { shadcn } from "@clerk/themes";
 import { Switch, Route, Redirect, useLocation, Router as WouterRouter } from "wouter";
@@ -286,6 +287,7 @@ function ClerkProviderWithRoutes() {
             <Route path="/games/:gameId" component={GamePlay} />
             <Route path="/music" component={() => <Layout><MusicPage /></Layout>} />
             <Route path="/reviewer-access" component={ReviewerAccess} />
+            <Route path="/delete-account" component={DeleteAccountPage} />
             <Route path="/admin/school-codes" component={() => (
               <Layout><AdminSchoolCodes /></Layout>
             )} />

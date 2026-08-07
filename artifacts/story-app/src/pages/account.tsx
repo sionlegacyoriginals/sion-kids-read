@@ -1,10 +1,10 @@
 import { useState } from "react";
 import { useUser, useClerk } from "@clerk/react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { Link } from "wouter";
+import { Link, useLocation } from "wouter";
 import {
   User, CreditCard, Printer, CheckCircle2, XCircle,
-  Loader2, LogOut, Package, Send, GraduationCap, Lock, Unlock
+  Loader2, LogOut, Package, Send, GraduationCap, Lock, Unlock, Trash2, AlertTriangle
 } from "lucide-react";
 import { ClassroomSection } from "@/components/classroom-section";
 
@@ -127,6 +127,37 @@ export default function Account() {
   };
 
   const basePath = import.meta.env.BASE_URL.replace(/\/$/, "");
+  const [, navigate] = useLocation();
+
+  // ── Account deletion ──────────────────────────────────────────────────────
+  const [deleteOpen, setDeleteOpen] = useState(false);
+  const [deleteConfirm, setDeleteConfirm] = useState("");
+  const [deleteLoading, setDeleteLoading] = useState(false);
+  const [deleteError, setDeleteError] = useState("");
+  const CONFIRM_PHRASE = "delete my account";
+
+  const handleDeleteAccount = async () => {
+    if (deleteConfirm.trim().toLowerCase() !== CONFIRM_PHRASE) return;
+    setDeleteLoading(true);
+    setDeleteError("");
+    try {
+      const r = await fetch("/api/users/me", {
+        method: "DELETE",
+        credentials: "include",
+      });
+      if (!r.ok) {
+        const d = await r.json();
+        setDeleteError(d.error ?? "Something went wrong. Please try again.");
+        return;
+      }
+      // Sign out then redirect to home
+      await signOut({ redirectUrl: basePath || "/" });
+    } catch {
+      setDeleteError("Network error. Please try again.");
+    } finally {
+      setDeleteLoading(false);
+    }
+  };
 
   return (
     <div className="max-w-2xl mx-auto py-12 px-4 animate-in fade-in space-y-6">
@@ -373,6 +404,72 @@ export default function Account() {
           </div>
         )}
       </div>
+      {/* Danger Zone */}
+      <div className="bg-card border border-red-200 rounded-2xl p-6">
+        <div className="flex items-center gap-3 mb-3">
+          <AlertTriangle className="w-5 h-5 text-red-500" />
+          <h2 className="font-bold text-lg text-foreground">Danger Zone</h2>
+        </div>
+        <p className="text-sm text-muted-foreground mb-4">
+          Permanently delete your account and all associated data — stories, classroom data, and subscription. This cannot be undone.
+        </p>
+        <button
+          onClick={() => { setDeleteOpen(true); setDeleteConfirm(""); setDeleteError(""); }}
+          className="flex items-center gap-2 px-5 py-2.5 border border-red-300 text-red-600 font-semibold rounded-full hover:bg-red-50 transition-all text-sm"
+        >
+          <Trash2 className="w-4 h-4" />
+          Delete my account
+        </button>
+      </div>
+
+      {/* Delete confirmation dialog */}
+      {deleteOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm px-4">
+          <div className="bg-card border border-border rounded-2xl p-8 w-full max-w-sm shadow-xl space-y-4">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-xl bg-red-100 flex items-center justify-center shrink-0">
+                <Trash2 className="w-5 h-5 text-red-600" />
+              </div>
+              <div>
+                <h3 className="font-bold text-foreground">Delete account?</h3>
+                <p className="text-xs text-muted-foreground">This permanently erases all your data.</p>
+              </div>
+            </div>
+
+            <p className="text-sm text-muted-foreground">
+              Type <strong className="text-foreground">delete my account</strong> to confirm.
+            </p>
+
+            <input
+              type="text"
+              value={deleteConfirm}
+              onChange={e => setDeleteConfirm(e.target.value)}
+              placeholder="delete my account"
+              className="w-full px-4 py-3 rounded-xl border border-border bg-background text-foreground text-sm focus:outline-none focus:border-red-400 transition-colors"
+              autoFocus
+            />
+
+            {deleteError && <p className="text-destructive text-sm">{deleteError}</p>}
+
+            <div className="flex gap-3 pt-1">
+              <button
+                onClick={() => setDeleteOpen(false)}
+                className="flex-1 px-4 py-2.5 rounded-full border border-border text-foreground font-semibold text-sm hover:bg-muted transition-all"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleDeleteAccount}
+                disabled={deleteLoading || deleteConfirm.trim().toLowerCase() !== CONFIRM_PHRASE}
+                className="flex-1 px-4 py-2.5 rounded-full bg-red-600 text-white font-bold text-sm hover:bg-red-700 transition-all disabled:opacity-40 flex items-center justify-center gap-2"
+              >
+                {deleteLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Trash2 className="w-4 h-4" />}
+                Delete
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

@@ -11,6 +11,7 @@ import familyHubRouter from "./family-hub";
 import musicRouter from "./music";
 import adminRouter from "./admin";
 import reviewerRouter from "./reviewer";
+import deleteAccountRouter from "./delete-account";
 
 const router: IRouter = Router();
 
@@ -26,5 +27,6 @@ router.use(familyHubRouter);
 router.use(musicRouter);
 router.use(adminRouter);
 router.use(reviewerRouter);
+router.use(deleteAccountRouter);
 
 export default router;
