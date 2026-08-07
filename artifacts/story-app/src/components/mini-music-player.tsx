@@ -70,19 +70,12 @@ export function MiniMusicPlayer() {
 
   if (!video) return null;
 
-  // Build YouTube playlist param
-  const currentIndex = videoQueue.findIndex((v) => v.id === video.id);
-  const afterCurrent =
-    currentIndex >= 0
-      ? [...videoQueue.slice(currentIndex + 1), ...videoQueue.slice(0, currentIndex)]
-      : [];
-  const playlistParam =
-    afterCurrent.length > 0
-      ? `&playlist=${afterCurrent.map((v) => v.id).join(",")}`
-      : "";
+  // Embed only the current video — YouTube ignores the path video ID when a
+  // playlist param is present and starts from the first playlist item instead,
+  // causing an off-by-one. Our prev/next buttons handle all navigation.
   const embedUrl =
     `https://www.youtube.com/embed/${video.id}` +
-    `?autoplay=1&rel=0&modestbranding=1${playlistParam}`;
+    `?autoplay=1&rel=0&modestbranding=1`;
 
   function handleResume() {
     setResumed(true);
