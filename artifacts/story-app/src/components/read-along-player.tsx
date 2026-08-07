@@ -333,7 +333,7 @@ export function useReadAlong(paragraphs: string[]) {
     window.speechSynthesis.cancel();
     setIsPlaying(false);
     setActiveRange(null);
-    currentSentenceIdxRef.current = 0;
+    // Intentionally NOT resetting currentSentenceIdxRef so Play resumes from here.
   }, []);
 
   const changeSpeed = useCallback(
@@ -364,7 +364,11 @@ export function useReadAlong(paragraphs: string[]) {
     setVisible(true);
     window.dispatchEvent(new CustomEvent("sion:readalong-start"));
   }, []);
-  const close = useCallback(() => { stop(); setVisible(false); }, [stop]);
+  const close = useCallback(() => {
+    stop();
+    currentSentenceIdxRef.current = 0; // Reset position on full close
+    setVisible(false);
+  }, [stop]);
 
   useEffect(() => () => { window.speechSynthesis.cancel(); }, []);
 
