@@ -19,7 +19,7 @@
     },
     "android": {
       "package": "com.sionkidsread.app",
-      "versionCode": 17,
+      "versionCode": 18,
       "adaptiveIcon": {
         "foregroundImage": "./assets/images/icon.png",
         "backgroundColor": "#ffffff"
