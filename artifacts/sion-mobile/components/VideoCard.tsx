@@ -1,7 +1,6 @@
 import React from 'react';
 import {
   Image,
-  Linking,
   Pressable,
   StyleSheet,
   Text,
@@ -9,6 +8,7 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
+import * as WebBrowser from 'expo-web-browser';
 import { useColors } from '@/hooks/useColors';
 import type { VideoItem } from '@/lib/api';
 
@@ -22,21 +22,16 @@ export function VideoCard({ video }: Props) {
   const handlePress = async () => {
     await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
 
-    // Shorts need a different deep-link scheme in the YouTube app
-    const webUrl = video.isShort
+    // Open in-app browser so the video plays without leaving the app.
+    const url = video.isShort
       ? `https://www.youtube.com/shorts/${video.id}`
       : `https://www.youtube.com/watch?v=${video.id}`;
-    const appUrl = video.isShort
-      ? `youtube://shorts/${video.id}`
-      : `youtube://watch?v=${video.id}`;
 
-    try {
-      const canOpen = await Linking.canOpenURL(appUrl);
-      await Linking.openURL(canOpen ? appUrl : webUrl);
-    } catch {
-      // Fallback to web if anything fails
-      await Linking.openURL(webUrl);
-    }
+    await WebBrowser.openBrowserAsync(url, {
+      presentationStyle: WebBrowser.WebBrowserPresentationStyle.PAGE_SHEET,
+      toolbarColor: colors.background,
+      controlsColor: colors.primary,
+    });
   };
 
   const formattedDate = new Date(video.publishedAt).toLocaleDateString('en-US', {

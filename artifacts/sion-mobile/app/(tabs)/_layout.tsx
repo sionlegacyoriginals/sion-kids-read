@@ -1,9 +1,10 @@
 import React from 'react';
-import { Platform, useColorScheme } from 'react-native';
+import { ActivityIndicator, Platform, View } from 'react-native';
 import { Feather, Ionicons } from '@expo/vector-icons';
-import { Tabs } from 'expo-router';
+import { Redirect, Tabs } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useColors } from '@/hooks/useColors';
+import { useAuth } from '@/contexts/AuthContext';
 
 // expo-symbols (SF Symbols) is iOS-only — importing it on Android crashes the bundle.
 // expo-blur is also removed to reduce native module dependencies.
@@ -13,6 +14,22 @@ export default function TabLayout() {
   const colors = useColors();
   const safeAreaInsets = useSafeAreaInsets();
   const isWeb = Platform.OS === 'web';
+  const { token, isLoading } = useAuth();
+
+  // Show a plain loader while AsyncStorage resolves the saved token.
+  // Navigation IS ready here (inside the Stack), so this redirect is safe.
+  if (isLoading) {
+    return (
+      <View style={{ flex: 1, backgroundColor: colors.background, alignItems: 'center', justifyContent: 'center' }}>
+        <ActivityIndicator color={colors.primary} size="large" />
+      </View>
+    );
+  }
+
+  // Not logged in → send to sign-in screen.
+  if (!token) {
+    return <Redirect href="/sign-in" />;
+  }
 
   return (
     <Tabs
