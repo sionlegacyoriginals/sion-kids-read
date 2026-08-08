@@ -1,15 +1,11 @@
-import React, { useEffect, useState } from 'react';
-import { ActivityIndicator, Pressable, ScrollView, Text, View } from 'react-native';
+import React from 'react';
+import { Text, View } from 'react-native';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { Redirect, Stack } from 'expo-router';
-import * as SplashScreen from 'expo-splash-screen';
-import AsyncStorage from '@react-native-async-storage/async-storage';
-import { AuthProvider, useAuth } from '@/contexts/AuthContext';
+import { Stack } from 'expo-router';
+import { AuthProvider } from '@/contexts/AuthContext';
 
-// expo-router/entry already calls SplashScreen.preventAutoHideAsync() internally.
-// Do NOT call it again here — second call throws in Expo SDK 52+.
-
-const CRASH_KEY = '@sion_last_crash';
+// Do NOT call SplashScreen.preventAutoHideAsync() here.
+// expo-router/entry handles it internally; a second call causes infinite re-renders.
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -17,50 +13,7 @@ const queryClient = new QueryClient({
   },
 });
 
-function hideSplash() {
-  try {
-    const r = (SplashScreen as any).hide?.() ?? (SplashScreen as any).hideAsync?.();
-    if (r && typeof r.catch === 'function') r.catch(() => {});
-  } catch (_) {}
-}
-
-function Loader() {
-  return (
-    <View style={{ flex: 1, backgroundColor: '#7B26B8', justifyContent: 'center', alignItems: 'center' }}>
-      <ActivityIndicator color="#F2A800" size="large" />
-    </View>
-  );
-}
-
-// Persistent crash screen — shown if a previous crash was saved.
-// No Try Again button so it doesn't loop. User takes screenshot and reports error.
-function CrashScreen({ message, onDismiss }: { message: string; onDismiss: () => void }) {
-  return (
-    <View style={{ flex: 1, backgroundColor: '#1C1028' }}>
-      <ScrollView contentContainerStyle={{ flexGrow: 1, justifyContent: 'center', padding: 24, gap: 16 }}>
-        <Text style={{ fontSize: 22, fontWeight: '800', color: '#F2A800', textAlign: 'center' }}>
-          ⚠ App Error — Please Screenshot
-        </Text>
-        <Text style={{ fontSize: 13, color: '#FFFFFF', textAlign: 'center' }}>
-          Send this screenshot to support so the error can be fixed:
-        </Text>
-        <Text style={{ fontSize: 12, color: '#B0A0C8', fontFamily: 'monospace', lineHeight: 18 }}>
-          {message}
-        </Text>
-        <Pressable
-          onPress={onDismiss}
-          style={{ marginTop: 16, paddingVertical: 14, paddingHorizontal: 32,
-            backgroundColor: '#7B26B8', borderRadius: 12, alignItems: 'center' }}
-        >
-          <Text style={{ fontSize: 16, fontWeight: '700', color: '#FFFFFF' }}>Clear & Retry</Text>
-        </Pressable>
-      </ScrollView>
-    </View>
-  );
-}
-
-// Class-based error boundary that persists the crash to AsyncStorage
-// so the next launch can display it even if the flash was too fast to read.
+// Simple error boundary — shows plain text so the error is always readable.
 class RootErrorBoundary extends React.Component<
   { children: React.ReactNode },
   { error: Error | null }
@@ -72,36 +25,32 @@ class RootErrorBoundary extends React.Component<
   }
 
   componentDidCatch(error: Error, info: { componentStack: string }) {
-    const message = `${error?.message}\n\nStack:${error?.stack ?? ''}\n\nComponent:${info?.componentStack ?? ''}`;
-    AsyncStorage.setItem(CRASH_KEY, message).catch(() => {});
+    console.error('RootErrorBoundary caught:', error, info);
   }
 
   render() {
     if (this.state.error) {
-      const msg = this.state.error.message + '\n\n' + (this.state.error.stack ?? '');
       return (
-        <CrashScreen
-          message={msg}
-          onDismiss={() => {
-            AsyncStorage.removeItem(CRASH_KEY).catch(() => {});
-            this.setState({ error: null });
-          }}
-        />
+        <View style={{ flex: 1, backgroundColor: '#1C1028', justifyContent: 'center', padding: 24 }}>
+          <Text style={{ color: '#F2A800', fontSize: 18, fontWeight: 'bold', marginBottom: 12 }}>
+            App Error
+          </Text>
+          <Text style={{ color: '#FFFFFF', fontSize: 13, fontFamily: 'monospace' }}>
+            {this.state.error.message}
+          </Text>
+          <Text style={{ color: '#B0A0C8', fontSize: 11, marginTop: 12 }}>
+            {this.state.error.stack}
+          </Text>
+        </View>
       );
     }
     return this.props.children;
   }
 }
 
+// Static layout — no auth redirects on startup.
+// Auth checks happen inside individual screens.
 function RootLayoutNav() {
-  const { token, isLoading } = useAuth();
-
-  // Wait for AuthContext to finish loading before deciding where to go.
-  // Using <Redirect> (not router.replace) because expo-router's Redirect
-  // integrates with the navigation container properly at render time.
-  if (isLoading) return <Loader />;
-  if (!token) return <Redirect href="/sign-in" />;
-
   return (
     <Stack screenOptions={{ headerShown: false }}>
       <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
@@ -112,52 +61,14 @@ function RootLayoutNav() {
   );
 }
 
-function AppInner() {
-  const [ready, setReady] = useState(false);
-  const [savedCrash, setSavedCrash] = useState<string | null>(null);
-
-  useEffect(() => {
-    // Check for a crash saved from a previous session
-    AsyncStorage.getItem(CRASH_KEY)
-      .then((val) => {
-        if (val) setSavedCrash(val);
-        setReady(true);
-        hideSplash();
-      })
-      .catch(() => {
-        setReady(true);
-        hideSplash();
-      });
-  }, []);
-
-  if (!ready) return <Loader />;
-
-  // Show saved crash from a previous launch — lets user screenshot it
-  if (savedCrash) {
-    return (
-      <CrashScreen
-        message={savedCrash}
-        onDismiss={() => {
-          AsyncStorage.removeItem(CRASH_KEY).catch(() => {});
-          setSavedCrash(null);
-        }}
-      />
-    );
-  }
-
-  return (
-    <QueryClientProvider client={queryClient}>
-      <AuthProvider>
-        <RootLayoutNav />
-      </AuthProvider>
-    </QueryClientProvider>
-  );
-}
-
 export default function RootLayout() {
   return (
     <RootErrorBoundary>
-      <AppInner />
+      <QueryClientProvider client={queryClient}>
+        <AuthProvider>
+          <RootLayoutNav />
+        </AuthProvider>
+      </QueryClientProvider>
     </RootErrorBoundary>
   );
 }
