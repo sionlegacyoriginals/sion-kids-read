@@ -15,10 +15,13 @@ import { router } from 'expo-router';
 import { useQuery } from '@tanstack/react-query';
 import { Ionicons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
+import * as WebBrowser from 'expo-web-browser';
 import { useColors } from '@/hooks/useColors';
 import { useAuth } from '@/contexts/AuthContext';
 import { StoryCard } from '@/components/StoryCard';
 import { fetchRecentStories, type Story } from '@/lib/api';
+
+const WEB_BASE = 'https://sionkidsread.com';
 
 function getGreeting() {
   const h = new Date().getHours();
@@ -169,7 +172,7 @@ export default function HomeScreen() {
         )}
       </View>
 
-      {/* Quick links */}
+      {/* Quick links — in-app navigation */}
       <View style={styles.quickGrid}>
         {[
           { label: 'Library', icon: 'library-outline' as const, route: '/(tabs)/library' as const },
@@ -195,6 +198,43 @@ export default function HomeScreen() {
             <Text style={[styles.quickLabel, { color: colors.foreground }]}>{item.label}</Text>
           </Pressable>
         ))}
+      </View>
+
+      {/* Hubs & extras — open in-app browser */}
+      <View style={styles.section}>
+        <Text style={[styles.sectionTitle, { color: colors.foreground }]}>Explore</Text>
+        <View style={styles.hubGrid}>
+          {[
+            { label: 'Games', icon: '🎮', path: '/games' },
+            { label: 'Classroom Hub', icon: '🏫', path: '/classroom' },
+            { label: 'Homeschool Hub', icon: '🏠', path: '/family-hub' },
+            { label: 'Parent Portal', icon: '👨‍👩‍👧', path: '/parent' },
+          ].map((item) => (
+            <Pressable
+              key={item.label}
+              onPress={async () => {
+                await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                await WebBrowser.openBrowserAsync(`${WEB_BASE}${item.path}`, {
+                  presentationStyle: WebBrowser.WebBrowserPresentationStyle.PAGE_SHEET,
+                  toolbarColor: colors.background,
+                  controlsColor: colors.primary,
+                });
+              }}
+              style={({ pressed }) => [
+                styles.hubCard,
+                {
+                  backgroundColor: colors.card,
+                  borderColor: colors.border,
+                  borderRadius: colors.radius,
+                  opacity: pressed ? 0.8 : 1,
+                },
+              ]}
+            >
+              <Text style={styles.hubIcon}>{item.icon}</Text>
+              <Text style={[styles.hubLabel, { color: colors.foreground }]}>{item.label}</Text>
+            </Pressable>
+          ))}
+        </View>
       </View>
     </ScrollView>
   );
@@ -239,4 +279,18 @@ const styles = StyleSheet.create({
     alignItems: 'flex-start',
   },
   quickLabel: { fontSize: 15, fontWeight: '700' },
+  hubGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 12,
+  },
+  hubCard: {
+    width: '47%',
+    borderWidth: 1,
+    padding: 16,
+    gap: 8,
+    alignItems: 'flex-start',
+  },
+  hubIcon: { fontSize: 26 },
+  hubLabel: { fontSize: 14, fontWeight: '700', lineHeight: 18 },
 });
